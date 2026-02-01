@@ -1,0 +1,84 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="..\..\..\third-party-dependencies\include-4.6\src\glad.c" />
+    <ClCompile Include="stb_image.cpp" />
+    <ClCompile Include="renderer\renderer.cpp" />
+    <ClCompile Include="engine.cpp" />
+    <ClCompile Include="renderer.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\main.vert.glsl" />
+    <None Include="shaders\main.frag.glsl" />
+    <None Include="shaders\text.frag.glsl" />
+    <None Include="shaders\text.vert.glsl" />
+    <None Include="shaders\egui.frag.glsl" />
+    <None Include="shaders\egui.vert.glsl" />
+    <None Include="shaders\platform_shader.vert.glsl" />
+    <None Include="shaders\platform_shader.frag.glsl" />
+    <None Include="shaders\platform_scroll.vert.glsl" />
+    <None Include="shaders\platform_scroll.frag.glsl" />
+    <None Include="shaders\item.vert.glsl" />
+    <None Include="shaders\item.frag.glsl" />
+    <None Include="audio\9-1-25.aup3" />
+    <None Include="audio\slow_space.aup3" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="renderer\shader.h" />
+    <ClInclude Include="stb_image.h" />
+    <ClInclude Include="miniaudio.h" />
+    <ClInclude Include="renderer\renderer.h" />
+    <ClInclude Include="data_types.h" />
+    <ClInclude Include="platform.h" />
+    <ClInclude Include="renderer.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="todo.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\128x.png" />
+    <Image Include="res\512x.png" />
+    <Image Include="res\1024x.png" />
+    <Image Include="res\boost-sheet.png" />
+    <Image Include="res\circuit_board.png" />
+    <Image Include="res\diskette_sheet.png" />
+    <Image Include="res\diskette_sheet_1024.png" />
+    <Image Include="res\diskette_unlock_sheet.png" />
+    <Image Include="res\diskette_unlock_sheet2.png" />
+    <Image Include="res\diskette_unlock_sheet2_1024.png" />
+    <Image Include="res\door.png" />
+    <Image Include="res\hdd_sprite_sheet.png" />
+    <Image Include="res\hdd_sprite_sheet_1024.png" />
+    <Image Include="res\item-hub.png" />
+    <Image Include="res\panel_background.png" />
+    <Image Include="res\player_sheet.png" />
+    <Image Include="res\player_sheet_1024.png" />
+    <Image Include="res\rfid_sheet.png" />
+    <Image Include="res\rfid_sheet_1024.png" />
+    <Image Include="res\rfid_sheet_GOLD.png" />
+    <Image Include="res\ring-sheet.png" />
+    <Image Include="res\watt-ico.png" />
+    <Image Include="res\watt-sheet.png" />
+    <Image Include="res\watt-sheet2.png" />
+    <Image Include="res\watt-sheet3.png" />
+    <Image Include="res\confetti-sheet.png" />
+    <Image Include="res\lines.png" />
+    <Image Include="res\8x.png" />
+    <Image Include="res\+128.png" />
+    <Image Include="res\+512.png" />
+    <Image Include="res\+1024.png" />
+    <Image Include="res\2x.png" />
+    <Image Include="res\4x.png" />
+    <Image Include="res\box_randomizer.png" />
+    <Image Include="res\magnet-sheet.png" />
+    <Image Include="res\player-b-sheet.png" />
+    <Image Include="res\player-sheet.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Media Include="audio\clink.wav" />
+    <Media Include="audio\collect1.wav" />
+    <Media Include="audio\menu_select.wav" />
+    <Media Include="audio\menu_transition.wav" />
+    <Media Include="audio\slow_space.wav" />
+  </ItemGroup>
+</Project>

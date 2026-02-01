@@ -1,0 +1,19 @@
+/InfiniteErl/audio
+/InfiniteErl/fonts
+/InfiniteErl/res
+/InfiniteErl/x64
+/build
+/x64
+/Game/x64
+/Game/Debug
+
+
+# Windows binaries
+*.exe
+*.dll
+*.pdb
+*.lib
+*.obj
+
+# IDE
+.vs/

@@ -1,0 +1,55 @@
+RummiRogue details
+
+basic rules for default rummikub
+  -106 tiles, 1->13, 2 jokers, Y/R/BLK/BLU
+  -group (3 colors)
+  -run (consecutive 3)
+  
+start by taking 14 tiles
+can only place on table if able to make 30 pts (can not use tiles already played on the table)
+cannot lay tile just drawn, must wait till next turn
+
+joker can be taken from the table and replaced by a valid tile, but must be played not 'kept'
+joker has any value or any color
+
+-1 min time limit if exceeded draw 3 tiles
+
+winning can achieved via round limit or clearing your rack
+
+if rummi achieved players add up value on rack as negative values (joker on rack is 30)
+if pool is emptied before rummi, player with lowest rack wins round
+1->13 x 4 (colors) x 2 (double each color) + 2 jokers = 103
+
+
+the winner gets the positive amount of tiles remaining on each players rack
+ie player 1 (W)  + 12, player 2 (L) -5, player 3 (L) -7
+
+
+--design considerations--
+
+struct for sets
+struct for pool 
+struct for rack
+struct for tile
+struct for table
+
+tiles array size 106
+pool max size 106
+rack max size 53 (bot/pool/table has other 53)
+
+table has max size 106 tiles
+table has max sets 36
+
+set {
+    Type(Run, Group)
+    Tiles[13]
+    ValidTiles[3] ie {(2,R),(3,R),(4,R)} valid tiles are {(1,R),(5,R),(J,X)} // don't forget jokers
+  }
+
+calculateValidTiles(Set set)
+placeTile(Set, Tile);
+
+calculatePossible TablePlays();
+
+
+rearrangeTable()
