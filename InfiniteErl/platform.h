@@ -7,26 +7,6 @@
 #include "audio.h"
 
 #define CIRCUIT_BOARD_T 0  
-#define PANEL_BG_T 1
-#define LINES_T 2
-#define DOOR_T 3
-#define PLAYER_SHEET_T 4
-#define HDD_T 5
-#define DISKETTE_UNLOCK_T 6
-#define HUB_T 7
-#define BOOST_T 8
-#define CONFETTI_T 9
-#define RFID_T 10
-#define FIVE_TWELVE_T 11
-#define ONE_TWO_EIGHT_T 12
-#define TEN_TWENTY_FOUR_T 13
-#define TWO_X_T 14
-#define FOUR_X_T 15
-#define EIGHT_X_T 16
-#define DISKETTE_T 17
-#define RANDOMIZER_T 18
-#define WATT_T 19
-#define BG_T 20
 
 #ifdef BUILD_DLL
 #define GAME_DLL __declspec(dllexport)

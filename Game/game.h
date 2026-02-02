@@ -4,36 +4,11 @@
 #include <random>
 #include "platform.h"
 
-#define PLAYER_START_SPEED 30.0f
-
-//map side needs to be divisible by 10 likely, 10 breaks it. 
-//this likely has to do with the side indexing in generate map dside index can get
-//to 9 which is wrong (no 11 sided platform)
 void default_action();
-const u8 MAX_DIAMONDS_PER_WAVE = 1;
-const u8 MAX_WALLS_PER_WAVE = 10;
-
-enum class OBJECT_TYPE {
-    NONE,
-    RFID,
-    FIVE_TWELVE,
-    ONE_TWO_EIGHT,
-    TEN_TWENTY_FOUR,
-    TWO_X,
-    FOUR_X,
-    EIGHT_X,
-    MAGNET,
-    DISKETTE,
-    RANDOMIZER,
-    DIAMOND,
-    RING
-};
 
 struct GameObject {
     vec3 pos;
     mat4 model;
-    u8 side;
-    OBJECT_TYPE type = OBJECT_TYPE::NONE;
     i32 textureName;
     bool isAnimated = false;
     i32 cols = 0;
@@ -54,127 +29,81 @@ struct GameObject {
     };
 };
 
-enum class GAME_STATE {
-    PLAY,
-    PAUSED,
-    DEBUG,
-    END,
-    HOME,
-    SETTINGS,
-    CONTROLS_MENU,
-    VIDEO_MENU,
-    SEED_MENU,
-    ITEM_UNLOCK,
-    COUNT
-};
-
-struct Wall {
-    mat4 model;
-    u8 side;
-    bool isActive = false;
-};
-
-struct Door {
-    GameObject object;
-    bool isOpen = false;
-};
-
-struct Map {
-    char* fileName;
-    Wall walls[MAP_SIZE][10] = {};
-    GameObject diamonds[MAP_SIZE] = {};
-    Door doors[MAP_SIZE] = {};
-    GameObject items[MAP_SIZE] = {};
-    u8 waveWallCounts[MAP_SIZE] = {};
-    u8 platformSideNumbers[MAP_SIZE] = {};
-    u16 waveCountTotal = 0;
-};
-
-#pragma pack(push, 1) 
-struct PlayerData {
-    u64 highScore;
-    u32 diamonds;
-    u32 runs;
-};
-#pragma pack(pop)
-
 struct RNG {
   u64 state;
 };
 
+enum SET_TYPE {
+    GROUP,
+    RUN,
+    INVALID
+};
+
+enum TILE_LOCATION {
+    POOL,
+    P_RACK,
+    CPU_RACK,
+    TABLE
+};
+
+struct TileDetails {
+    u8 tileNumber;
+    u8 tileColor;
+};
+
+// 0-r, 1-b, 2-y, 3-b
+struct Tile {
+    GameObject object;
+    TILE_LOCATION location;
+    TileDetails details;    
+    u8 isHovered = false;
+    u8 isHeld = false;
+    vec2 grabOffset;
+};
+
+struct Set {
+  SET_TYPE setType;
+  Tile tiles[13];
+  u8 numberOfTiles = 0;
+
+  u8 highTileNumber = 1;
+  u8 lowTileNumber = 13;
+
+  u8 lowTileIndex = 0;
+  u8 highTileIndex = 0;
+
+  u8 colors[4];
+  u8 numberOfPlayableTiles = 0;
+
+  u8 isComplete = false;
+  u8 isHovered = false;
+};
+
+struct Pool {
+    Tile tiles[54];
+    u8 numberOfTiles = 0;
+};
+
+struct Rack {
+    Tile tiles[27];
+    u8 numberOfTiles = 0;
+};
+
+struct Table {
+    Set sets[13];
+    u8 numberOfSets = 0;
+};
+
 struct GameState {
-    f32 platAnimTimer;
-    i32 platCurrentFrame;
-
-    u32 cylinderMesh;
-
-    GAME_STATE gameState = GAME_STATE::HOME;
-    Map map;
-    Wall walls[10];
-    
-    GameObject player;
-    PlayerData playerData;
-
-    u8 wallCount;
-    u16 waveCount;
-
-    f32 menuWaitStart;
-    // This has an error on dll update.
-    GameObject playerGameObjects[3];
-    u8 playerGameObjectCount;
-
-    GameObject multipliers[3];
-    i32 multiplierCount[3];
-
-    GameObject additions[3];
-    i32 additionCount[3];
-
-    i32 isButtonPressed[15];
-    i32 axisChanged[3];
-    i32 boostActive;
-    i32 twoX;
-    i32 fourX;
-    i32 eightX;
-    i32 invincibility;
-
-    i32 currentSides;
-    i16 wavesActive[8];
-
-    UIPage* uiPage;
-    RNG rng;
-    
-    vec3 platformSides[8][10];
-    f64 totalTime;
-    f32 desiredRotation;
-    f32 currentRotation;
-    f32 platformRadius[8];
-    f32 platformRotationSpeed;
-    i32 runTime;
-    i32 randomizerModifier;
-    i32 waveNumber;
-    u8 currentFaceIndex;
-    u8 lastNSides;
-    i64 diamondCount, ringCount;
-    i64 seed;
-    f32 wallSpeed;
-    mat4 starModels[200];
-    vec2 platformScroll;
-
-    u32 platformMeshes[8][2];
-    u32 wallMeshes[8][10];
-    mat4 platformModel;
-
-    vec3 cameraPos;
-    vec3 cameraUp;
-    vec3 cameraFront;
-
-    f32 boostAmount;
-    f32 timeFromLastWave;
-    char textTypeBuffer[20];
-    i32 textTypeLength;
+    //default game values
     u32 quadMesh;
     f32 deltaTime;
-    u64 runScore;
+    RNG rng;
+
+    Pool pool;
+    Rack playerRack;
+    Rack cpuRack;
+    Table table;
 };
 
 extern GameState* gState;

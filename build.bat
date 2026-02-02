@@ -60,7 +60,7 @@ cl %CommonCompilerFlags% /DCONSOLE ^
    C:\Dev\third-party-dependencies\include\glad\glad.c ^
    /link %CommonLinkerFlags% ^
    UserInterface.lib ^
-   /OUT:InfiniteErl.exe
+   /OUT:Rummy.exe
 
 rem --------------------------
 rem Build Game DLL
@@ -76,5 +76,5 @@ rem --------------------------
     /OUT:Game.dll
 
 echo Build complete.
-InfiniteErl.exe
+Rummy.exe
 popd

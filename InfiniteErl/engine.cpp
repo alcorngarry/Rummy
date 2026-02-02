@@ -209,10 +209,11 @@ GLFWwindow* create_window() {
     //think about set joystick callback..
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
     f32 aspect = static_cast<f32>(windowWidth) / static_cast<f32>(windowHeight);
-    projection = glm::perspective(glm::radians(FOV), aspect, 0.1f, Z_FAR);
+    //projection = glm::perspective(glm::radians(FOV), aspect, 0.1f, Z_FAR);
+    projection = glm::ortho(0.0f, 1.0f, 1.0f, 0.0f, -1.0f, 1.0f);
 
     return window;
 }
@@ -251,7 +252,7 @@ void toggle_fullscreen(GLFWwindow* window) {
     f32 aspect = (height == 0) ? 1.0f : (f32)width / (f32)height;
     windowWidth = width;
     windowHeight = height;
-    projection = glm::perspective(glm::radians(FOV), aspect, 0.1f, Z_FAR);
+    //projection = glm::perspective(glm::radians(FOV), aspect, 0.1f, Z_FAR);
 }
 
 void load_window_icon() {
@@ -277,7 +278,7 @@ void framebuffer_size_callback(GLFWwindow* window, i32 width, i32 height) {
     glViewport(0, 0, width, height);
 
     f32 aspect = static_cast<f32>(width) / static_cast<f32>(height);
-    projection = glm::perspective(glm::radians(FOV), aspect, 0.1f, Z_FAR);
+    //projection = glm::perspective(glm::radians(FOV), aspect, 0.1f, Z_FAR);
 }
 
 void mouse_callback(GLFWwindow* window, f64 xpos, f64 ypos) {
@@ -308,12 +309,14 @@ void mouse_callback(GLFWwindow* window, f64 xpos, f64 ypos) {
 }
 
 void mouse_button_callback(GLFWwindow* window, i32 button, i32 action, i32 mods) {
+    game.game_update_input(action, button, lastX /= windowWidth, lastY /= windowHeight);
 }
 
 void key_callback(GLFWwindow* window, i32 key, i32 scancode, i32 action, i32 mods) {
-   game.game_update_input(action, key, -1, -1);
+   game.game_update_input(action, key, lastX, lastY);
 }
 
 void load_textures() {
-    //load_texture(CIRCUIT_BOARD_T, "./res/circuit_test.png", false, false, true);
+    //mipmmapped, flipped, repeated
+    load_texture(CIRCUIT_BOARD_T, "./res/tile-map.png", false, true, true);
 }

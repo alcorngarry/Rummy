@@ -53,3 +53,5 @@ calculatePossible TablePlays();
 
 
 rearrangeTable()
+
+--first try with 53 tiles

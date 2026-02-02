@@ -156,54 +156,6 @@ void push_ui_page(RenderBuffer* buffer, UIPage* uiPage) {
     }
 }
 
-void draw_platform(mat4 model, mat4 view, mat4 projection, i32 currentSides, bool flippedNormal,
-    u32 vao, u32 vao2, bool scroll, i32 textureId, vec3 color, bool isPlatform, vec2 platformScroll,
-    f32 wallSpeed, vec3 cameraPos, f32 deltaTime, i32 currentFrame) {
-
-    platformShader->use();
-    platformShader->setMat4("model", model);
-    platformShader->setMat4("view", view);
-    platformShader->setMat4("projection", projection);
-
-    if (scroll) {
-        platformShader->setVec2("scrollOffset", -platformScroll);
-    }
-
-    platformShader->setVec3("lightColor", vec3(1.0f));
-    //where the player is.
-    platformShader->setVec3("lightPos", vec3(0.0f, 0.1f, 65.0f));
-    platformShader->setVec3("viewPos", cameraPos);
-    platformShader->setBool("flippedNormal", flippedNormal);
-    platformShader->setVec3("color", color);
-    platformShader->setInt("frameIndex", currentFrame);
-
-    if (isPlatform) {
-        platformShader->setBool("useSpriteSheet", false);
-        platformShader->setBool("hasTexture", true);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, textureId);
-
-
-        glBindVertexArray(vao);
-        glDrawElements(GL_TRIANGLES, (currentSides - 2) * 3 * 2 + currentSides * 6, GL_UNSIGNED_INT, 0);
-
-        if(!flippedNormal) {
-          platformShader->setBool("hasTexture", false);
-          platformShader->setVec3("color", vec3(0.0f));
-          glBindVertexArray(vao2);
-          glDrawElements(GL_LINES,
-              currentSides * 6,
-              GL_UNSIGNED_INT,
-              0);
-        }
-    } else {
-        platformShader->setBool("useSpriteSheet", false);
-        platformShader->setBool("hasTexture", false);
-        glBindVertexArray(vao);
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, 6);
-    }
-}
-
 RenderBuffer* allocate_render_buffer(u32 maxBufferSize) {
     RenderBuffer* buffer = (RenderBuffer*)malloc(sizeof(RenderBuffer));
     buffer->maxBufferSize = maxBufferSize;
@@ -287,30 +239,6 @@ void render_buffer(RenderBuffer* buffer) {
               );
               break;
           }
-          case RenderEntryType_RenderEntryPlatform: {
-              RenderEntryPlatform* entry = (RenderEntryPlatform*)at;
-              at += sizeof(RenderEntryPlatform);
-
-              draw_platform(
-                  entry->model,
-                  buffer->view,
-                  buffer->projection,
-                  entry->currentSides,
-                  entry->flippedNormal,
-                  gMeshes[entry->meshHandle].vao,
-                  gMeshes[entry->meshHandle2].vao, // still weird
-                  entry->scroll,
-                  get_texture_id(entry->textureName),
-                  entry->color,
-                  entry->isPlatform,
-                  entry->platformScroll,
-                  entry->wallSpeed,
-                  buffer->cameraPos,
-                  buffer->deltaTime,
-                  entry->currentFrame
-              );
-              break;
-          }
           case RenderEntryType_RenderEntryUIText: {
               RenderEntryUIText* entry = (RenderEntryUIText*)at;
               at += sizeof(RenderEntryUIText);
@@ -363,8 +291,8 @@ void draw_entity(mat4 model, mat4 view, mat4 projection, u32 vao, i32 textureId,
     itemShader->setBool("useSpriteSheet", useSpriteSheet);
     itemShader->setInt("frameIndex", frameIndex);
 
-    itemShader->setInt("cols", 6);
-    itemShader->setInt("rows", 5);
+    itemShader->setInt("cols", 13);
+    itemShader->setInt("rows", 4);
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, textureId);
