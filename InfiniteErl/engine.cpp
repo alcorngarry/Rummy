@@ -313,10 +313,11 @@ void mouse_button_callback(GLFWwindow* window, i32 button, i32 action, i32 mods)
 }
 
 void key_callback(GLFWwindow* window, i32 key, i32 scancode, i32 action, i32 mods) {
-   game.game_update_input(action, key, lastX, lastY);
+   game.game_update_input(action, key, lastX /= windowWidth, lastY /= windowHeight);
 }
 
 void load_textures() {
     //mipmmapped, flipped, repeated
-    load_texture(CIRCUIT_BOARD_T, "./res/tile-map.png", false, true, true);
+    load_texture(TILE_ATLAS_T, "./res/tile-map.png", false, true, true);
+    load_texture(END_TURN_T, "./res/end-run.png", true, false, true);
 }

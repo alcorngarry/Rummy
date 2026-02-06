@@ -4,6 +4,8 @@
 #include <random>
 #include "platform.h"
 
+#define TOTAL_TILES 52
+
 void default_action();
 
 struct GameObject {
@@ -51,19 +53,24 @@ struct TileDetails {
     u8 tileColor;
 };
 
+struct Set;
+
 // 0-r, 1-b, 2-y, 3-b
 struct Tile {
     GameObject object;
     TILE_LOCATION location;
+    i32 locationIndex;
     TileDetails details;    
     u8 isHovered = false;
-    u8 isHeld = false;
     vec2 grabOffset;
+    mat4 originalPosition;
+    i32 setId = -1;
 };
 
 struct Set {
+  i32 id;
   SET_TYPE setType;
-  Tile tiles[13];
+  Tile* tiles[13];
   u8 numberOfTiles = 0;
 
   u8 highTileNumber = 1;
@@ -77,21 +84,38 @@ struct Set {
 
   u8 isComplete = false;
   u8 isHovered = false;
+
+  u64 value = 0;
+  GameObject object;
 };
 
 struct Pool {
-    Tile tiles[54];
+    GameObject object;
+    // pool owns the tile values
+    Tile* tiles[TOTAL_TILES];
     u8 numberOfTiles = 0;
 };
 
 struct Rack {
-    Tile tiles[27];
+    Tile* tiles[TOTAL_TILES];
     u8 numberOfTiles = 0;
 };
 
 struct Table {
-    Set sets[13];
+    GameObject object;
+    Set sets[TOTAL_TILES / 3];
     u8 numberOfSets = 0;
+    u64 value = 0;
+};
+
+struct PlayerData {
+    u32 timesDrawn = 0;
+    u64 score = 0;
+};
+
+struct Player {
+    PlayerData playerData;
+    Tile* heldTile;
 };
 
 struct GameState {
@@ -99,10 +123,16 @@ struct GameState {
     u32 quadMesh;
     f32 deltaTime;
     RNG rng;
+    UIPage *uiPage;
 
+    // Just in case revisiting, want to basically have this tiles object to store the game's tile state. So the board can be 
+    // reset to prior status if rearranging sets on the table.
+    Tile tiles[TOTAL_TILES];
+    Tile roundStartTiles[TOTAL_TILES];
+
+    Player player;
     Pool pool;
     Rack playerRack;
-    Rack cpuRack;
     Table table;
 };
 

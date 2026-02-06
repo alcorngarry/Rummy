@@ -6,7 +6,8 @@
 // This likely will not be used in the ui library
 #include "audio.h"
 
-#define CIRCUIT_BOARD_T 0  
+#define TILE_ATLAS_T 0  
+#define END_TURN_T 1  
 
 #ifdef BUILD_DLL
 #define GAME_DLL __declspec(dllexport)

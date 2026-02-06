@@ -29,6 +29,60 @@ static inline std::string add_commas_uint64(uint64_t value) {
     return s;
 }
 
+inline bool ui_point_inside(const UIElement& e, f64 x, f64 y) {
+    f64 minX, maxX, minY, maxY;
+
+    switch (e.anchor) {
+        case Anchor::CENTER:
+            minX = e.posx - e.width  * 0.5;
+            maxX = e.posx + e.width  * 0.5;
+            minY = e.posy - e.height * 0.5;
+            maxY = e.posy + e.height * 0.5;
+            break;
+
+        case Anchor::TOP_LEFT:
+            minX = e.posx;
+            maxX = e.posx + e.width;
+            minY = e.posy;
+            maxY = e.posy + e.height;
+            break;
+
+        case Anchor::TOP_RIGHT:
+            maxX = e.posx;
+            minX = e.posx - e.width;
+            maxY = e.posy;
+            minY = e.posy + e.height;
+            break;
+        default:
+            return false;
+    }
+
+    return x >= minX && x <= maxX &&
+           y >= minY && y <= maxY;
+}
+
+void check_elements_hovered(UIPage* page, f64 xpos, f64 ypos) {
+    page->elementHovered = -1;
+
+    for (int i = 0; i < page->actionableElementCount; ++i) {
+        //ANCHOR EFFECTS THIS LETS ASSUME ANCHOR IS CENTER
+        if (ui_point_inside(page->uiElements[i], xpos, ypos)) {
+            page->uiElements[i].hovered = true;
+            page->elementHovered = i; 
+
+            if (page->uiElements[i].childId != -1) {
+                page->textElements[page->uiElements[i].childId].color = vec3(1.0f, 0.0f, 0.0f);
+            }
+        } else {
+            page->uiElements[i].hovered = false;
+            
+            if (page->uiElements[i].childId != -1) {
+                page->textElements[page->uiElements[i].childId].color = vec3(1.0f);
+            }
+        }
+    }
+}
+
 void update_animation(UIElement* element, f32 deltaTime) {
     if (element->autoAnimate) {
         if (!element->loopAnimation && element->currentFrame == (element->fps - 1)) {
@@ -87,7 +141,6 @@ void update(TextElement* text, f32 deltaTime) {
 
                 if (glm::distance(text->destination, text->start) < 0.05f) {
                     text->destination = text->start;
-                    printf("ON COMPLETE ACTION\n");
                     if(text->onCompleteAction) {
                         text->onCompleteAction((i64)val);
                         text->onCompleteAction = nullptr;
@@ -251,6 +304,7 @@ void create_image_quad(UIMemory* mem) {
 UIPage* create_ui_page(UIMemory* mem) {
   create_image_quad(mem);
   UIPage* page = (UIPage*)ui_push_size(mem, sizeof(UIPage));
+  page->elementHovered = -1;
   memset(page, 0, sizeof(UIPage));
   return page;
 }

@@ -98,6 +98,7 @@ struct UIMemory {
 void ui_reset(UIMemory* mem);
 UIPage* create_ui_page(UIMemory* mem);
 void update(UIPage* page, f32 deltaTime);
+void check_elements_hovered(UIPage* page, f64 xpos, f64 ypos);
 
 void free_ui_page(UIPage* page);
 void reset_animation(UIElement* element);

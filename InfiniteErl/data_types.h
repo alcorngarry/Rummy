@@ -15,6 +15,7 @@
 #define PLAYER_START_SPEED 35.0f
 #define I64_MAX 9223372036854775807LL
 #define I32_MAX 2147483647
+#define F32_MAX 3.402823466e+38f 
 #define assert(Expression) if(!(Expression)) { *(int *)0 = 0; }
 
 typedef int8_t i8;
