@@ -7,7 +7,8 @@
 #include "audio.h"
 
 #define TILE_ATLAS_T 0  
-#define END_TURN_T 1  
+#define END_TURN_T 1 
+#define RESET_BOARD_T 2
 
 #ifdef BUILD_DLL
 #define GAME_DLL __declspec(dllexport)

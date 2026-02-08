@@ -55,3 +55,9 @@ calculatePossible TablePlays();
 rearrangeTable()
 
 --first try with 53 tiles
+
+
+--[NOTES ON ISSUES]--
+
+--When splitting runs it still shows valid if you take from the middle
+

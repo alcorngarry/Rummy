@@ -13,10 +13,28 @@ uniform int cols;
 uniform int rows;
 
 out vec2 TexCoord;
+out vec3 vPos;
 
 void main()
 {
-    gl_Position = projection * view * model * vec4(aPos, 1.0);
+    //gl_Position = projection * view * model * vec4(aPos, 1.0);
+    vec4 world = model * vec4(aPos, 1.0);
+    vec4 pos = view * world;
+
+    if (useSpriteSheet) {
+        float fov = 1.0;   // tweak for extreme tilt effect
+        float depthOffset = 0.01; // push forward slightly
+        pos.z -= depthOffset;
+
+        float persp = 1.0 / (1.0 + (-pos.z * fov));
+        pos.xy *= persp;
+
+        vPos = pos.xyz;
+    } else {
+        vPos = vec3(0.0, 0.0, 1.0);
+    }
+
+    gl_Position = projection * pos;
 
     if (useSpriteSheet) {
         float frameW = 1.0 / float(cols);

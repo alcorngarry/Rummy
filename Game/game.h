@@ -97,6 +97,7 @@ struct Pool {
 };
 
 struct Rack {
+    GameObject object;
     Tile* tiles[TOTAL_TILES];
     u8 numberOfTiles = 0;
 };

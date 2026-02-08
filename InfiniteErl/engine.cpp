@@ -213,7 +213,7 @@ GLFWwindow* create_window() {
 
     f32 aspect = static_cast<f32>(windowWidth) / static_cast<f32>(windowHeight);
     //projection = glm::perspective(glm::radians(FOV), aspect, 0.1f, Z_FAR);
-    projection = glm::ortho(0.0f, 1.0f, 1.0f, 0.0f, -1.0f, 1.0f);
+    projection = glm::ortho(0.0f, 1.0f, 1.0f, 0.0f, -10.0f, 10.0f);
 
     return window;
 }
@@ -320,4 +320,5 @@ void load_textures() {
     //mipmmapped, flipped, repeated
     load_texture(TILE_ATLAS_T, "./res/tile-map.png", false, true, true);
     load_texture(END_TURN_T, "./res/end-run.png", true, false, true);
+    load_texture(RESET_BOARD_T, "./res/reset-board.png", true, false, false);
 }

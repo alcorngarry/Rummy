@@ -99,6 +99,11 @@ void revert_to_round_start() {
 
     gState->playerRack = Rack{};
     gState->table = Table{};
+    gState->playerRack.object = GameObject {
+        vec3(0.0f),
+        glm::scale(rackSpaces[13], vec3(10.0f, 5.0f, 1.0f)),
+        -1
+    };
 
     for (i32 i = 0; i < TOTAL_TILES; i++) {
         Tile* t = &gState->tiles[i];
@@ -209,7 +214,7 @@ void init_pool() {
 }
 
 void init_rack_space() {
-    mat4 startPos = glm::translate(mat4(1.0f), vec3(.1f, .75f, 0.0f));
+    mat4 startPos = glm::translate(mat4(1.0f), vec3(0.5f - ((9.0f * defaultTileScale.x) * 0.5f), .85f, 0.0f));
     for(i32 i = 0; i < 27; i++) {
         f32 row = 0.0f;
         
@@ -219,6 +224,12 @@ void init_rack_space() {
         mat4 space = glm::scale(startPos, defaultTileScale);
         rackSpaces[i] = glm::translate(space, vec3(i % 9 , row, 0));
     }
+    
+    gState->playerRack.object = GameObject {
+        vec3(0.0f),
+        glm::scale(rackSpaces[13], vec3(10.0f, 5.0f, 1.0f)),
+        -1
+    };
 }
 
 void align_rack_tiles() {
@@ -227,32 +238,47 @@ void align_rack_tiles() {
     };
 }
 
+void add_tile_to_rack(Tile *tile) {
+    tile->location = TILE_LOCATION::P_RACK;
+    tile->object.model = rackSpaces[gState->playerRack.numberOfTiles];
+    tile->locationIndex = gState->playerRack.numberOfTiles;
+    tile->setId = -1;
+    tile->originalPosition = tile->object.model;
+
+    gState->playerRack.tiles[gState->playerRack.numberOfTiles] = tile;
+    gState->playerRack.numberOfTiles++;
+}
+
 void draw_from_pool(Rack &rack) {
     if(gState->pool.numberOfTiles == 0) {
         printf("Pool is empty\n");
     }
     Tile* tileDrawn = gState->pool.tiles[gState->pool.numberOfTiles - 1];
     gState->pool.numberOfTiles == 0 ? 0 : gState->pool.numberOfTiles--;
-
-    tileDrawn->location = TILE_LOCATION::P_RACK;
-    tileDrawn->object.model = rackSpaces[rack.numberOfTiles];
-    tileDrawn->locationIndex = rack.numberOfTiles; 
-
-    rack.tiles[rack.numberOfTiles] = tileDrawn;
-    rack.numberOfTiles++;
+    add_tile_to_rack(tileDrawn);
 }
 
 void init_player_rack() {
-    //test drawing inital draw 7, set to 9 here to test filled row
+    //test drawing inital draw 7, set to 27 here to test filled row
     gState->playerRack.numberOfTiles = 0;
-    for(i32 i = 0; i < 9; i++) {
+    for(i32 i = 0; i < 27; i++) {
         draw_from_pool(gState->playerRack);
     }
 }
 
 void draw_player_rack() {
+    
+    RenderEntryEntity rack = RenderEntryEntity{
+        gState->playerRack.object.model,
+        gState->quadMesh,
+        gState->playerRack.object.textureName,
+        vec3(0.2f)
+    };
+    gMemory->push_entity_fn(gMemory->renderBuffer, &rack);
+
     for(i32 i = 0; i < gState->playerRack.numberOfTiles; i++) {
         Tile *tile = gState->playerRack.tiles[i];
+        if(tile == gState->player.heldTile) continue;
 
         vec3 color = vec3(1.0f);
         if(tile->isHovered) color = vec3(1.0f, 0.0f, 0.0f);
@@ -293,6 +319,7 @@ void draw_table() {
 
         for(i32 j = 0; j < gState->table.sets[i].numberOfTiles; j++) {
             Tile *tile = gState->table.sets[i].tiles[j];
+            if(tile == gState->player.heldTile) continue;
             
             vec3 color = gState->table.sets[i].isHovered ? vec3(0.0f, 1.0f, 1.0f) : vec3(1.0f);
 
@@ -310,6 +337,23 @@ void draw_table() {
     }
 }
 
+void draw_held_tile() {
+    Tile *tile = gState->player.heldTile;
+    if(!tile) return;        
+    vec3 color = vec3(1.0f);
+
+    RenderEntryEntity e = RenderEntryEntity{
+        tile->object.model,
+        gState->quadMesh,
+        tile->object.textureName,
+        color,
+        true,
+        tile->object.currentFrame
+    };
+
+    gMemory->push_entity_fn(gMemory->renderBuffer, &e);
+}
+
 // TODO(garry) this is horrible.
 u8 clickHeld = false;
 
@@ -320,16 +364,41 @@ void check_tile_hovered(f64 xpos, f64 ypos) {
         if(gState->player.heldTile == tile) continue;
 
         vec3 pos = vec3(tile->object.model[3]);
-        f32 half = 0.05f;
+        f32 half = defaultTileScale.x * 0.5f;
 
         bool inside = xpos > pos.x - half && xpos < pos.x + half &&
                       ypos > pos.y - half && ypos < pos.y + half;
 
-        if(inside && !tile->isHovered) {
-            tile->isHovered = true;
+        if (inside) {
+            if (!tile->isHovered) {
+                tile->isHovered = true;
+                tile->originalPosition = tile->object.model;
+            }
 
-        } else if(!inside && tile->isHovered) {
+            f32 size = defaultTileScale.x;
+
+            vec2 localMouse;
+            localMouse.x = (f32)(xpos - (pos.x - half));
+            localMouse.y = (f32)(ypos - (pos.y - half));
+
+            f32 lerpX = glm::clamp(localMouse.x / size, 0.0f, 1.0f);
+            f32 lerpY = glm::clamp(localMouse.y / size, 0.0f, 1.0f);
+
+            f32 maxX = 30.0f;
+            f32 maxY = 30.0f;
+
+            f32 rotX = glm::mix(-maxX, maxX, lerpX);
+            f32 rotY = glm::mix( maxY, -maxY, lerpY);
+
+            mat4 tilt(1.0f);
+            tilt = glm::rotate(tilt, glm::radians(rotX), vec3(1, 0, 0));
+            tilt = glm::rotate(tilt, glm::radians(rotY), vec3(0, 1, 0));
+
+            tile->object.model = tile->originalPosition * tilt;
+        }
+        else if (tile->isHovered) {
             tile->isHovered = false;
+            tile->object.model = tile->originalPosition;
         }
     }
 
@@ -340,7 +409,7 @@ void check_tile_hovered(f64 xpos, f64 ypos) {
             if(gState->player.heldTile == tile) continue;
 
             vec3 pos = vec3(tile->object.model[3]);
-            f32 half = 0.05f;
+            f32 half = defaultTileScale.x * 0.5f;
 
             bool inside = xpos > pos.x - half && xpos < pos.x + half &&
                           ypos > pos.y - half && ypos < pos.y + half;
@@ -807,6 +876,28 @@ u8 is_tile_released_inside_table(Tile* tile) {
            ypos > pos.y - half && ypos < pos.y + half;
 }
 
+u8 is_tile_released_inside_rack(Tile *tile) {
+    vec3 pos = vec3(tile->object.model[3]);
+    f32 xpos = gState->playerRack.object.model[3].x;
+    f32 ypos = gState->playerRack.object.model[3].y;
+    f32 half = glm::length(gState->playerRack.object.model[0]) * 0.5f;
+
+    return xpos > pos.x - half && xpos < pos.x + half &&
+           ypos > pos.y - half && ypos < pos.y + half;
+}
+
+u8 verify_tile_was_not_played(Tile *tile) {
+    for(i32 i = 0; i < TOTAL_TILES; i++) {
+        if(gState->roundStartTiles[i].details.tileNumber == tile->details.tileNumber && 
+            gState->roundStartTiles[i].details.tileColor == tile->details.tileColor) {
+            return gState->roundStartTiles[i].setId == -1;
+        }
+    }
+
+    printf("Error tile not found in round start tiles!\n");
+    return false;
+}
+
 void release_tile() {
     // I want to be able to return the tile to the rack
 
@@ -822,10 +913,14 @@ void release_tile() {
 
         u8 wasFromTable = (t->location == TILE_LOCATION::TABLE && t->setId >= 0);
         u8 releasedInsideTable = is_tile_released_inside_table(t);
+        u8 releasedInsideRack = is_tile_released_inside_rack(t);
 
-        if (wasFromTable && !releasedInsideTable) {
+        if (wasFromTable && releasedInsideRack) {
             // this shouldn't be here
-            printf("FAILURE\n");
+            if(verify_tile_was_not_played(t)) {
+                add_tile_to_rack(t);
+                
+            }
             //remove_tile_from_table_set_and_split(t);
         }
 
@@ -879,9 +974,21 @@ u8 is_table_valid() {
     return true;
 }
 
+u64 numTableTiles = 0;
+
 void complete_round() {
-    add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f, 0.5f, -1, true, 0.005f }, 
+    add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f, 0.01f, -1, true, 0.0005f }, 
         "COMPLETED ROUND WITH SCORE: ", &gState->player.playerData.score, TextType::UINT_64);
+
+    for(i32 i = 0; i < gState->table.numberOfSets; i++) {
+        numTableTiles += gState->table.sets[i].numberOfTiles;
+    }
+    add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f, 0.03f, -1, true, 0.0005f }, 
+        "TILES USED: ", &numTableTiles, TextType::UINT_64);
+}
+
+void reset_board() {
+    revert_to_round_start();
 }
 
 void end_turn() {
@@ -964,20 +1071,24 @@ extern "C" GAME_DLL void game_init(GameMemory* memory, i32 preserveState) {
     //default seed for now
     set_seed();
     //gState->rng = RNG{0x0000000012345678};
-    create_tiles();
-
-    init_player();
-    init_pool();
     init_rack_space();
-    init_player_rack();
-    snapshot_round_start();
 
+    if(!preserveState) {
+        create_tiles();
+
+        init_player();
+        init_pool();
+        init_player_rack();
+        snapshot_round_start();
+    }
+    
     UIMemory* uiMem = &gMemory->uiMem;
     ui_reset(uiMem);
     gState->uiPage = create_ui_page(uiMem);
     gState->uiPage->numberOfImageElements = 0;
 
-    add_ui_element(gState->uiPage, UIElement{ Anchor::TOP_LEFT, -1, END_TURN_T, 0.01f, 0.01f, 0.12f, 0.12f, true, &end_turn}, true);
+    add_ui_element(gState->uiPage, UIElement{ Anchor::TOP_LEFT, -1, END_TURN_T, 0.0f, 0.0f, 0.125f, 0.125f, true, &end_turn}, true);
+    add_ui_element(gState->uiPage, UIElement{ Anchor::TOP_LEFT, -1, RESET_BOARD_T, 0.0f, 0.125f, 0.125f, 0.125f, true, &reset_board}, true);
     add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_RIGHT, "", 1.0f, 0.0f, -1, true, 0.0005f }, 
         "", &gState->player.playerData.score, TextType::UINT_64);
 }
@@ -985,8 +1096,9 @@ extern "C" GAME_DLL void game_init(GameMemory* memory, i32 preserveState) {
 extern "C" GAME_DLL void game_update_and_render() {
     gState->deltaTime = gMemory->renderBuffer->deltaTime;
 
-    draw_table();
     draw_player_rack();
+    draw_table();
+    draw_held_tile();
     draw_ui();
 }
 
