@@ -9,6 +9,12 @@
 #define TILE_ATLAS_T 0  
 #define END_TURN_T 1 
 #define RESET_BOARD_T 2
+#define DISCARD_T 3
+#define TILE_FACE_T 4 
+#define TILE_SIDES_T 5
+#define NUMBER_SHEET_T 6
+
+
 
 #ifdef BUILD_DLL
 #define GAME_DLL __declspec(dllexport)
@@ -20,6 +26,10 @@ extern "C" {
 	struct GameMemory {
 		i32 isInitialized;
     i32 shouldWindowClose;
+
+    i32 windowWidth;
+    i32 windowHeight;
+    f32 aspect;
 
 		RenderBuffer* renderBuffer;
 		void* stateMemory;

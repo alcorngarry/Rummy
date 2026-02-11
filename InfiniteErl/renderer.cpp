@@ -291,8 +291,8 @@ void draw_entity(mat4 model, mat4 view, mat4 projection, u32 vao, i32 textureId,
     itemShader->setBool("useSpriteSheet", useSpriteSheet);
     itemShader->setInt("frameIndex", frameIndex);
 
-    itemShader->setInt("cols", 13);
-    itemShader->setInt("rows", 4);
+    itemShader->setInt("cols", 7);
+    itemShader->setInt("rows", 2);
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, textureId);

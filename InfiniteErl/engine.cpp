@@ -30,6 +30,7 @@ mat4 projection;
 
 i32 windowWidth = 1280;
 i32 windowHeight = 720;
+f32 aspect = 1; 
 
 struct GameDLL {
     HMODULE dll;
@@ -131,6 +132,7 @@ GameMemory allocate_game_memory(RenderBuffer* buffer) {
     memory.uiMem.used = 0;
     memory.uiMem.load_ui_quad_buffer_fn = load_ui_quad_buffer;
     memory.shouldWindowClose = 0;
+
   
     memory.play_audio_fn = play_audio;
     return memory;
@@ -157,9 +159,18 @@ i32 APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, i32 cmd
     }
   
     GameMemory memory = allocate_game_memory(buffer);
+    
+    memory.windowWidth = windowWidth;
+    memory.windowHeight = windowHeight;
+    memory.aspect = aspect;
+
     game.game_init(&memory, false);
     
     while (!memory.shouldWindowClose) {
+        memory.windowWidth = windowWidth;
+        memory.windowHeight = windowHeight;
+        memory.aspect = aspect;
+
         if (hot_reload(&game, "../build/Game.dll")) {
           game.game_init(&memory, true);
           ui_reset(&memory.uiMem);
@@ -175,7 +186,9 @@ i32 APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, i32 cmd
         buffer->bufferSize = 0;
         
         glfwPollEvents();
+
         
+
         if(game.game_update_and_render) game.game_update_and_render();
         render_buffer(buffer);
         glfwSwapBuffers(window);
@@ -211,9 +224,8 @@ GLFWwindow* create_window() {
     glfwSetMouseButtonCallback(window, mouse_button_callback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
-    f32 aspect = static_cast<f32>(windowWidth) / static_cast<f32>(windowHeight);
-    //projection = glm::perspective(glm::radians(FOV), aspect, 0.1f, Z_FAR);
-    projection = glm::ortho(0.0f, 1.0f, 1.0f, 0.0f, -10.0f, 10.0f);
+    aspect = static_cast<f32>(windowWidth) / static_cast<f32>(windowHeight);
+    projection = glm::ortho(0.0f, aspect, 1.0f, 0.0f, -10.0f, 10.0f);
 
     return window;
 }
@@ -249,10 +261,9 @@ void toggle_fullscreen(GLFWwindow* window) {
     glfwSwapInterval(1);
 
     glViewport(0, 0, width, height);
-    f32 aspect = (height == 0) ? 1.0f : (f32)width / (f32)height;
+    aspect = (height == 0) ? 1.0f : (f32)width / (f32)height;
     windowWidth = width;
     windowHeight = height;
-    //projection = glm::perspective(glm::radians(FOV), aspect, 0.1f, Z_FAR);
 }
 
 void load_window_icon() {
@@ -277,8 +288,8 @@ void framebuffer_size_callback(GLFWwindow* window, i32 width, i32 height) {
     windowHeight = height;
     glViewport(0, 0, width, height);
 
-    f32 aspect = static_cast<f32>(width) / static_cast<f32>(height);
-    //projection = glm::perspective(glm::radians(FOV), aspect, 0.1f, Z_FAR);
+    aspect = static_cast<f32>(width) / static_cast<f32>(height);
+    projection = glm::ortho(0.0f, aspect, 1.0f, 0.0f, -10.0f, 10.0f);
 }
 
 void mouse_callback(GLFWwindow* window, f64 xpos, f64 ypos) {
@@ -305,20 +316,24 @@ void mouse_callback(GLFWwindow* window, f64 xpos, f64 ypos) {
 
     xpos /= windowWidth;
     ypos /= windowHeight;
-    game.game_update_input(-1 ,-1, xpos, ypos);
+    game.game_update_input(-1 ,-1, xpos * aspect, ypos);
 }
 
 void mouse_button_callback(GLFWwindow* window, i32 button, i32 action, i32 mods) {
-    game.game_update_input(action, button, lastX /= windowWidth, lastY /= windowHeight);
+    game.game_update_input(action, button, (lastX / windowWidth) * aspect, lastY / windowHeight);
 }
 
 void key_callback(GLFWwindow* window, i32 key, i32 scancode, i32 action, i32 mods) {
-   game.game_update_input(action, key, lastX /= windowWidth, lastY /= windowHeight);
+   game.game_update_input(action, key, (lastX / windowWidth) * aspect, lastY / windowHeight);
 }
 
 void load_textures() {
     //mipmmapped, flipped, repeated
-    load_texture(TILE_ATLAS_T, "./res/tile-map.png", false, true, true);
+    load_texture(TILE_ATLAS_T, "./res/tile-map2.png", false, true, true);
     load_texture(END_TURN_T, "./res/end-run.png", true, false, true);
     load_texture(RESET_BOARD_T, "./res/reset-board.png", true, false, false);
+    load_texture(DISCARD_T, "./res/discard.png", true, false, false);
+    load_texture(TILE_FACE_T, "./res/tile-face.png", true, true, false);
+    load_texture(TILE_SIDES_T, "./res/tile-bg.png", true, true, false);
+    load_texture(NUMBER_SHEET_T, "./res/number-sheet.png", true, true, true);
 }

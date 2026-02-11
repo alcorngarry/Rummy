@@ -58,6 +58,19 @@ rearrangeTable()
 
 
 --[NOTES ON ISSUES]--
-
 --When splitting runs it still shows valid if you take from the middle
+--Sets move around the table when added to, gross
 
+--[GOALS]--
+--Test out creating a grid for the board
+--TILES 
+  -completes a run between two numbers 
+  -joker
+--MULTIPLIERS
+  -Xs for runs
+  -Xs for groups
+  -Set size
+--Add 'perks'
+  -
+--Consumables
+  -Discard

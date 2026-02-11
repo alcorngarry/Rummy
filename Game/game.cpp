@@ -1,13 +1,16 @@
 ﻿#include "game.h"
 
+#define START_RACK_AMOUNT 4
+
 GameState* gState = nullptr;
 GameMemory* gMemory = nullptr;
 mat4 rackSpaces[27];
-vec3 defaultTileScale = vec3(0.06f);
+vec3 defaultTileScale = vec3(0.08f);
 
 void get_playable_tiles(Set *set);
 void add_set_type_data(Set *set);
 void remove_empty_sets();
+u8 is_tile_released_inside_table(Tile* tile);
 
 void create_quad() {
     f32 vertices[] = {
@@ -81,6 +84,39 @@ inline mat4 make_tile_model(vec3 pos) {
     return model;
 }
 
+void clear_pool() {
+    gState->pool.numberOfTiles = 0;
+    for (i32 i = 0; i < TOTAL_TILES; i++) {
+        gState->pool.tiles[i] = nullptr;
+    }
+}
+
+void clear_rack() {
+    gState->playerRack.numberOfTiles = 0;
+    for (i32 i = 0; i < TOTAL_TILES; i++) {
+        gState->playerRack.tiles[i] = nullptr;
+    }
+}
+
+void clear_table() {
+    gState->table.numberOfSets = 0;
+    gState->table.value = 0;
+
+    for (i32 i = 0; i < TOTAL_TILES / 3; i++) {
+        Set* s = &gState->table.sets[i];
+        s->numberOfTiles = 0;
+        s->id = 0;
+        s->setType = SET_TYPE::INVALID;
+        s->value = 0;
+        s->lowTileNumber = 255;
+        s->highTileNumber = 0;
+
+        for (i32 j = 0; j < 3; j++) {
+            s->tiles[j] = nullptr;
+        }
+    }
+}
+
 void revert_to_round_start() {
     memcpy(
         gState->tiles,
@@ -88,22 +124,14 @@ void revert_to_round_start() {
         sizeof(Tile) * TOTAL_TILES
     );
 
-    gState->pool = Pool{};
+    clear_pool();
+    clear_rack();
+    clear_table();
 
-    GameObject poolObject = GameObject {
-        vec3(0.0f),
-        glm::scale(glm::translate(mat4(1.0f), vec3(0.5f, 0.375f, 0.0f)), vec3(0.75f, 0.75f, 0.0f)),
-        -1
-    };
-    gState->pool.object = poolObject;
-
-    gState->playerRack = Rack{};
-    gState->table = Table{};
-    gState->playerRack.object = GameObject {
-        vec3(0.0f),
-        glm::scale(rackSpaces[13], vec3(10.0f, 5.0f, 1.0f)),
-        -1
-    };
+    gState->pool.numberOfTiles = 0;
+    gState->playerRack.numberOfTiles = 0;
+    gState->table.numberOfSets = 0;
+    gState->table.value = 0;
 
     for (i32 i = 0; i < TOTAL_TILES; i++) {
         Tile* t = &gState->tiles[i];
@@ -147,20 +175,21 @@ void revert_to_round_start() {
     }
 
     gState->player.heldTile = nullptr;
+    shuffle_tiles(gState->pool.tiles, gState->pool.numberOfTiles);
 }
 
 void create_tiles() {
     GameObject obj = GameObject{
         vec3(0.0f),
         mat4(1.0f),
-        TILE_ATLAS_T
+        TILE_ATLAS_T // NOT BEING USED ANYMORE.
     };
 
     i32 tileIndex = 0;
-    i32 sheetIndex = 0;
     for(u8 color = 0; color < 4; color++) {
-        for(u8 number = 1; number <= 13; number++) {
-          obj.currentFrame = sheetIndex;
+        for(u8 number = 1; number <= 14; number++) {
+          printf("NUMBER %i\n", (i32)number);
+          obj.currentFrame = number - 1;
           Tile tile = Tile{
               obj,
               TILE_LOCATION::POOL,
@@ -170,23 +199,40 @@ void create_tiles() {
 
           gState->tiles[tileIndex] = tile;
           tileIndex++;
-          sheetIndex++;
-        }
+         }
     }
+}
 
-   
+mat4 tableSpaces[52];
+
+void init_table() {
+    GameObject tableObject = GameObject {
+        vec3(0.0f),
+        glm::scale(glm::translate(mat4(1.0f), vec3(0.5f * gMemory->aspect, 0.375f, 0.0f)), vec3(0.75f * gMemory->aspect, 0.5f, 0.0f)),
+        -1
+    };
+
+    gState->table.object = tableObject;
+
+    // 13 columns
+    // 4
+    mat4 startPos = glm::translate(mat4(1.0f), vec3((0.5f * gMemory->aspect) - ((13.0f * defaultTileScale.x) * 0.5f), 0.5f - (defaultTileScale.y * 3.0f), 0.0f));
+    for(i32 i = 0; i < 52; i++) {
+        f32 row = 0.0f;
+        
+        if(i > 12) row = 1.0f;
+        if(i > 24) row = 2.0f;
+        if(i > 36) row = 3.0f;
+
+        mat4 space = glm::scale(startPos, defaultTileScale * 1.25f);
+        tableSpaces[i] = glm::translate(space, vec3(i % 12 , row, 0));
+    }
 }
 
 void init_pool() {
     Pool pool = Pool{};
     // TODO(garry) This is meant to be the table not the pool stupid.
-    GameObject poolObject = GameObject {
-        vec3(0.0f),
-        glm::scale(glm::translate(mat4(1.0f), vec3(0.5f, 0.375f, 0.0f)), vec3(0.75f, 0.75f, 0.0f)),
-        -1
-    };
-    
-    pool.object = poolObject;
+ 
     for(i32 i = 0; i < TOTAL_TILES; i++) {
         pool.tiles[i] = &gState->tiles[i];
     }
@@ -214,20 +260,19 @@ void init_pool() {
 }
 
 void init_rack_space() {
-    mat4 startPos = glm::translate(mat4(1.0f), vec3(0.5f - ((9.0f * defaultTileScale.x) * 0.5f), .85f, 0.0f));
-    for(i32 i = 0; i < 27; i++) {
+    mat4 startPos = glm::translate(mat4(1.0f), vec3((0.5f * gMemory->aspect) - ((12.0f * defaultTileScale.x) * 0.5f), 1.0f - (defaultTileScale.y * 2.0f), 0.0f));
+    for(i32 i = 0; i < 24; i++) {
         f32 row = 0.0f;
         
-        if(i > 8) row = 1.0f;
-        if(i > 17) row = 2.0f;
+        if(i > 11) row = 1.0f;
 
         mat4 space = glm::scale(startPos, defaultTileScale);
-        rackSpaces[i] = glm::translate(space, vec3(i % 9 , row, 0));
+        rackSpaces[i] = glm::translate(space, vec3(i % 12 , row, 0));
     }
     
     gState->playerRack.object = GameObject {
         vec3(0.0f),
-        glm::scale(rackSpaces[13], vec3(10.0f, 5.0f, 1.0f)),
+        glm::scale(rackSpaces[26], vec3(10.0f, 5.0f, 1.0f)),
         -1
     };
 }
@@ -253,17 +298,84 @@ void draw_from_pool(Rack &rack) {
     if(gState->pool.numberOfTiles == 0) {
         printf("Pool is empty\n");
     }
+
+    if(gState->playerRack.numberOfTiles == 24) {
+        printf("Player rack is full!\n");
+        return;
+    }
+    printf("DRAW_FROM_POOL\n");
     Tile* tileDrawn = gState->pool.tiles[gState->pool.numberOfTiles - 1];
     gState->pool.numberOfTiles == 0 ? 0 : gState->pool.numberOfTiles--;
     add_tile_to_rack(tileDrawn);
 }
 
 void init_player_rack() {
-    //test drawing inital draw 7, set to 27 here to test filled row
+    //test drawing inital draw 7, set to 24 here to test filled row
     gState->playerRack.numberOfTiles = 0;
-    for(i32 i = 0; i < 27; i++) {
+    for(i32 i = 0; i < START_RACK_AMOUNT; i++) {
         draw_from_pool(gState->playerRack);
     }
+}
+
+vec3 get_tile_color(i32 colorId) {
+    switch(colorId) {
+      case 0: {
+          return vec3(1.0f, 0.0f, 0.0f);
+          break;
+      }
+      case 1: {
+          return vec3(0.0f, 0.0f, 1.0f);
+          break;
+      }
+      case 2: {
+          return vec3(0.0f, 0.3f, 0.0f);
+          break;
+      }
+      case 3: {
+          return vec3(0.0f, 0.0f, 0.0f);
+          break;
+      }
+    }
+
+    printf("REACHED NO COLOR!\n");
+    return vec3(0.24f, 0.0f, 0.0f);
+}
+
+void create_tile_render_entry(Tile* tile) {
+    mat4 bg;
+    if(tile->location == TILE_LOCATION::TABLE) {
+      bg = glm::translate(tile->object.model, vec3(0.0f, 0.0f, 0.0f));
+    } else {
+      bg = tile->object.model;
+    }
+    RenderEntryEntity a = RenderEntryEntity{
+        bg,
+        gState->quadMesh,
+        TILE_SIDES_T,
+        vec3(1.0f)
+    };
+
+    gMemory->push_entity_fn(gMemory->renderBuffer, &a);
+
+    RenderEntryEntity b = RenderEntryEntity{
+        tile->object.model,
+        gState->quadMesh,
+        TILE_FACE_T,
+        vec3(1.0f)
+    };
+
+    gMemory->push_entity_fn(gMemory->renderBuffer, &b);
+
+    RenderEntryEntity c = RenderEntryEntity{
+        tile->object.model,
+        gState->quadMesh,
+        NUMBER_SHEET_T,
+        get_tile_color(tile->details.tileColor),
+        true,
+        tile->object.currentFrame
+    };
+
+    gMemory->push_entity_fn(gMemory->renderBuffer, &c);
 }
 
 void draw_player_rack() {
@@ -284,55 +396,45 @@ void draw_player_rack() {
         if(tile->isHovered) color = vec3(1.0f, 0.0f, 0.0f);
         if(gState->player.heldTile == tile) color = vec3(0.0f, 1.0f, 0.0f);
 
-        RenderEntryEntity e = RenderEntryEntity{
-            tile->object.model, //tiles already scaled
-            gState->quadMesh,
-            tile->object.textureName,
-            color,
-            true,
-            tile->object.currentFrame
-        };
-
-        gMemory->push_entity_fn(gMemory->renderBuffer, &e);
+        create_tile_render_entry(tile);
     }
 }
 
 void draw_table() {
-    RenderEntryEntity pool = RenderEntryEntity{
-        gState->pool.object.model,
-        gState->quadMesh,
-        gState->pool.object.textureName,
-        vec3(0.0f, 0.2f, 0.0f)
-    };
+    //RenderEntryEntity table = RenderEntryEntity{
+    //    gState->table.object.model,
+    //    gState->quadMesh,
+    //    gState->table.object.textureName,
+    //    vec3(0.0f, 0.2f, 0.0f)
+    //};
 
-    gMemory->push_entity_fn(gMemory->renderBuffer, &pool);
+    //gMemory->push_entity_fn(gMemory->renderBuffer, &table);
+
+    for(i32 i = 0; i < 52; i++) {
+        RenderEntryEntity X = RenderEntryEntity{
+            tableSpaces[i],
+            gState->quadMesh,
+            gState->table.object.textureName,
+            vec3(0.0f, (i % 13) % 2, 0.0f)
+        };
+
+        gMemory->push_entity_fn(gMemory->renderBuffer, &X);
+    }
 
     for(i32 i = 0; i < gState->table.numberOfSets; i++) {
-        RenderEntryEntity set = RenderEntryEntity{
-            gState->table.sets[i].object.model,
-            gState->quadMesh,
-            gState->pool.object.textureName,
-            vec3(0.2f, 0.0f, 0.0f)
-        }; 
+       // RenderEntryEntity set = RenderEntryEntity{
+       //     gState->table.sets[i].object.model,
+       //     gState->quadMesh,
+       //     gState->table.object.textureName,
+       //     vec3(0.2f, 0.0f, 0.0f)
+       // }; 
 
-        gMemory->push_entity_fn(gMemory->renderBuffer, &set);
+       // gMemory->push_entity_fn(gMemory->renderBuffer, &set);
 
         for(i32 j = 0; j < gState->table.sets[i].numberOfTiles; j++) {
             Tile *tile = gState->table.sets[i].tiles[j];
             if(tile == gState->player.heldTile) continue;
-            
-            vec3 color = gState->table.sets[i].isHovered ? vec3(0.0f, 1.0f, 1.0f) : vec3(1.0f);
-
-            RenderEntryEntity e = RenderEntryEntity{
-                tile->object.model,
-                gState->quadMesh,
-                tile->object.textureName,
-                color,
-                true,
-                tile->object.currentFrame
-            };
-
-            gMemory->push_entity_fn(gMemory->renderBuffer, &e);
+            create_tile_render_entry(tile);
         }
     }
 }
@@ -341,17 +443,7 @@ void draw_held_tile() {
     Tile *tile = gState->player.heldTile;
     if(!tile) return;        
     vec3 color = vec3(1.0f);
-
-    RenderEntryEntity e = RenderEntryEntity{
-        tile->object.model,
-        gState->quadMesh,
-        tile->object.textureName,
-        color,
-        true,
-        tile->object.currentFrame
-    };
-
-    gMemory->push_entity_fn(gMemory->renderBuffer, &e);
+    create_tile_render_entry(tile);
 }
 
 // TODO(garry) this is horrible.
@@ -457,11 +549,30 @@ void grab_tile(f64 xpos, f64 ypos) {
 }
 
 void drag_tile(f64 xpos, f64 ypos) {
-    if(gState->player.heldTile) {
-        vec2 p = vec2(xpos, ypos) + gState->player.heldTile->grabOffset;
-        gState->player.heldTile->object.model = make_tile_model(vec3(p, 0.0f)); 
-    } 
+    if (!gState->player.heldTile) return;
+
+    vec2 pos = vec2(xpos, ypos) + gState->player.heldTile->grabOffset;
+
+    static vec2 lastPos = pos;
+    static bool initialized = false;
+
+    if (!initialized) {
+        lastPos = pos;
+        initialized = true;
+    }
+
+    vec2 velocity = pos - lastPos;
+    lastPos = pos;
+
+    f32 maxTilt = glm::radians(20.0f);
+    f32 tilt = glm::clamp(velocity.x * 20.0f, -maxTilt, maxTilt);
+
+    mat4 model = make_tile_model(vec3(pos, 0.0f));
+    model = glm::rotate(model, tilt, vec3(0, 0, 1));
+
+    gState->player.heldTile->object.model = model;
 }
+
 
 void get_high_tile_number(Set *set) {
     for(i32 i = 0; i < set->numberOfTiles; i++) {
@@ -520,6 +631,7 @@ void add_set_type_data(Set *set) {
 }
 
 u8 is_tile_playable_in_set(Tile* tile, Set *set) {
+    if(tile->details.tileNumber == 14) return true;
     switch(set->setType) {
         case SET_TYPE::INVALID: {
             if (set->numberOfTiles == 1) {
@@ -693,36 +805,44 @@ void add_tile_to_set(Set *set, Tile *tile) {
     get_high_tile_number(set);
     get_tile_colors(set);
 
+    //account for the joker here..
     printf("highTileNumber %i\n", set->highTileNumber);
     printf("lowTileNumber %i\n", set->lowTileNumber);
 }
 
+void snap_tile_to_table_space(Tile *tile) {
+    f32 minDistance = F32_MAX;
+    mat4 test = mat4(1.0f);
+    vec3 tilePos = vec3(tile->object.model[3]);
+    
+    for(i32 i = 0; i < 52; i++) {
+        vec3 tablePos = vec3(tableSpaces[i][3]);
+        f32 distance = glm::distance(tilePos, tablePos);
+        if(minDistance > distance) {
+            minDistance = distance;
+            test = tableSpaces[i];
+        }
+    }
+
+    tile->object.model = test;
+}
+
 // Bad name doesn't really just check.
 void check_valid_tile_position(Tile *tile, mat4 originalPosition) {
-    vec3 pos = vec3(tile->object.model[3]);
-    f32 xpos = gState->pool.object.model[3].x;
-    f32 ypos = gState->pool.object.model[3].y;
-    f32 half = glm::length(gState->pool.object.model[0]) * 0.5f;
 
-    bool insideTable = xpos > pos.x - half && xpos < pos.x + half &&
-                  ypos > pos.y - half && ypos < pos.y + half;
-
-    if(!insideTable) {
-      tile->object.model = originalPosition;
+    if(!is_tile_released_inside_table(tile)) {
+        tile->object.model = originalPosition;
     } else {
         Set *hoveredSet = get_hovered_set();
 
         if(hoveredSet) {
             if(is_tile_playable_in_set(tile, hoveredSet)) {
                 add_tile_to_set(hoveredSet, tile);
-
-                // then validate rack and all sets..
             } else {
-                // If not playable return to rack.
                 tile->object.model = originalPosition; 
             }
-            hoveredSet->isHovered = false;
 
+            hoveredSet->isHovered = false;
         } else {
             Set* set = &gState->table.sets[gState->table.numberOfSets];
             *set = {};
@@ -733,6 +853,8 @@ void check_valid_tile_position(Tile *tile, mat4 originalPosition) {
 
             add_tile_to_set(set, tile);
         }
+
+        snap_tile_to_table_space(tile);
     }
 }
 
@@ -868,9 +990,9 @@ void remove_tile_from_table_set_and_split(Tile* tile) {
 
 u8 is_tile_released_inside_table(Tile* tile) {
     vec3 pos = vec3(tile->object.model[3]);
-    f32 xpos = gState->pool.object.model[3].x;
-    f32 ypos = gState->pool.object.model[3].y;
-    f32 half = glm::length(gState->pool.object.model[0]) * 0.5f;
+    f32 xpos = gState->table.object.model[3].x;
+    f32 ypos = gState->table.object.model[3].y;
+    f32 half = glm::length(gState->table.object.model[0]) * 0.5f;
 
     return xpos > pos.x - half && xpos < pos.x + half &&
            ypos > pos.y - half && ypos < pos.y + half;
@@ -898,6 +1020,16 @@ u8 verify_tile_was_not_played(Tile *tile) {
     return false;
 }
 
+u8 is_tile_released_inside_discard(Tile* tile) {
+    vec3 pos = vec3(tile->object.model[3]);
+    f32 xpos = 1 - 0.0625;
+    f32 ypos = 1 - 0.0625;
+    f32 half = 0.125 * 0.5f;
+
+    return xpos > pos.x - half && xpos < pos.x + half &&
+           ypos > pos.y - half && ypos < pos.y + half;
+}
+
 void release_tile() {
     // I want to be able to return the tile to the rack
 
@@ -914,6 +1046,7 @@ void release_tile() {
         u8 wasFromTable = (t->location == TILE_LOCATION::TABLE && t->setId >= 0);
         u8 releasedInsideTable = is_tile_released_inside_table(t);
         u8 releasedInsideRack = is_tile_released_inside_rack(t);
+        u8 releasedInsideDiscard = is_tile_released_inside_discard(t);
 
         if (wasFromTable && releasedInsideRack) {
             // this shouldn't be here
@@ -925,6 +1058,11 @@ void release_tile() {
         }
 
         check_valid_tile_position(t, t->originalPosition);
+
+        if(!wasFromTable && releasedInsideDiscard) {
+            printf("DISCARDED");
+            t->location = TILE_LOCATION::DISCARD;
+        }
 
         gState->player.heldTile = nullptr;
 
@@ -1002,6 +1140,8 @@ void end_turn() {
             draw_from_pool(gState->playerRack); 
         }
         snapshot_round_start();
+
+        gState->player.playerData.timesDrawn++;
     } else {
         revert_to_round_start();
         // maybe not enable button when invalid sets
@@ -1078,6 +1218,7 @@ extern "C" GAME_DLL void game_init(GameMemory* memory, i32 preserveState) {
 
         init_player();
         init_pool();
+        init_table();
         init_player_rack();
         snapshot_round_start();
     }
@@ -1088,16 +1229,24 @@ extern "C" GAME_DLL void game_init(GameMemory* memory, i32 preserveState) {
     gState->uiPage->numberOfImageElements = 0;
 
     add_ui_element(gState->uiPage, UIElement{ Anchor::TOP_LEFT, -1, END_TURN_T, 0.0f, 0.0f, 0.125f, 0.125f, true, &end_turn}, true);
+
     add_ui_element(gState->uiPage, UIElement{ Anchor::TOP_LEFT, -1, RESET_BOARD_T, 0.0f, 0.125f, 0.125f, 0.125f, true, &reset_board}, true);
+    // actionable elements have to be added first..
+
+    add_ui_element(gState->uiPage, UIElement{ Anchor::TOP_RIGHT, -1, DISCARD_T, 1.0f, 0.875f, 0.125f, 0.125f, true}, false);
+
     add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_RIGHT, "", 1.0f, 0.0f, -1, true, 0.0005f }, 
         "", &gState->player.playerData.score, TextType::UINT_64);
+    
+    add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_RIGHT, "", 1.0f, 0.1f, -1, true, 0.0005f }, 
+        "", &gState->player.playerData.timesDrawn, TextType::INT_32);
 }
 
 extern "C" GAME_DLL void game_update_and_render() {
     gState->deltaTime = gMemory->renderBuffer->deltaTime;
 
-    draw_player_rack();
     draw_table();
+    draw_player_rack();
     draw_held_tile();
     draw_ui();
 }

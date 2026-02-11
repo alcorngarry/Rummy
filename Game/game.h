@@ -4,7 +4,7 @@
 #include <random>
 #include "platform.h"
 
-#define TOTAL_TILES 52
+#define TOTAL_TILES 56
 
 void default_action();
 
@@ -45,12 +45,18 @@ enum TILE_LOCATION {
     POOL,
     P_RACK,
     CPU_RACK,
-    TABLE
+    TABLE,
+    DISCARD
 };
 
 struct TileDetails {
     u8 tileNumber;
     u8 tileColor;
+};
+
+struct DragState {
+  vec2 lastPos;
+  u8 hasLastPos = false;
 };
 
 struct Set;
@@ -65,6 +71,7 @@ struct Tile {
     vec2 grabOffset;
     mat4 originalPosition;
     i32 setId = -1;
+    DragState dragState;
 };
 
 struct Set {
@@ -110,7 +117,7 @@ struct Table {
 };
 
 struct PlayerData {
-    u32 timesDrawn = 0;
+    i32 timesDrawn = 0;
     u64 score = 0;
 };
 
