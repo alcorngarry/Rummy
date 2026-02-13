@@ -72,6 +72,7 @@ struct Tile {
     mat4 originalPosition;
     i32 setId = -1;
     DragState dragState;
+    vec2 tableSpace = vec2(-1, -1);
 };
 
 struct Set {

@@ -63,7 +63,6 @@ inline bool ui_point_inside(const UIElement& e, f64 x, f64 y) {
 
 void check_elements_hovered(UIPage* page, f64 xpos, f64 ypos) {
     page->elementHovered = -1;
-
     for (int i = 0; i < page->actionableElementCount; i++) {
         //ANCHOR EFFECTS THIS LETS ASSUME ANCHOR IS CENTER
         if (ui_point_inside(page->uiElements[i], xpos, ypos)) {
