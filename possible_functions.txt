@@ -1,0 +1,79 @@
+const char* set_type_to_string(SET_TYPE type) {
+    switch(type) {
+        case GROUP:   return "GROUP";
+        case RUN:     return "RUN";
+        case INVALID: return "INVALID";
+        default:      return "UNKNOWN";
+    }
+}
+
+const char* tile_type_to_string(TILE_TYPE type) {
+    switch(type) {
+        case NORMAL: return "NORMAL";
+        case JOKER:  return "JOKER";
+        case BRIDGE: return "BRIDGE";
+        default:     return "UNKNOWN";
+    }
+}
+
+const char* tile_location_to_string(TILE_LOCATION loc) {
+    switch(loc) {
+        case POOL:    return "POOL";
+        case P_RACK:  return "P_RACK";
+        case TABLE:   return "TABLE";
+        case DISCARD: return "DISCARD";
+        default:      return "UNKNOWN";
+    }
+}
+
+void print_tile(Tile* tile) {
+    if(!tile) {
+        printf("    [NULL TILE]\n");
+        return;
+    }
+
+    printf("      Tile:\n");
+    printf("      Type: %s\n", tile_type_to_string(tile->details.type));
+    printf("      Number: %d\n", tile->details.tileNumber);
+    printf("      Color: %d\n", tile->details.tileColor);
+    printf("      Location: %s\n", tile_location_to_string(tile->location));
+    printf("      SetId: %d\n", tile->setId);
+    printf("      LocationIndex: %d\n", tile->locationIndex);
+    printf("      TableSpace: (%.2f, %.2f)\n", tile->tableSpace.x, tile->tableSpace.y);
+}
+
+void print_set(Set* set) {
+    if(!set) {
+        printf("SET IS NULL\n");
+        return;
+    }
+
+    printf("=====================================\n");
+    printf("SET ID: %d\n", set->id);
+    printf("Set Type: %s\n", set_type_to_string(set->setType));
+    printf("Number Of Tiles: %d\n", set->numberOfTiles);
+    printf("Value: %llu\n", set->value);
+    printf("Complete: %d\n", set->isComplete);
+    printf("Hovered: %d\n", set->isHovered);
+
+    printf("\nRange Info:\n");
+    printf("  Low Tile Number: %d (Index %d)\n",
+           set->lowTileNumber, set->lowTileIndex);
+    printf("  High Tile Number: %d (Index %d)\n",
+           set->highTileNumber, set->highTileIndex);
+
+    printf("\nColors Used: ");
+    for(i32 i = 0; i < 4; ++i) {
+        printf("%d ", set->colors[i]);
+    }
+    printf("\n");  
+
+    printf("\n--- Tiles ---\n");
+    for(i32 i = 0; i < set->numberOfTiles; ++i) {
+        printf("  Index %d:\n", i);
+        print_tile(set->tiles[i]);
+    }
+    printf("=====================================\n\n");
+}
+
+

@@ -4,6 +4,7 @@ f32 maxCharacterHeight = 0;
 u32 textVAO, textVBO;
 Texture textures[50];
 i32 textureCount = 0;
+f32 dT = 0;
 
 struct RendererMesh {
     u32 vao;
@@ -85,7 +86,7 @@ void load_fonts() {
                 texture,
                 glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows),
                 glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
-                static_cast<unsigned int>(face->glyph->advance.x),
+                static_cast<u32>(face->glyph->advance.x),
                 face->glyph->metrics.horiAdvance / 64,
             };
         }
@@ -100,9 +101,9 @@ void load_fonts() {
     glGenBuffers(1, &textVBO);
     glBindVertexArray(textVAO);
     glBindBuffer(GL_ARRAY_BUFFER, textVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(f32) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), 0);
+    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(f32), 0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 }
@@ -133,7 +134,10 @@ void push_ui_page(RenderBuffer* buffer, UIPage* uiPage) {
                 uiPage->uiElements[i].rows,
                 uiPage->uiElements[i].fps,
                 uiPage->uiElements[i].currentFrame,
-                uiPage->uiElements[i].meshHandle  
+                uiPage->uiElements[i].meshHandle,
+                uiPage->uiElements[i].isPanel,
+                uiPage->uiElements[i].color,
+                uiPage->uiElements[i].hovered
             };
             push_ui_image(buffer, &image);
         }
@@ -209,6 +213,8 @@ void render_buffer(RenderBuffer* buffer) {
     u8* at = buffer->bufferBase;
     u8* end = buffer->bufferBase + buffer->bufferSize;
 
+    dT = buffer->deltaTime;
+
     while (at < end) {
         RenderEntryHeader* header = (RenderEntryHeader*)at;
         at += sizeof(RenderEntryHeader);
@@ -235,7 +241,9 @@ void render_buffer(RenderBuffer* buffer) {
                   get_texture_id(entry->textureName),
                   entry->color,
                   entry->useSpriteSheet,
-                  entry->frameIndex
+                  entry->frameIndex,
+                  entry->tiled,
+                  entry->tileCount
               );
               break;
           }
@@ -249,7 +257,8 @@ void render_buffer(RenderBuffer* buffer) {
                 entry->posx,
                 entry->posy,
                 entry->scale,
-                entry->color
+                entry->color,
+                buffer->projection
               );
               break;
           }
@@ -268,7 +277,10 @@ void render_buffer(RenderBuffer* buffer) {
                 entry->rows,
                 entry->currentFrame,
                 entry->isAnimated,
-                gMeshes[entry->meshHandle].vao
+                gMeshes[entry->meshHandle].vao,
+                entry->isPanel,
+                entry->color,
+                entry->isHovered
               );
               break;
           }
@@ -277,7 +289,7 @@ void render_buffer(RenderBuffer* buffer) {
     buffer->bufferSize = 0;
 }
 
-void draw_entity(mat4 model, mat4 view, mat4 projection, u32 vao, i32 textureId, vec3 color, i8 useSpriteSheet, i32 frameIndex) {
+void draw_entity(mat4 model, mat4 view, mat4 projection, u32 vao, i32 textureId, vec3 color, i8 useSpriteSheet, i32 frameIndex, u8 tiled, vec2 tileCount) {
     glDepthMask(GL_FALSE);
     glEnable(GL_BLEND);
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
@@ -294,6 +306,11 @@ void draw_entity(mat4 model, mat4 view, mat4 projection, u32 vao, i32 textureId,
     itemShader->setInt("cols", 7);
     itemShader->setInt("rows", 2);
 
+    itemShader->setBool("tiled", tiled);
+    itemShader->setVec2("tileCount", tileCount);
+
+    itemShader->setVec2("scrollOffset", vec2(0.0f));
+
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, textureId);
 
@@ -304,12 +321,15 @@ void draw_entity(mat4 model, mat4 view, mat4 projection, u32 vao, i32 textureId,
     glDepthMask(GL_TRUE);
 }
 
-void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, vec3 color) {
+void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, vec3 color, mat4 projection) {
     if (!text) return;
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     textShader->use();
     //TODO(garry) fix this garbage
-    textShader->setMat4("projection", glm::ortho(0.0f, 1.0f, 1.0f, 0.0f, -1.0f, 1.0f));
+    textShader->setMat4("projection", projection);
+    //textShader->setMat4("projection", glm::ortho(0.0f, 1.0f, 1.0f, 0.0f, -1.0f, 1.0f));
     textShader->setVec3("textColor", color);
 
     glActiveTexture(GL_TEXTURE0);
@@ -366,9 +386,10 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, vec3 co
 
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
+    glDisable(GL_BLEND);
 }
 
-void draw_image_ui(Anchor anchor, i32 textureId, f32 posx, f32 posy, f32 width, f32 height, i32 cols, i32 rows, i32 currentFrame, bool isAnimated, u32 vao) {
+void draw_image_ui(Anchor anchor, i32 textureId, f32 posx, f32 posy, f32 width, f32 height, i32 cols, i32 rows, i32 currentFrame, bool isAnimated, u32 vao, u8 isPanel, vec3 color, u8 isHovered) {
     glDepthMask(GL_FALSE);
     glEnable(GL_BLEND);
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
@@ -381,6 +402,10 @@ void draw_image_ui(Anchor anchor, i32 textureId, f32 posx, f32 posy, f32 width, 
     uiShader->setInt("frameIndex", currentFrame);
     uiShader->setInt("cols", cols);
     uiShader->setInt("rows", rows);
+    uiShader->setBool("isPanel", isPanel);
+    uiShader->setVec3("color", color);
+    uiShader->setBool("flipped", isHovered);
+
     //TODO(garry) fix this garbage
     f32 w = width;
     f32 h = height;

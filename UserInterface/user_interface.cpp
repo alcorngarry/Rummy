@@ -50,8 +50,8 @@ inline bool ui_point_inside(const UIElement& e, f64 x, f64 y) {
         case Anchor::TOP_RIGHT:
             maxX = e.posx;
             minX = e.posx - e.width;
-            maxY = e.posy;
-            minY = e.posy + e.height;
+            maxY = e.posy + e.height;
+            minY = e.posy;
             break;
         default:
             return false;
@@ -75,7 +75,7 @@ void check_elements_hovered(UIPage* page, f64 xpos, f64 ypos) {
             break;
         } else {
             page->uiElements[i].hovered = false;
-            
+
             if (page->uiElements[i].childId != -1) {
                 page->textElements[page->uiElements[i].childId].color = vec3(1.0f);
             }

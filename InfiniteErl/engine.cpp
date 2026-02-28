@@ -12,6 +12,7 @@ void framebuffer_size_callback(GLFWwindow* window, i32 width, i32 height);
 void mouse_callback(GLFWwindow* window, f64 xpos, f64 ypos);
 void load_textures();
 void load_window_icon();
+void toggle_fullscreen(GLFWwindow* window, GameMemory& memory);
 
 f32 lastFrame = 0.0f;
 bool firstMouse = true;
@@ -131,8 +132,8 @@ GameMemory allocate_game_memory(RenderBuffer* buffer) {
     memory.uiMem.base = (u8*)memory.stateMemory + (memory.stateMemorySize - memory.uiMem.size);
     memory.uiMem.used = 0;
     memory.uiMem.load_ui_quad_buffer_fn = load_ui_quad_buffer;
-    memory.shouldWindowClose = 0;
-
+    memory.shouldWindowClose = false;
+    memory.toggleFullScreen = false;
   
     memory.play_audio_fn = play_audio;
     return memory;
@@ -167,6 +168,11 @@ i32 APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, i32 cmd
     game.game_init(&memory, false);
     
     while (!memory.shouldWindowClose) {
+
+        if(memory.toggleFullScreen) {
+            toggle_fullscreen(window, memory);
+        }
+        
         memory.windowWidth = windowWidth;
         memory.windowHeight = windowHeight;
         memory.aspect = aspect;
@@ -186,8 +192,6 @@ i32 APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, i32 cmd
         buffer->bufferSize = 0;
         
         glfwPollEvents();
-
-        
 
         if(game.game_update_and_render) game.game_update_and_render();
         render_buffer(buffer);
@@ -230,7 +234,8 @@ GLFWwindow* create_window() {
     return window;
 }
 
-void toggle_fullscreen(GLFWwindow* window) {
+void toggle_fullscreen(GLFWwindow* window, GameMemory& memory) {
+    memory.toggleFullScreen = false;
     isFullscreen = !isFullscreen;
 
     i32 width, height, xpos, ypos, refresh;
@@ -249,6 +254,8 @@ void toggle_fullscreen(GLFWwindow* window) {
         refresh = 144;
     }
     else {
+        windowWidth = 1280;
+        windowHeight = 720;
         width = windowWidth;
         height = windowHeight;
         xpos = windowPosX;
@@ -336,4 +343,11 @@ void load_textures() {
     load_texture(TILE_FACE_T, "./res/tile-face.png", true, true, false);
     load_texture(TILE_SIDES_T, "./res/tile-bg.png", true, true, false);
     load_texture(NUMBER_SHEET_T, "./res/number-sheet.png", true, true, true);
+    load_texture(SORT_NUMBER_T, "./res/sort-number.png", true, false, true);
+    load_texture(SORT_COLOR_T, "./res/sort-color.png", true, false, true);
+    load_texture(BRIDGE_T, "./res/bridge.png", true, true, true);
+    load_texture(TILE_SLOT_T, "./res/tile-slot.png", true, true, false);
+    load_texture(BG_PATTERN_T, "./res/bg-pattern.png", true, true, true);
+    load_texture(UI_BG_T, "./res/ui-bg1.png", true, false, false);
+    load_texture(BUTTON_T, "./res/button.png", true, false, false);
 }

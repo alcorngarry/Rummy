@@ -24,53 +24,53 @@ if pool is emptied before rummi, player with lowest rack wins round
 the winner gets the positive amount of tiles remaining on each players rack
 ie player 1 (W)  + 12, player 2 (L) -5, player 3 (L) -7
 
-
---design considerations--
-
-struct for sets
-struct for pool 
-struct for rack
-struct for tile
-struct for table
-
-tiles array size 106
-pool max size 106
-rack max size 53 (bot/pool/table has other 53)
-
-table has max size 106 tiles
-table has max sets 36
-
-set {
-    Type(Run, Group)
-    Tiles[13]
-    ValidTiles[3] ie {(2,R),(3,R),(4,R)} valid tiles are {(1,R),(5,R),(J,X)} // don't forget jokers
-  }
-
-calculateValidTiles(Set set)
-placeTile(Set, Tile);
-
-calculatePossible TablePlays();
-
-
-rearrangeTable()
-
---first try with 53 tiles
-
-
 --[NOTES ON ISSUES]--
---When splitting runs it still shows valid if you take from the middle
---Sets move around the table when added to, gross
+--() When splitting runs it still shows valid if you take from the middle [split the sets]
+
+--(X) Sets move around the table when added to, gross// somewhat mitigated
+
+--() aspect ratios gets messed up update window management
+
+--() adding a tile to a set where the tile is already in the spot for it to go won't allow
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 --[GOALS]--
---Test out creating a grid for the board
+
+(X) Test out creating a grid for the board
+(1/2) Add turn limit 
+    -round 1 set to 25 moves, go down by 2 every round
+(1/2) Add score minimum
+
 --TILES 
-  -completes a run between two numbers 
-  -joker
+  -() completes a run between two numbers 
+  -(X) joker --implemented (mostly still some bugs but pretty solid)
+
 --MULTIPLIERS
-  -Xs for runs
-  -Xs for groups
-  -Set size
+  -() Xs for runs
+  -() Xs for groups
+  -() Set size
+
 --Add 'perks'
   -
+
 --Consumables
   -Discard

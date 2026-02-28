@@ -5,6 +5,7 @@
 #include "platform.h"
 
 #define TOTAL_TILES 56
+#define MAX_MESSAGE_SIZE 512
 
 void default_action();
 
@@ -41,15 +42,21 @@ enum SET_TYPE {
     INVALID
 };
 
+enum TILE_TYPE {
+    NORMAL,
+    JOKER,
+    BRIDGE
+};
+
 enum TILE_LOCATION {
     POOL,
     P_RACK,
-    CPU_RACK,
     TABLE,
     DISCARD
 };
 
 struct TileDetails {
+    TILE_TYPE type;
     u8 tileNumber;
     u8 tileColor;
 };
@@ -61,7 +68,7 @@ struct DragState {
 
 struct Set;
 
-// 0-r, 1-b, 2-y, 3-b
+// 0-r, 1-blu, 2-y, 3-blk
 struct Tile {
     GameObject object;
     TILE_LOCATION location;
@@ -88,8 +95,6 @@ struct Set {
   u8 highTileIndex = 0;
 
   u8 colors[4];
-  u8 numberOfPlayableTiles = 0;
-
   u8 isComplete = false;
   u8 isHovered = false;
 
@@ -112,7 +117,7 @@ struct Rack {
 
 struct Table {
     GameObject object;
-    Set sets[TOTAL_TILES / 3];
+    Set sets[TOTAL_TILES];
     u8 numberOfSets = 0;
     u64 value = 0;
 };
@@ -127,6 +132,30 @@ struct Player {
     Tile* heldTile;
 };
 
+struct MessageBuffer {
+    u32 maxBufferSize;
+    u32 bufferSize;
+    u8* bufferBase;
+};
+
+struct Message {
+    u8 messageCode;
+    f32 duration;
+    char messageText[MAX_MESSAGE_SIZE];
+};
+
+struct RoundSnapshot {
+    Tile tiles[TOTAL_TILES];
+    Table table;
+    Pool pool;
+    Rack rack;
+};
+
+struct GameData {
+    i32 turnLimit;
+    u64 minimumScore;
+};
+
 struct GameState {
     //default game values
     u32 quadMesh;
@@ -138,8 +167,11 @@ struct GameState {
     // reset to prior status if rearranging sets on the table.
     Tile tiles[TOTAL_TILES];
     Tile roundStartTiles[TOTAL_TILES];
+    RoundSnapshot roundStart;
 
     Player player;
+    GameData gameData;
+
     Pool pool;
     Rack playerRack;
     Table table;

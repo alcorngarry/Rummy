@@ -39,12 +39,14 @@ struct UIElement {
 	UIElement* dependentElements[3];
 	vec2 destination = vec2(posx, posy);
 	vec2 start = vec2(posx, posy);
-	float speed = 10.0f;
+	f32 speed = 10.0f;
 	bool autoAnimate = true;
 	bool playOnce = false;
 	const char* id;
 	bool canDelete = false;
   u32 meshHandle;
+  u8 isPanel = false;
+  vec3 color = vec3(-1.0f);
 };
 
 enum TextType {

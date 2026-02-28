@@ -7,21 +7,19 @@ in vec3 vPos;
 uniform sampler2D quadTexture;
 uniform vec3 color;
 uniform bool useColorOnly;
-uniform bool useSpriteSheet;
+uniform bool tiled;
+uniform vec2 tileCount;
 
 void main()
 {
     if (useColorOnly) {
         FragColor = vec4(color, 1.0f);
-    }
-    //else if (useSpriteSheet) {
-    //    vec2 uv = (vPos.xy / vPos.z) + 0.5;
-
-    //    if (max(abs(uv.x - 0.5), abs(uv.y - 0.5)) > 0.6) discard;
-
-    //    FragColor = texture(quadTexture, uv);
-    //}
-    else {
-        FragColor = texture(quadTexture, TexCoord) * vec4(color, 1.0f);
+    } else {
+        if(tiled) {
+            vec2 tiledUV = TexCoord * tileCount;
+            FragColor = texture(quadTexture, tiledUV) * vec4(color, 1.0f);
+        } else {
+            FragColor = texture(quadTexture, TexCoord) * vec4(color, 1.0f);
+        }
     }
 }

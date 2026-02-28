@@ -13,8 +13,14 @@
 #define TILE_FACE_T 4 
 #define TILE_SIDES_T 5
 #define NUMBER_SHEET_T 6
-
-
+#define SORT_COLOR_T 7
+#define SORT_NUMBER_T 8
+#define BRIDGE_T 9
+#define TILE_SLOT_T 10
+#define BG_PATTERN_T 11
+#define UI_BG_T 12
+#define BUTTON_T 13
+#define BUTTON_P_T 14
 
 #ifdef BUILD_DLL
 #define GAME_DLL __declspec(dllexport)
@@ -25,7 +31,8 @@
 extern "C" {
 	struct GameMemory {
 		i32 isInitialized;
-    i32 shouldWindowClose;
+    u8 shouldWindowClose;
+    u8 toggleFullScreen;
 
     i32 windowWidth;
     i32 windowHeight;
