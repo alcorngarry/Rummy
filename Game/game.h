@@ -36,6 +36,12 @@ struct RNG {
   u64 state;
 };
 
+enum GAME_MODE {
+    GM_START_MENU,
+    GM_PLAYING,
+    GM_GAME_OVER
+};
+
 enum SET_TYPE {
     GROUP,
     RUN,
@@ -94,7 +100,6 @@ struct Set {
   u8 lowTileIndex = 0;
   u8 highTileIndex = 0;
 
-  u8 colors[4];
   u8 isComplete = false;
   u8 isHovered = false;
 
@@ -120,6 +125,7 @@ struct Table {
     Set sets[TOTAL_TILES];
     u8 numberOfSets = 0;
     u64 value = 0;
+    u8 isValid = true;
 };
 
 struct PlayerData {
@@ -168,6 +174,8 @@ struct GameState {
     Tile tiles[TOTAL_TILES];
     Tile roundStartTiles[TOTAL_TILES];
     RoundSnapshot roundStart;
+
+    GAME_MODE mode;
 
     Player player;
     GameData gameData;

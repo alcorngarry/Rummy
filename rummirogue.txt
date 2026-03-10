@@ -20,7 +20,6 @@ if rummi achieved players add up value on rack as negative values (joker on rack
 if pool is emptied before rummi, player with lowest rack wins round
 1->13 x 4 (colors) x 2 (double each color) + 2 jokers = 103
 
-
 the winner gets the positive amount of tiles remaining on each players rack
 ie player 1 (W)  + 12, player 2 (L) -5, player 3 (L) -7
 
@@ -33,24 +32,7 @@ ie player 1 (W)  + 12, player 2 (L) -5, player 3 (L) -7
 
 --() adding a tile to a set where the tile is already in the spot for it to go won't allow
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+--() adding two jokers and a tile is still invalid!
 
 
 --[GOALS]--

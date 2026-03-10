@@ -66,7 +66,7 @@ rem --------------------------
 rem Build Game DLL
 rem --------------------------
     echo Building game.dll...
-    cl %CommonCompilerFlags% /DBUILD_DLL ..\Game\game.cpp -LD ^
+    cl %CommonCompilerFlags% /DBUILD_DLL ..\Game\game.cpp ..\Game\validations.cpp -LD ^
     /link %CommonLinkerFlags% ^
     UserInterface.lib ^
     /EXPORT:game_init ^
