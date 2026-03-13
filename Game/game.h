@@ -109,7 +109,6 @@ struct Set {
 
 struct Pool {
     GameObject object;
-    // pool owns the tile values
     Tile* tiles[TOTAL_TILES];
     u8 numberOfTiles = 0;
 };
@@ -169,10 +168,7 @@ struct GameState {
     RNG rng;
     UIPage *uiPage;
 
-    // Just in case revisiting, want to basically have this tiles object to store the game's tile state. So the board can be 
-    // reset to prior status if rearranging sets on the table.
     Tile tiles[TOTAL_TILES];
-    Tile roundStartTiles[TOTAL_TILES];
     RoundSnapshot roundStart;
 
     GAME_MODE mode;
