@@ -13,8 +13,9 @@ GameState* gState = nullptr;
 GameMemory* gMemory = nullptr;
 mat4 rackSpaces[RACK_SPACES];
 mat4 tableSpaces[TABLE_ROWS][TABLE_COLUMNS];
-MessageBuffer* messageBuffer = nullptr;
 u8 debugMenuOpen = false;
+// terrible but for the ui endgame
+u64 numTableTiles = 0;
 
 void get_playable_tiles(Set *set);
 void remove_empty_sets();
@@ -22,13 +23,14 @@ u8 is_tile_released_inside_table(Tile* tile);
 u8 snap_tile_to_table_space(Tile *tile);
 Tile* find_left_most_tile(Set *set);
 Tile* find_right_most_tile(Set *set);
-void push_message(Message* message);
 void init_player();
 void clear_game_ui();
 void reset_board();
 void sort_rack_by_number();
 void sort_rack_by_color();
 void end_turn();
+void init_game();
+void quit();
 u8 is_table_valid();
 
 // validations.cpp
@@ -226,22 +228,19 @@ void create_tiles() {
          }
     }
 
-   // for(u8 i = 0; i < 4; ++i) {
-   //     for(u8 j = 0; j < 2; ++j) {
-   //         gState->tiles[tileIndex] = Tile{
-   //             obj,
-   //             TILE_LOCATION::POOL,
-   //             tileIndex,
-   //             TileDetails{
-   //               TILE_TYPE::BRIDGE,
-   //               15, 
-   //               i
-   //             }
-   //         };
-   //         tileIndex++;
-   //     }
-   // }
- 
+    for(u8 i = 0; i < 4; ++i) {
+        gState->tiles[tileIndex] = Tile{
+            obj,
+            TILE_LOCATION::POOL,
+            tileIndex,
+            TileDetails{
+              TILE_TYPE::BRIDGE,
+              15, 
+              i
+            }
+        };
+        tileIndex++;
+    }
 }
 
 
@@ -674,7 +673,7 @@ void get_high_tile_number(Set *set) {
     // reset tile number value
     set->highTileNumber = 0;
     for(i32 i = 0; i < set->numberOfTiles; i++) {
-        if(!set->tiles[i] || set->tiles[i]->details.type == TILE_TYPE::JOKER) continue;
+        if(!set->tiles[i] || set->tiles[i]->details.type != TILE_TYPE::NORMAL) continue;
         if(set->highTileNumber < set->tiles[i]->details.tileNumber) {
             set->highTileNumber = set->tiles[i]->details.tileNumber;
             set->highTileIndex = i;
@@ -684,7 +683,7 @@ void get_high_tile_number(Set *set) {
 
 void get_low_tile_number(Set *set) {
     for(i32 i = 0; i < set->numberOfTiles; i++) {
-        if(!set->tiles[i] || set->tiles[i]->details.type == TILE_TYPE::JOKER) continue;
+        if(!set->tiles[i] || set->tiles[i]->details.type != TILE_TYPE::NORMAL) continue;
         if(set->lowTileNumber > set->tiles[i]->details.tileNumber) {
             set->lowTileNumber = set->tiles[i]->details.tileNumber;
             set->lowTileIndex = i;
@@ -1254,29 +1253,15 @@ u8 is_table_valid() {
     return true;
 }
 
-void init_game() {
-    gState->gameData = GameData{35, 0};
+void add_in_game_ui() {
+    add_button(gState->uiPage, BUTTON_T, "DRAW", vec2(0.949f, 0.05f), vec2(0.1f), vec3(1.0f, 0.0f, 0.0f), &end_turn);
+    add_button(gState->uiPage, BUTTON_T, "RESET", vec2(0.845f, 0.05f), vec2(0.1f), vec3(0.0f, 1.0f, 0.0f), &reset_board);
 
-    create_tiles();
-    init_pool();
-    init_player();
-    init_player_rack();
-    snapshot_round_start();
+//    add_ui_element(gState->uiPage, UIElement{ Anchor::TOP_RIGHT, -1, SORT_COLOR_T, 1.0f, 0.8f, 0.08f, 0.05f, true, &sort_rack_by_color}, true);
+//    add_ui_element(gState->uiPage, UIElement{ Anchor::TOP_RIGHT, -1, SORT_NUMBER_T, 0.95f, 0.8f, 0.08f, 0.05f, true, &sort_rack_by_number}, true);
+    add_button(gState->uiPage, BUTTON_T, "C", vec2(0.975f, 0.84f), vec2(0.09f, 0.05f), vec3(0.0f, 0.0f, 1.0f), &sort_rack_by_color);
+    add_button(gState->uiPage, BUTTON_T, "#", vec2(0.925f, 0.84f), vec2(0.09f, 0.05f), vec3(1.0f, 0.0f, 1.0f), &sort_rack_by_number);
 
-    gState->mode = GM_PLAYING;
-    clear_game_ui();
-
-    UIElement endTurn = UIElement{ Anchor::TOP_RIGHT, -1, BUTTON_T, 0.995f, 0.005f, 0.09f, 0.09f, true, &end_turn};
-    endTurn.color = vec3(1.0f, 0.0f, 0.0f);
-    add_ui_element(gState->uiPage, endTurn, true);
-
-    UIElement resetBoard = UIElement{ Anchor::TOP_RIGHT, -1, BUTTON_T, 0.9f, 0.005f, 0.09f, 0.09f, true, &reset_board};
-    resetBoard.color = vec3(0.0f, 1.0f, 0.0f);
-    add_ui_element(gState->uiPage, resetBoard, true);
-
-    add_ui_element(gState->uiPage, UIElement{ Anchor::TOP_RIGHT, -1, SORT_COLOR_T, 1.0f, 0.8f, 0.08f, 0.05f, true, &sort_rack_by_color}, true);
-
-    add_ui_element(gState->uiPage, UIElement{ Anchor::TOP_RIGHT, -1, SORT_NUMBER_T, 0.95f, 0.8f, 0.08f, 0.05f, true, &sort_rack_by_number}, true);
     
     UIElement e = UIElement{ Anchor::TOP_LEFT, -1, UI_BG_T, 0.0f, 0.0f, 0.104f, 1.0f, true};
     e.cols = 3;
@@ -1291,12 +1276,6 @@ void init_game() {
     e1.isPanel = true;
     e1.color = vec3(0.1f);
     add_ui_element(gState->uiPage, e1);
-
-    //add_ui_element(gState->uiPage, UIElement{ Anchor::TOP_RIGHT, -1, DISCARD_T, 1.0f, 0.875f, 0.125f, 0.125f, true}, false);
-
-    add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "DRAW", 0.949f * gMemory->aspect, 0.05f, -1, true, 0.0006f, vec3(1.0f)});
-    
-    add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "RESET", 0.85f * gMemory->aspect, 0.05f, -1, true, 0.0006f, vec3(1.0f)});
 
     add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.02f, 0.02f, -1, true, 0.0005f, vec3(1.0f)}, 
         "Score: ", &gState->player.playerData.score, TextType::UINT_64);
@@ -1314,18 +1293,7 @@ void init_game() {
         "Table Status: ", &(i32)gState->table.isValid, TextType::INT_32);
 }
 
-u64 numTableTiles = 0;
-
-void clear_game_ui() {
-    ui_reset(&gMemory->uiMem);
-    gState->uiPage = create_ui_page(&gMemory->uiMem);
-    gState->uiPage->numberOfImageElements = 0;
-    gState->uiPage->actionableElementCount = 0;
-}
-
-void complete_round() {
-    // really need to update UI to allow actionable added everywhere....
-    clear_game_ui();
+void add_end_game_ui() {
     UIElement newGame = UIElement{ Anchor::CENTER, -1, BUTTON_T, 0.4f, 0.7f, 0.1f, 0.1f, true, &init_game};
     newGame.color = vec3(1.0f, 0.0f, 0.0f);
     add_ui_element(gState->uiPage, newGame, true);
@@ -1355,6 +1323,57 @@ void complete_round() {
 
     add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * gMemory->aspect, 0.35f, -1, true, 0.0005f }, 
         "TILES USED: ", &numTableTiles, TextType::UINT_64);
+}
+
+void add_main_menu_ui() {
+    add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.35f, 0.9f), vec2(0.1f), vec3(1.0f, 0.0f, 0.0f), &init_game);
+    add_button(gState->uiPage, BUTTON_T, "Options", vec2(0.5f, 0.9f), vec2(0.1f), vec3(0.0f, 0.0f, 1.0f), &quit);
+    add_button(gState->uiPage, BUTTON_T, "Profile", vec2(0.65f, 0.9f), vec2(0.1f), vec3(0.0f, 1.0f, 0.0f), &quit);
+    add_button(gState->uiPage, BUTTON_T, "Quit", vec2(0.9f, 0.9f), vec2(0.1f), vec3(1.0f, 0.0f, 0.0f), &quit);
+
+    UIElement e = UIElement{ Anchor::CENTER, -1, UI_BG_T, 0.5f, 0.9f, 0.15f, 0.5f, true};
+    e.cols = 3;
+    e.rows = 3;
+    e.isPanel = true;
+    e.color = vec3(0.2f);
+    add_ui_element(gState->uiPage, e);
+}
+
+void add_profile_ui() {
+    add_button(gState->uiPage, BUTTON_T, "TEST", vec2(0,0), vec2(0.1f), vec3(1.0f), &quit);
+}
+
+void add_options_ui() {
+
+}
+
+void init_game() {
+    gState->gameData = GameData{35, 0};
+
+    create_tiles();
+    init_pool();
+    init_player();
+    init_player_rack();
+    snapshot_round_start();
+
+    gState->mode = GM_PLAYING;
+    
+    clear_game_ui();
+    add_in_game_ui();
+}
+
+
+void clear_game_ui() {
+    ui_reset(&gMemory->uiMem);
+    gState->uiPage = create_ui_page(&gMemory->uiMem);
+    gState->uiPage->aspect = gMemory->aspect;
+    gState->uiPage->numberOfImageElements = 0;
+    gState->uiPage->actionableElementCount = 0;
+}
+
+void complete_round() {
+    clear_game_ui();
+    add_end_game_ui();
 }
 
 void sort_rack_by_color() {
@@ -1450,7 +1469,7 @@ void end_turn() {
             push_message(&Message{0, 2.0f, "Table not valid"});
         }
     }
- }
+}
 
 void draw_ui() {
     update(gState->uiPage, gState->deltaTime);
@@ -1462,92 +1481,9 @@ void init_player() {
     gState->player.playerData = PlayerData{};
 }
 
-// Move to ui eventually
-void push_message(Message* message) {
-    u32 size = sizeof(Message);
-
-    if(messageBuffer->bufferSize + size > messageBuffer->maxBufferSize) {
-        //printf("Message overflow\n");
-        return;
-    }
-
-    Message* dest = (Message*)(messageBuffer->bufferBase + messageBuffer->bufferSize);
-    *dest = *message;
-
-    messageBuffer->bufferSize += size;
+void quit() {
+    gMemory->shouldWindowClose = true;
 }
-
-MessageBuffer* allocateMessageBuffer(u32 maxBufferSize) {
-    MessageBuffer* buffer = (MessageBuffer*)malloc(sizeof(MessageBuffer));
-    buffer->maxBufferSize = maxBufferSize;
-    buffer->bufferSize = 0;
-    buffer->bufferBase = (u8*)malloc(maxBufferSize);
-    return buffer;
-}
-
-void draw_messages() {
-    u32 count = messageBuffer->bufferSize / sizeof(Message);
-
-    for (u32 i = 0; i < count; )
-    {
-        Message* msg = (Message*)
-            (messageBuffer->bufferBase + i * sizeof(Message));
-
-        msg->duration -= gState->deltaTime;
-
-        if (msg->duration <= 0.0f)
-        {
-            Message* last = (Message*)
-                (messageBuffer->bufferBase + (count - 1) * sizeof(Message));
-
-            *msg = *last;
-
-            messageBuffer->bufferSize -= sizeof(Message);
-            count--;
-        }
-        else
-        {
-            UIElement e = {};
-            e.anchor = Anchor::TOP_RIGHT;
-            e.meshHandle = gState->quadMesh;
-            e.textureName = 1;
-            e.posx = 1.0f;
-            e.posy = 0.5f;
-            e.width = 0.1f;
-            e.height = 0.1f;
-
-            RenderEntryUIImage image = {
-                e.anchor,
-                e.textureName,
-                e.posx,
-                e.posy,
-                e.height,
-                e.width,
-                e.isAnimated,
-                e.cols,
-                e.rows,
-                e.fps,
-                e.currentFrame,
-                e.meshHandle
-            };
-
-            //gMemory->push_ui_image_fn(gMemory->renderBuffer, &image);
-
-            RenderEntryUIText text = RenderEntryUIText{
-              Anchor::CENTER,
-                "",
-                0.5f * gMemory->aspect,
-                msg->messageCode == 0 ? 0.95f : 0.9f,
-                0.0005f,
-                vec3(1.0f)
-            };
-            strcpy_s(text.text, msg->messageText);
-            gMemory->push_ui_text_fn(gMemory->renderBuffer, &text);
-            i++;
-        }
-    }
-}
-//
 
 extern "C" GAME_DLL void game_init(GameMemory* memory, i32 preserveState) {
     gMemory = memory;
@@ -1560,12 +1496,12 @@ extern "C" GAME_DLL void game_init(GameMemory* memory, i32 preserveState) {
     clear_game_ui();
 
     if(!preserveState) {
-        init_game();
+        //init_game();
+        gState->mode = GM_START_MENU;
+        add_main_menu_ui();
     }
     init_table();
     snapshot_round_start();
-   
-    messageBuffer = allocateMessageBuffer(2048); 
 }
 
 extern "C" GAME_DLL void game_update_and_render() {
@@ -1576,15 +1512,17 @@ extern "C" GAME_DLL void game_update_and_render() {
             draw_table();
             draw_player_rack();
             draw_held_tile();
-            draw_ui();
-            draw_messages();
             break;
         }
         case GM_GAME_OVER : {
-            draw_ui();
+            break;
+        }
+        case GM_START_MENU : {
             break;
         }
     }
+
+    draw_ui();
 }
 
 extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 ypos) {
@@ -1593,7 +1531,7 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
     check_set_hovered(xpos, ypos);
 
     if (key == 256) {
-        gMemory->shouldWindowClose = true;
+        quit();
     }
 
     if (key == 300 && action == 1) {
@@ -1614,6 +1552,7 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
             } 
         }
         else if(action == 0) {
+            gMemory->play_audio_fn("./audio/collect1.wav");
             clickHeld = false;
             release_tile();
         }

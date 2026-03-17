@@ -1,6 +1,8 @@
 #include "../InfiniteErl/renderer.h" 
 
 u32 imageMeshHandle;
+MessageBuffer* messageBuffer = nullptr;
+
 static inline std::string add_commas_int64(int64_t value) {
     bool neg = value < 0;
     u64 v = neg ? -value : value;
@@ -199,6 +201,17 @@ void add_ui_element(UIPage* page, UIElement element, bool actionable) {
     OutputDebugStringA(message_buffer);
 }
 
+void add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 scale, vec3 color, ActionFuncPtr action) {
+    UIElement button = UIElement{ Anchor::CENTER, -1, buttonHandle, pos.x, pos.y, scale.x, scale.y, true, action};
+    button.color = color;
+
+    add_ui_element(page, button, true);
+
+    TextElement bText = TextElement{ Anchor::CENTER, "", pos.x * page->aspect, pos.y, -1, true, 0.0006f, vec3(1.0f)};
+    strcpy(bText.text, text);
+    add_text_element(page, bText);
+}
+
 void add_text_element(UIPage* page, TextElement text) {
     page->textElements[page->numberOfTextElements] = text;
     page->numberOfTextElements++;
@@ -247,6 +260,65 @@ void clear_text_elements(TextElement element) {
     element.prefix = nullptr;
 }
 
+void push_message(Message* message) {
+    u32 size = sizeof(Message);
+
+    if(messageBuffer->bufferSize + size > messageBuffer->maxBufferSize) {
+        //printf("Message overflow\n");
+        return;
+    }
+
+    Message* dest = (Message*)(messageBuffer->bufferBase + messageBuffer->bufferSize);
+    *dest = *message;
+
+    messageBuffer->bufferSize += size;
+}
+
+MessageBuffer* allocateMessageBuffer(u32 maxBufferSize) {
+    MessageBuffer* buffer = (MessageBuffer*)malloc(sizeof(MessageBuffer));
+    buffer->maxBufferSize = maxBufferSize;
+    buffer->bufferSize = 0;
+    buffer->bufferBase = (u8*)malloc(maxBufferSize);
+    return buffer;
+}
+
+void draw_messages(f32 deltaTime) {
+    u32 count = messageBuffer->bufferSize / sizeof(Message);
+
+    for (u32 i = 0; i < count; )
+    {
+        Message* msg = (Message*)
+            (messageBuffer->bufferBase + i * sizeof(Message));
+
+        msg->duration -= deltaTime;
+
+        if (msg->duration <= 0.0f)
+        {
+            Message* last = (Message*)
+                (messageBuffer->bufferBase + (count - 1) * sizeof(Message));
+
+            *msg = *last;
+
+            messageBuffer->bufferSize -= sizeof(Message);
+            count--;
+        }
+        else
+        {
+            RenderEntryUIText text = RenderEntryUIText{
+              Anchor::CENTER,
+                "",
+                0.5f, //* gMemory->aspect,
+                msg->messageCode == 0 ? 0.95f : 0.9f,
+                0.0005f,
+                vec3(1.0f)
+            };
+            strcpy_s(text.text, msg->messageText);
+            //gMemory->push_ui_text_fn(gMemory->renderBuffer, &text);
+            i++;
+        }
+    }
+}
+
 void update(UIPage* page, f32 deltaTime) {
     for (i32 i = 0; i < page->numberOfImageElements; i++) {
         if (page->uiElements[i].hovered) update(&page->uiElements[i], deltaTime);
@@ -273,6 +345,8 @@ void update(UIPage* page, f32 deltaTime) {
             i--;
         }
     }
+
+    draw_messages(deltaTime);
 }
 
 void ui_reset(UIMemory* mem) {
@@ -303,6 +377,8 @@ void create_image_quad(UIMemory* mem) {
 
 UIPage* create_ui_page(UIMemory* mem) {
   create_image_quad(mem);
+  messageBuffer = allocateMessageBuffer(2048); 
+
   UIPage* page = (UIPage*)ui_push_size(mem, sizeof(UIPage));
   page->elementHovered = -1;
   memset(page, 0, sizeof(UIPage));

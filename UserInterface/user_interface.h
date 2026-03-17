@@ -3,6 +3,19 @@
 #include "../InfiniteErl/data_types.h"
 
 #define MAX_ELEMENTS 100
+#define MAX_MESSAGE_SIZE 512
+
+struct MessageBuffer {
+    u32 maxBufferSize;
+    u32 bufferSize;
+    u8* bufferBase;
+};
+
+struct Message {
+    u8 messageCode;
+    f32 duration;
+    char messageText[MAX_MESSAGE_SIZE];
+};
 
 struct Character {
 	u32 TextureID;
@@ -87,6 +100,7 @@ struct UIPage {
 	i32 numberOfImageElements = 0;
 	i32 numberOfTextElements = 0;
 	bool mouseHoverDisabled = false;
+  f32 aspect;
 };
 
 struct UIMemory {
@@ -109,9 +123,13 @@ void set_source(TextElement* text, const char* label, const void* ptr, TextType 
 void add_ui_element(UIPage* page, UIElement element, bool actionable = false);
 void add_text_element(UIPage* page, TextElement text);
 void add_dynamic_text_element(UIPage* page, TextElement text, const char* label, const void* ptr, TextType t, f32 mult = 1.0f);
-
+void add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 scale, vec3 color, ActionFuncPtr action);
+  
 TextElement* get_element_by_text(UIPage* page, const char* text);
 UIElement* get_element_by_id(UIPage* page, const char* id);
 TextElement* get_text_element_by_id(UIPage* page, const char* id);
+
+MessageBuffer* allocateMessageBuffer(u32 maxBufferSize);
+void push_message(Message *message);
 
 #endif

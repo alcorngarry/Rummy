@@ -24,15 +24,15 @@ the winner gets the positive amount of tiles remaining on each players rack
 ie player 1 (W)  + 12, player 2 (L) -5, player 3 (L) -7
 
 --[NOTES ON ISSUES]--
---() When splitting runs it still shows valid if you take from the middle [split the sets]
+--(X) When splitting runs it still shows valid if you take from the middle [split the sets]
 
 --(X) Sets move around the table when added to, gross// somewhat mitigated
 
 --() aspect ratios gets messed up update window management
 
---() adding a tile to a set where the tile is already in the spot for it to go won't allow
+--(X) adding a tile to a set where the tile is already in the spot for it to go won't allow
 
---() adding two jokers and a tile is still invalid!
+--(X) adding two jokers and a tile is still invalid!
 
 
 --[GOALS]--
@@ -43,7 +43,7 @@ ie player 1 (W)  + 12, player 2 (L) -5, player 3 (L) -7
 (1/2) Add score minimum
 
 --TILES 
-  -() completes a run between two numbers 
+  -(X)  bridge -completes a run between two numbers 
   -(X) joker --implemented (mostly still some bugs but pretty solid)
 
 --MULTIPLIERS

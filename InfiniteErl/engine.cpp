@@ -2,6 +2,7 @@
 #include <GLFW/glfw3.h>
 #include "platform.h"
 #include "renderer.h"
+#include "audio.h"
 
 GLFWwindow* window;
 GLFWwindow* create_window();
@@ -147,7 +148,6 @@ i32 APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, i32 cmd
     window = create_window();
     //load_window_icon();
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-
     load_textures();
     load_fonts();
     load_shaders();

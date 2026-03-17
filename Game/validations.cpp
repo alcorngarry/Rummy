@@ -16,6 +16,16 @@ i32 get_joker_array(Set *set, Tile** jokerArray) {
     return jokerCount;
 }
 
+u8 contains_bridge(Set *set) {
+    for(i32 i = 0; i < set->numberOfTiles; ++i) {
+      if(set->tiles[i]->details.type == TILE_TYPE::BRIDGE) {
+        return true;
+      }
+    }
+
+    return false;
+}
+
 i32 get_normal_array_sorted(Set *set, Tile** normalArray) {
     i32 normalCount = 0;
 
@@ -49,6 +59,8 @@ u8 tile_valid_in_run(Set *set, Tile *tile) {
     Tile* normals[13];
     i32 normalCount = get_normal_array_sorted(set, normals);
 
+    u8 containsBridge = contains_bridge(set);
+
     if(normalCount == 0) return true;
 
     if(tile->details.tileColor != normals[0]->details.tileColor) return false;
@@ -67,11 +79,13 @@ u8 tile_valid_in_run(Set *set, Tile *tile) {
 
     i32 jokersNeeded = span - normalsAfterInsert;
 
-    if(jokersNeeded > jokerCount)
-        return false;
+    if(containsBridge && normalCount == 1) return true;
+    if(jokersNeeded > 0 && containsBridge && 
+        !(tile->details.tileNumber > set->highTileNumber + 1 || tile->details.tileNumber < set->lowTileNumber - 1)) return true;
 
-    if(span > 13)
-        return false;
+    if(jokersNeeded > jokerCount) return false;
+
+    if(span > 13) return false;
 
     return true;
 }
@@ -90,6 +104,8 @@ u8 is_tile_playable_in_set(Set *set, Tile *tile) {
     if(set->isComplete) return false;
 
     if(tile->details.type == TILE_TYPE::JOKER) return true;
+
+    if(tile->details.type == TILE_TYPE::BRIDGE) return true;
 
     if(tile->details.type == BRIDGE) return true;
 

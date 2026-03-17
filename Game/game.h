@@ -4,8 +4,7 @@
 #include <random>
 #include "platform.h"
 
-#define TOTAL_TILES 56
-#define MAX_MESSAGE_SIZE 512
+#define TOTAL_TILES 60
 
 void default_action();
 
@@ -39,7 +38,9 @@ struct RNG {
 enum GAME_MODE {
     GM_START_MENU,
     GM_PLAYING,
-    GM_GAME_OVER
+    GM_GAME_OVER,
+    GM_OPTIONS,
+    GM_PROFILE
 };
 
 enum SET_TYPE {
@@ -137,17 +138,6 @@ struct Player {
     Tile* heldTile;
 };
 
-struct MessageBuffer {
-    u32 maxBufferSize;
-    u32 bufferSize;
-    u8* bufferBase;
-};
-
-struct Message {
-    u8 messageCode;
-    f32 duration;
-    char messageText[MAX_MESSAGE_SIZE];
-};
 
 struct RoundSnapshot {
     Tile tiles[TOTAL_TILES];
