@@ -289,7 +289,7 @@ void render_buffer(RenderBuffer* buffer) {
     buffer->bufferSize = 0;
 }
 
-void draw_entity(mat4 model, mat4 view, mat4 projection, u32 vao, i32 textureId, vec3 color, i8 useSpriteSheet, i32 frameIndex, u8 tiled, vec2 tileCount) {
+void draw_entity(mat4 model, mat4 view, mat4 projection, u32 vao, i32 textureId, vec4 color, i8 useSpriteSheet, i32 frameIndex, u8 tiled, vec2 tileCount) {
     glDepthMask(GL_FALSE);
     glEnable(GL_BLEND);
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
@@ -298,7 +298,7 @@ void draw_entity(mat4 model, mat4 view, mat4 projection, u32 vao, i32 textureId,
     itemShader->setMat4("view", view);
     itemShader->setMat4("projection", projection);
     itemShader->setMat4("model", model);
-    itemShader->setVec3("color", color);
+    itemShader->setVec4("color", color);
     itemShader->setBool("useColorOnly", textureId == -1);
     itemShader->setBool("useSpriteSheet", useSpriteSheet);
     itemShader->setInt("frameIndex", frameIndex);

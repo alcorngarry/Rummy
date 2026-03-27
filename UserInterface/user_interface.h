@@ -116,6 +116,9 @@ UIPage* create_ui_page(UIMemory* mem);
 void update(UIPage* page, f32 deltaTime);
 void check_elements_hovered(UIPage* page, f64 xpos, f64 ypos);
 
+TextElement* get_text_element_by_parent_id(UIPage* page, i16 parentId);
+UIElement* get_element_by_parent_id(UIPage* page, i16 parentId);
+
 void free_ui_page(UIPage* page);
 void reset_animation(UIElement* element);
 void set_source(TextElement* text, const char* label, const void* ptr, TextType t, f32 mult = 1.0f);

@@ -5,14 +5,12 @@
 
 const f32 TABLE_SCALE = 1.2f;
 const vec3 defaultTileScale = vec3(0.08f);
-const i32 TABLE_ROWS = 6;
-const i32 TABLE_COLUMNS = 16;
 const i32 RACK_SPACES = 20;
 
 GameState* gState = nullptr;
 GameMemory* gMemory = nullptr;
 mat4 rackSpaces[RACK_SPACES];
-mat4 tableSpaces[TABLE_ROWS][TABLE_COLUMNS];
+//mat4 tableSpaces[TABLE_ROWS][TABLE_COLUMNS];
 u8 debugMenuOpen = false;
 // terrible but for the ui endgame
 u64 numTableTiles = 0;
@@ -32,6 +30,9 @@ void end_turn();
 void init_game();
 void quit();
 u8 is_table_valid();
+void add_options_ui();
+void update_set_ui(Set* set);
+Set* get_hovered_set();
 
 // validations.cpp
 i32 get_joker_array(Set *set, Tile** jokerArray);
@@ -153,6 +154,12 @@ void clear_table() {
     for (i32 i = 0; i < TOTAL_TILES; i++) {
         Set* s = &gState->table.sets[i];
 
+        TextElement* a = get_text_element_by_parent_id(gState->uiPage, (i16)s->id);
+        UIElement* b = get_element_by_parent_id(gState->uiPage, (i16)s->id);
+
+        a = nullptr;
+        b = nullptr;
+
         s->numberOfTiles = 0;
         s->id = -1;
         s->setType = SET_TYPE::INVALID;
@@ -223,6 +230,7 @@ void create_tiles() {
               }
           };
 
+          tile.tableSpace = vec2(-1, -1);
           gState->tiles[tileIndex] = tile;
           tileIndex++;
          }
@@ -264,7 +272,9 @@ void init_table() {
     for(i32 row = 0; row < TABLE_ROWS; ++row) {
         for(i32 col = 0; col < TABLE_COLUMNS; ++col) { 
             mat4 space = glm::scale(startPos, defaultTileScale * TABLE_SCALE);
-            tableSpaces[row][col] = glm::translate(space, vec3(col, row, 0));
+            gState->table.tableSpaces[row][col].object = glm::translate(space, vec3(col, row, 0));
+            gState->table.tableSpaces[row][col].isOccupied = false;
+            gState->table.tableSpaces[row][col].isHovered = false;
         }
     }
 }
@@ -365,52 +375,57 @@ vec3 get_tile_color(i32 colorId) {
     return vec3(0.24f, 0.0f, 0.0f);
 }
 
-void create_tile_render_entry(Tile* tile) {
+void create_tile_render_entry(Tile* tile, vec4 color, u8 isShadow = false) {
     mat4 bg;
     if(tile->location == TILE_LOCATION::TABLE) {
       bg = glm::translate(tile->object.model, vec3(0.0f, 0.0f, 0.0f));
     } else {
       bg = tile->object.model;
     }
-    RenderEntryEntity sides = RenderEntryEntity{
-        bg,
-        gState->quadMesh,
-        TILE_SIDES_T,
-        vec3(1.0f)
-    };
 
-    gMemory->push_entity_fn(gMemory->renderBuffer, &sides);
+    if(!isShadow) {
+        RenderEntryEntity sides = RenderEntryEntity{
+            bg,
+            gState->quadMesh,
+            TILE_SIDES_T,
+            color
+        };
+
+        gMemory->push_entity_fn(gMemory->renderBuffer, &sides);
+    }
 
     RenderEntryEntity face = RenderEntryEntity{
         tile->object.model,
         gState->quadMesh,
         TILE_FACE_T,
-        vec3(1.0f)
+        color
     };
 
     gMemory->push_entity_fn(gMemory->renderBuffer, &face);
 
     RenderEntryEntity type;
 
-    if(tile->details.type == BRIDGE) {
-        type = RenderEntryEntity {
-            tile->object.model,
-            gState->quadMesh,
-            BRIDGE_T,
-            get_tile_color(tile->details.tileColor)
-        };
-    } else {
-        type = RenderEntryEntity {
-            tile->object.model,
-            gState->quadMesh,
-            NUMBER_SHEET_T,
-            get_tile_color(tile->details.tileColor),
-            true,
-            tile->object.currentFrame
-        };
-    }
+    if(!isShadow) {
+        if(tile->details.type == BRIDGE) {
+            type = RenderEntryEntity {
+                tile->object.model,
+                gState->quadMesh,
+                BRIDGE_T,
+                vec4(get_tile_color(tile->details.tileColor), 1.0f)
+            };
+        } else {
+            type = RenderEntryEntity {
+                tile->object.model,
+                gState->quadMesh,
+                NUMBER_SHEET_T,
+                vec4(get_tile_color(tile->details.tileColor), 1.0f),
+                true,
+                tile->object.currentFrame
+            };
+        }
 
-    gMemory->push_entity_fn(gMemory->renderBuffer, &type);
+        gMemory->push_entity_fn(gMemory->renderBuffer, &type);
+    }
 }
 
 void draw_player_rack() {
@@ -418,7 +433,7 @@ void draw_player_rack() {
         glm::scale(gState->playerRack.object.model, vec3(1.0f, 1.6f, 0.0f)),
         gState->quadMesh,
         -1,
-        vec3(87.0f / 255.0f, 66.0f / 255.0f, 0.0f),
+        vec4(87.0f / 255.0f, 66.0f / 255.0f, 0.0f, 1.0f),
     };
 
     gMemory->push_entity_fn(gMemory->renderBuffer, &playerRack);
@@ -428,7 +443,7 @@ void draw_player_rack() {
             glm::scale(rackSpaces[row], vec3(1.0f, TABLE_SCALE, 0.0f)),
             gState->quadMesh,
             TILE_SLOT_T,
-            vec3(0.2f)
+            vec4(vec3(0.2f), 1.0f)
         };
 
         gMemory->push_entity_fn(gMemory->renderBuffer, &X);
@@ -438,11 +453,11 @@ void draw_player_rack() {
         Tile *tile = gState->playerRack.tiles[i];
         if(tile == gState->player.heldTile) continue;
 
-        vec3 color = vec3(1.0f);
-        if(tile->isHovered) color = vec3(1.0f, 0.0f, 0.0f);
-        if(gState->player.heldTile == tile) color = vec3(0.0f, 1.0f, 0.0f);
+        vec4 color = vec4(1.0f);
+        //if(tile->isHovered) color = vec3(1.0f, 0.0f, 0.0f);
+        //if(gState->player.heldTile == tile) color = vec3(0.0f, 1.0f, 0.0f);
 
-        create_tile_render_entry(tile);
+        create_tile_render_entry(tile, color);
     }
 }
 
@@ -451,7 +466,7 @@ void draw_table() {
         gState->table.object.model,
         gState->quadMesh,
         gState->table.object.textureName,
-        vec3(0.0f, 0.667f, 0.333f),
+        vec4(0.0f, 0.667f, 0.333f, 1.0f),
     };
 
     gMemory->push_entity_fn(gMemory->renderBuffer, &table1);
@@ -460,7 +475,7 @@ void draw_table() {
         gState->table.object.model,
         gState->quadMesh,
         BG_PATTERN_T,
-        vec3(0.7f),
+        vec4(vec3(0.7f), 1.0f),
         false,
         0,
         true,
@@ -471,32 +486,42 @@ void draw_table() {
 
     for(i32 row = 0; row < TABLE_ROWS; ++row) {
         for(i32 col = 0; col < TABLE_COLUMNS; ++col) {
-
-            u8 isRed = ((row + col) & 1) == 0;
+            vec3 color;
+            if(gState->table.tableSpaces[row][col].isOccupied) {
+                if(gState->table.tableSpaces[row][col].isHovered) {
+                    color = vec3(1.0f, 1.0f, 0.0f);
+                } else {
+                    color = vec3(1.0f, 0.0f, 0.0f);
+                } 
+            } else {
+              if(gState->table.tableSpaces[row][col].isHovered) {
+                color = vec3(0.0f, 0.0f, 1.0f);
+              } else {
+                color = vec3(0.2f);
+              }
+            }
 
             RenderEntryEntity X = RenderEntryEntity{
-                tableSpaces[row][col],
+                gState->table.tableSpaces[row][col].object,
                 gState->quadMesh,
                 TILE_SLOT_T,
-                vec3(0.2f)
+                vec4(color, 1.0f)
             };
 
             gMemory->push_entity_fn(gMemory->renderBuffer, &X);
         }
     }
 
-
     vec3 setColor;
 
     for(i32 i = 0; i < gState->table.numberOfSets; i++) {
-        //RenderEntryEntity set = RenderEntryEntity{
-        //    gState->table.sets[i].object.model,
-        //    gState->quadMesh,
-        //    gState->table.object.textureName,
-        //    vec3(0.2f, 0.0f, 0.0f)
-        //};
-        switch(i % 6)
-        {
+        RenderEntryEntity set = RenderEntryEntity{
+            gState->table.sets[i].object.model,
+            gState->quadMesh,
+            gState->table.object.textureName,
+            vec4(0.2f, 0.0f, 0.0f, 1.0f)
+        };
+        switch(i % 6) {
             case 0: setColor = vec3(0.2f,0,0); break; // red
             case 1: setColor = vec3(0,1,0); break; // green
             case 2: setColor = vec3(0,0,0.2f); break; // blue
@@ -505,9 +530,10 @@ void draw_table() {
             default:setColor = vec3(0,1,1); break; // cyan
         }
 
-        //gMemory->push_entity_fn(gMemory->renderBuffer, &set);
+        gMemory->push_entity_fn(gMemory->renderBuffer, &set);
 
         for(i32 j = 0; j < gState->table.sets[i].numberOfTiles; j++) {
+            vec3 color = gState->table.sets[i].isHovered && gState->player.heldTile ? setColor : vec3(1.0f); 
             Tile *tile = gState->table.sets[i].tiles[j];
             if(tile == gState->player.heldTile) continue;
             
@@ -520,7 +546,7 @@ void draw_table() {
 
           //  gMemory->push_entity_fn(gMemory->renderBuffer, &X);
 
-            create_tile_render_entry(tile);
+            create_tile_render_entry(tile, vec4(color, 1.0f));
         }
     }
 }
@@ -528,8 +554,15 @@ void draw_table() {
 void draw_held_tile() {
     Tile *tile = gState->player.heldTile;
     if(!tile) return;        
-    vec3 color = vec3(1.0f);
-    create_tile_render_entry(tile);
+    vec4 color = vec4(1.0f);
+
+    // need to allow alpha for shadows.. i.e vec4
+    Tile shadow = *tile;
+    shadow.object.model = glm::scale(shadow.object.model, vec3(1.0f));
+    shadow.object.model = glm::translate(shadow.object.model, vec3(0.0f, 0.2f, 0.0f));
+
+    create_tile_render_entry(&shadow, vec4(0.0f, 0.0f, 0.0f, 0.4f), true);
+    create_tile_render_entry(tile, color);
 }
 
 // TODO(garry) this is horrible.
@@ -721,6 +754,24 @@ void clear_all_hover() {
     }
 }
 
+void check_table_space_hovered(f64 xpos, f64 ypos) {
+    for(i32 row = 0; row < TABLE_ROWS; ++row) {
+        for(i32 col = 0; col < TABLE_COLUMNS; ++col) {
+            vec3 pos = vec3(gState->table.tableSpaces[row][col].object[3]);
+            //f32 half = TABLE_SCALE * 0.5f;
+            f32 half = (defaultTileScale.x * TABLE_SCALE) * 0.5f;
+            bool inside = xpos > pos.x - half && xpos < pos.x + half &&
+                          ypos > pos.y - half && ypos < pos.y + half;
+
+            if (inside) {
+                gState->table.tableSpaces[row][col].isHovered = true;
+            } else { 
+                gState->table.tableSpaces[row][col].isHovered = false; 
+            }
+        }
+    }
+}
+
 void check_set_hovered(f64 xpos, f64 ypos) {
     if(gState->player.heldTile) {
         clear_all_hover();
@@ -753,6 +804,9 @@ void check_set_hovered(f64 xpos, f64 ypos) {
 
         if (!hasAnyTile) continue;
 
+        TextElement* a = get_text_element_by_parent_id(gState->uiPage, 99);
+        UIElement* b = get_element_by_parent_id(gState->uiPage, 99);
+
         if (xpos > boundsMin.x - 0.1f && xpos < boundsMax.x + 0.1f &&
             ypos > boundsMin.y - 0.1f && ypos < boundsMax.y + 0.1f) {
             Message msg;
@@ -772,6 +826,15 @@ void check_set_hovered(f64 xpos, f64 ypos) {
 
             push_message(&msg);
             set->isHovered = true;
+            update_set_ui(set);
+            if(a) a->visible = true;
+            if(b) b->visible = true;
+
+        } else {
+            set->isHovered = false;
+            Set* set = get_hovered_set(); 
+            if(a && !set) a->visible = false;
+            if(b && !set) b->visible = false;
         }
     }
 }
@@ -790,6 +853,7 @@ Set* get_hovered_set() {
 
 void create_new_set_model(Set *set) {
     mat4 model;
+
     if(!(set->numberOfTiles % 2)) {
         model = set->tiles[set->numberOfTiles / 2]->object.model;
         model = glm::translate(model, vec3(-(model[3].x * 0.5f), 0.0f, 0.0f));
@@ -803,18 +867,19 @@ void create_new_set_model(Set *set) {
 }
 
 u8 is_table_space_occupied(vec2 space) {
-    for (i32 s = 0; s < gState->table.numberOfSets; ++s) {
-        Set* set = &gState->table.sets[s];
-        for (i32 t = 0; t < set->numberOfTiles; ++t) {
-            Tile* tile = set->tiles[t];
-            if(!tile) continue;
-            if (tile->tableSpace.x == space.x && tile->tableSpace.y == space.y) {
-                return true;
-            }
-        }
-    }
+   // for (i32 s = 0; s < gState->table.numberOfSets; ++s) {
+   //     Set* set = &gState->table.sets[s];
+   //     for (i32 t = 0; t < set->numberOfTiles; ++t) {
+   //         Tile* tile = set->tiles[t];
+   //         if(!tile) continue;
+   //         if (tile->tableSpace.x == space.x && tile->tableSpace.y == space.y) {
+   //             return true;
+   //         }
+   //     }
+   // }
 
-    return false;
+    return gState->table.tableSpaces[(i32)space.x][(i32)space.y].isOccupied;
+    //return false;
 }
 
 u8 calculate_tile_tablespace(Set *set, Tile *tile) {
@@ -831,8 +896,9 @@ u8 calculate_tile_tablespace(Set *set, Tile *tile) {
         if ((i32)targetSpace.y < 0 || is_table_space_occupied(targetSpace)) return false;
     }
 
-    tile->object.model = glm::scale(tableSpaces[(i32)targetSpace.x][(i32)targetSpace.y], vec3(1.0f / TABLE_SCALE));
+    tile->object.model = glm::scale(gState->table.tableSpaces[(i32)targetSpace.x][(i32)targetSpace.y].object, vec3(1.0f / TABLE_SCALE));
     tile->tableSpace = targetSpace;
+    gState->table.tableSpaces[(i32)targetSpace.x][(i32)targetSpace.y].isOccupied = true;
     return true;
 }
 
@@ -848,8 +914,9 @@ void add_table_space_to_tile(Set *set, Tile *tile) {
         targetSpace = leftTile->tableSpace + vec2(0, -1);
     }
 
-    tile->object.model = glm::scale(tableSpaces[(i32)targetSpace.x][(i32)targetSpace.y], vec3(1.0f / TABLE_SCALE));
+    tile->object.model = glm::scale(gState->table.tableSpaces[(i32)targetSpace.x][(i32)targetSpace.y].object, vec3(1.0f / TABLE_SCALE));
     tile->tableSpace = targetSpace;
+    gState->table.tableSpaces[(i32)targetSpace.x][(i32)targetSpace.y].isOccupied = true;
 }
 
 u8 snap_tile_to_table_space(Tile *tile) {
@@ -862,11 +929,11 @@ u8 snap_tile_to_table_space(Tile *tile) {
     
     for(i32 row = 0; row < TABLE_ROWS; ++row) {
         for(i32 col = 0; col < TABLE_COLUMNS; ++col) {
-            vec3 tablePos = vec3(tableSpaces[row][col][3]);
+            vec3 tablePos = vec3(gState->table.tableSpaces[row][col].object[3]);
             f32 distance = glm::distance(tilePos, tablePos);
             if(minDistance > distance) {
                 minDistance = distance;
-                test = tableSpaces[row][col];
+                test = gState->table.tableSpaces[row][col].object;
                 tableSpace = vec2(row, col);
             }
         }
@@ -878,6 +945,7 @@ u8 snap_tile_to_table_space(Tile *tile) {
 
     tile->object.model = glm::scale(test, vec3(1.0f / TABLE_SCALE));
     tile->tableSpace = tableSpace;
+    gState->table.tableSpaces[(i32)tableSpace.x][(i32)tableSpace.y].isOccupied = true;
 
     return true;
 }
@@ -1055,6 +1123,39 @@ u8 is_tile_released_inside_discard(Tile* tile) {
            ypos > pos.y - half && ypos < pos.y + half;
 }
 
+vec2 world_to_ui(mat4 model, mat4 view, mat4 projection) {
+    vec4 worldPos = model * vec4(0, 0, 0, 1);
+    vec4 clip = projection * view * worldPos;
+
+    if (clip.w <= 0.0f) return vec2(-1.0f);
+
+    vec3 ndc = vec3(clip) / clip.w;
+
+    vec2 ui;
+    ui.x = (ndc.x * 0.5f) + 0.5f;
+    ui.y = 1.0f - ((ndc.y * 0.5f) + 0.5f);
+
+    return ui;
+}
+
+void update_set_ui(Set *set) {
+    vec2 pos = world_to_ui(
+        set->object.model,
+        gMemory->renderBuffer->view,
+        gMemory->renderBuffer->projection        
+    );
+
+    TextElement* text = get_text_element_by_parent_id(gState->uiPage, 99);
+    text->posx = pos.x * gMemory->aspect;
+    text->posy = pos.y - 0.1f;
+
+    UIElement* bg = get_element_by_parent_id(gState->uiPage, 99);
+    bg->posx = pos.x;
+    bg->posy = pos.y - 0.1f;
+
+    text->valuePtr = &set->value;
+}
+
 u8 add_tile_to_set(Set *set, Tile *tile) {
     tile->location = TILE_LOCATION::TABLE;
     tile->locationIndex = set->numberOfTiles;
@@ -1077,7 +1178,7 @@ u8 add_tile_to_set(Set *set, Tile *tile) {
       if(set->numberOfTiles == 4) set->isComplete = true;
     }
     if(is_run(set)) set->setType = RUN;
-    
+   
     return true;
 }
 
@@ -1188,20 +1289,23 @@ void release_tile() {
             if(is_tile_playable_in_set(hoveredSet, tile) && is_there_table_space(hoveredSet, tile)) {
                 //clear previous set
                 if(wasFromTable) handle_tile_removal(&gState->table.sets[tile->setId], tile);
+
+                gState->table.tableSpaces[(i32)tile->tableSpace.x][(i32)tile->tableSpace.y].isOccupied = false;
                 tile->tableSpace = vec2(-1);
 
-                add_tile_to_set(hoveredSet, tile);
                 add_table_space_to_tile(hoveredSet, tile);
+                add_tile_to_set(hoveredSet, tile);
             } else {
                 tile->object.model = tile->originalPosition;
             }
         } else {
             if(is_tile_released_inside_table(tile)) {
                 if(wasFromTable) handle_tile_removal(&gState->table.sets[tile->setId], tile);
+                gState->table.tableSpaces[(i32)tile->tableSpace.x][(i32)tile->tableSpace.y].isOccupied = false;
 
                 Set *set = create_new_set();
-                add_tile_to_set(set, tile);
                 snap_tile_to_table_space(tile);
+                add_tile_to_set(set, tile);
                 //calculate_tile_tablespace(set, tile);
             } else {
                 tile->object.model = tile->originalPosition;
@@ -1291,6 +1395,18 @@ void add_in_game_ui() {
 
     add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.62f, 0.02f, -1, true, 0.0005f, vec3(1.0f)}, 
         "Table Status: ", &(i32)gState->table.isValid, TextType::INT_32);
+
+
+    UIElement a = UIElement{ Anchor::CENTER, 99, UI_BG_T, 0, 0, 0.075f, 0.1f};
+    a.cols = 3;
+    a.rows = 3;
+    a.isPanel = true;
+    a.color = vec3(1.0f);
+    add_ui_element(gState->uiPage, a);
+
+    TextElement text = TextElement{ Anchor::CENTER, "", 0, 0, 99, true, 0.0005f, vec3(0.0f)};
+    text.visible = false;
+    add_dynamic_text_element(gState->uiPage, text, "+", "ee", TextType::UINT_64); 
 }
 
 void add_end_game_ui() {
@@ -1327,7 +1443,7 @@ void add_end_game_ui() {
 
 void add_main_menu_ui() {
     add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.35f, 0.9f), vec2(0.1f), vec3(1.0f, 0.0f, 0.0f), &init_game);
-    add_button(gState->uiPage, BUTTON_T, "Options", vec2(0.5f, 0.9f), vec2(0.1f), vec3(0.0f, 0.0f, 1.0f), &quit);
+    add_button(gState->uiPage, BUTTON_T, "Options", vec2(0.5f, 0.9f), vec2(0.1f), vec3(0.0f, 0.0f, 1.0f), &add_options_ui);
     add_button(gState->uiPage, BUTTON_T, "Profile", vec2(0.65f, 0.9f), vec2(0.1f), vec3(0.0f, 1.0f, 0.0f), &quit);
     add_button(gState->uiPage, BUTTON_T, "Quit", vec2(0.9f, 0.9f), vec2(0.1f), vec3(1.0f, 0.0f, 0.0f), &quit);
 
@@ -1344,7 +1460,17 @@ void add_profile_ui() {
 }
 
 void add_options_ui() {
+    clear_game_ui();
+    add_button(gState->uiPage, BUTTON_T, "General", vec2(0.35f, 0.1f), vec2(0.1f), vec3(1.0f, 0.0f, 0.0f), &init_game);
+    add_button(gState->uiPage, BUTTON_T, "Video", vec2(0.5f, 0.1f), vec2(0.1f), vec3(1.0f, 0.0f, 0.0f), &init_game);
+    add_button(gState->uiPage, BUTTON_T, "Audio", vec2(0.65f, 0.1f), vec2(0.1f), vec3(1.0f, 0.0f, 0.0f), &init_game);
 
+    UIElement e = UIElement{ Anchor::CENTER, -1, UI_BG_T, 0.5f, 0.5f, 1.0f, 0.5f, true};
+    e.cols = 3;
+    e.rows = 3;
+    e.isPanel = true;
+    e.color = vec3(0.2f);
+    add_ui_element(gState->uiPage, e);
 }
 
 void init_game() {
@@ -1354,6 +1480,7 @@ void init_game() {
     init_pool();
     init_player();
     init_player_rack();
+    init_table();
     snapshot_round_start();
 
     gState->mode = GM_PLAYING;
@@ -1529,6 +1656,7 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
     // the projection matrix for ui is different!
     check_elements_hovered(gState->uiPage, xpos * (1.0f / gMemory->aspect), ypos);
     check_set_hovered(xpos, ypos);
+    check_table_space_hovered(xpos, ypos);
 
     if (key == 256) {
         quit();

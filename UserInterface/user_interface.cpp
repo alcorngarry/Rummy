@@ -65,7 +65,9 @@ inline bool ui_point_inside(const UIElement& e, f64 x, f64 y) {
 
 void check_elements_hovered(UIPage* page, f64 xpos, f64 ypos) {
     page->elementHovered = -1;
-    for (int i = 0; i < page->actionableElementCount; i++) {
+    for (int i = 0; i < page->numberOfImageElements; i++) {
+        if(!page->uiElements[i].action) continue;
+
         //ANCHOR EFFECTS THIS LETS ASSUME ANCHOR IS CENTER
         if (ui_point_inside(page->uiElements[i], xpos, ypos)) {
             page->uiElements[i].hovered = true;
@@ -185,6 +187,22 @@ void set_source(TextElement* text, const char* label, const void* ptr, TextType 
     text->valuePtr = ptr;
     text->type = t;
     text->multiplier = mult;
+}
+
+TextElement* get_text_element_by_parent_id(UIPage* page, i16 parentId) {
+    for(i32 i = 0; i < page->numberOfTextElements; ++i) {
+        if(page->textElements[i].parentId == parentId) return &page->textElements[i];
+    }
+
+    return nullptr;
+}
+
+UIElement* get_element_by_parent_id(UIPage* page, i16 parentId) {
+    for(i32 i = 0; i < page->numberOfImageElements; ++i) {
+        if(page->uiElements[i].childId == parentId) return &page->uiElements[i];
+    }
+
+    return nullptr;
 }
 
 void default_action() {

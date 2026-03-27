@@ -5,6 +5,8 @@
 #include "platform.h"
 
 #define TOTAL_TILES 60
+const i32 TABLE_ROWS = 6;
+const i32 TABLE_COLUMNS = 16;
 
 void default_action();
 
@@ -120,12 +122,19 @@ struct Rack {
     u8 numberOfTiles = 0;
 };
 
+struct TableSpace {
+    mat4 object;
+    u8 isOccupied = false;
+    u8 isHovered = false;
+};
+
 struct Table {
     GameObject object;
     Set sets[TOTAL_TILES];
     u8 numberOfSets = 0;
     u64 value = 0;
     u8 isValid = true;
+    TableSpace tableSpaces[TABLE_ROWS][TABLE_COLUMNS];
 };
 
 struct PlayerData {

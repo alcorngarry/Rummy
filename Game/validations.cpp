@@ -80,8 +80,13 @@ u8 tile_valid_in_run(Set *set, Tile *tile) {
     i32 jokersNeeded = span - normalsAfterInsert;
 
     if(containsBridge && normalCount == 1) return true;
-    if(jokersNeeded > 0 && containsBridge && 
-        !(tile->details.tileNumber > set->highTileNumber + 1 || tile->details.tileNumber < set->lowTileNumber - 1)) return true;
+    // jokers mess this up.. need to handle with joker count
+    if(containsBridge && 
+        (tile->details.tileNumber == set->highTileNumber + 1 || tile->details.tileNumber == set->lowTileNumber - 1) ||
+        (tile->details.tileNumber == set->highTileNumber - 1 || tile->details.tileNumber == set->lowTileNumber + 1))  {
+      
+        return true;
+    }
 
     if(jokersNeeded > jokerCount) return false;
 
