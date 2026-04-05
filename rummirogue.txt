@@ -34,6 +34,7 @@ ie player 1 (W)  + 12, player 2 (L) -5, player 3 (L) -7
 
 --(X) adding two jokers and a tile is still invalid!
 
+--() adding bridge to two tiles broken. 2, 3 , bridge 8 doesn't work
 
 --[GOALS]--
 
@@ -56,3 +57,20 @@ ie player 1 (W)  + 12, player 2 (L) -5, player 3 (L) -7
 
 --Consumables
   -Discard
+
+--[TO-HAVES]--
+-loading game screen when init game starts
+-background music
+-continue game
+-challenges maybe?
+-text blitting animation (blitting may be the wrong word but text loading char by char)
+-animation adding the tiles to the rack
+-hover 'bobble' animation for tiles
+-drop shadow for buttons that goes away on press down
+-counting animation after every draw button click that adds to table total
+-maybe do +tile number animation where the 'bobble' occurs for every tile on table, maybe only do per set
+
+--really need to look at this for desing-- THE MCGUFFIN
+-finish completion (clear tiles after 35 draws is the current default one)
+-after finishing this you get a reward you can use to buy the widgets
+-pick the next completion option!

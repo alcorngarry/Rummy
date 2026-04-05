@@ -1,5 +1,6 @@
 ﻿#include "game.h"
 #include <cstring>
+#include <xstring>
 
 #define START_RACK_AMOUNT 4
 
@@ -37,6 +38,8 @@ Set* get_hovered_set();
 // validations.cpp
 i32 get_joker_array(Set *set, Tile** jokerArray);
 i32 get_normal_array_sorted(Set *set, Tile** normalArray);
+i32 get_bridge_array(Set *set, Tile** bridgeArray);
+i32 get_spans(i32 size, Tile** normalArraySorted, i32* outArray, i32 jokerCount);
 u8 tile_valid_in_run(Set *set, Tile *tile);
 u8 tile_valid_in_group(Set *set, Tile *tile);
 u8 tile_valid_in_invalid(Set *set, Tile *tile);
@@ -251,6 +254,10 @@ void create_tiles() {
     }
 }
 
+void clear_sets() {
+    memset(gState->table.sets, 0, sizeof(gState->table.sets));
+}
+
 
 void init_table() {
     f32 tileWidth = defaultTileScale.x * TABLE_SCALE;
@@ -277,6 +284,8 @@ void init_table() {
             gState->table.tableSpaces[row][col].isHovered = false;
         }
     }
+
+    clear_sets();
 }
 
 void init_pool() {
@@ -515,12 +524,13 @@ void draw_table() {
     vec3 setColor;
 
     for(i32 i = 0; i < gState->table.numberOfSets; i++) {
-        RenderEntryEntity set = RenderEntryEntity{
-            gState->table.sets[i].object.model,
-            gState->quadMesh,
-            gState->table.object.textureName,
-            vec4(0.2f, 0.0f, 0.0f, 1.0f)
-        };
+        //RenderEntryEntity set = RenderEntryEntity{
+        //    gState->table.sets[i].object.model,
+        //    gState->quadMesh,
+        //    gState->table.object.textureName,
+        //    vec4(0.2f, 0.0f, 0.0f, 1.0f)
+        //};
+
         switch(i % 6) {
             case 0: setColor = vec3(0.2f,0,0); break; // red
             case 1: setColor = vec3(0,1,0); break; // green
@@ -530,7 +540,7 @@ void draw_table() {
             default:setColor = vec3(0,1,1); break; // cyan
         }
 
-        gMemory->push_entity_fn(gMemory->renderBuffer, &set);
+        //gMemory->push_entity_fn(gMemory->renderBuffer, &set);
 
         for(i32 j = 0; j < gState->table.sets[i].numberOfTiles; j++) {
             vec3 color = gState->table.sets[i].isHovered && gState->player.heldTile ? setColor : vec3(1.0f); 
@@ -854,14 +864,18 @@ Set* get_hovered_set() {
 void create_new_set_model(Set *set) {
     mat4 model;
 
-    if(!(set->numberOfTiles % 2)) {
-        model = set->tiles[set->numberOfTiles / 2]->object.model;
-        model = glm::translate(model, vec3(-(model[3].x * 0.5f), 0.0f, 0.0f));
-        model = glm::scale(model, vec3(set->numberOfTiles, 1.0f, 1.0f));
-    } else {
-        model = set->tiles[set->numberOfTiles / 2]->object.model;
-        model = glm::scale(model, vec3(set->numberOfTiles, 1.0f, 1.0f));
-    }
+    Tile* left = find_left_most_tile(set);
+    Tile* right = find_right_most_tile(set);
+
+   // if(!(set->numberOfTiles % 2)) {
+   //     model = set->tiles[set->numberOfTiles / 2]->object.model;
+   //     model = glm::translate(model, vec3(-(model[3].x * 0.5f), 0.0f, 0.0f));
+   //     model = glm::scale(model, vec3(set->numberOfTiles, 1.0f, 1.0f));
+   // } else {
+   //     model = set->tiles[set->numberOfTiles / 2]->object.model;
+   //     model = glm::scale(model, vec3(set->numberOfTiles, 1.0f, 1.0f));
+   // }
+    model = glm::scale(((right->object.model + left->object.model) / 2.0f), vec3(set->numberOfTiles, 1.0f, 1.0f));
 
     set->object.model = model;
 }
@@ -1146,6 +1160,7 @@ void update_set_ui(Set *set) {
     );
 
     TextElement* text = get_text_element_by_parent_id(gState->uiPage, 99);
+    if(!text) return;
     text->posx = pos.x * gMemory->aspect;
     text->posy = pos.y - 0.1f;
 
@@ -1154,6 +1169,56 @@ void update_set_ui(Set *set) {
     bg->posy = pos.y - 0.1f;
 
     text->valuePtr = &set->value;
+}
+
+void add_tile_to_table_space(Tile* tile, vec2 tableSpace) {
+    tile->tableSpace = tableSpace;
+    tile->object.model = glm::scale(gState->table.tableSpaces[(i32)tableSpace.x][(i32)tableSpace.y].object, vec3(1.0f / TABLE_SCALE));
+}
+
+void order_set_tiles(Set* set) {
+    printf("ORDERING SET TILES\n");
+
+    vec2 leftVec = find_left_most_tile(set)->tableSpace;
+    i32 left = leftVec.y;
+    
+    Tile* jokers[4];
+    i32 jokerCount = get_joker_array(set, jokers);
+
+    Tile* normals[13];
+    i32 normalCount = get_normal_array_sorted(set, normals);
+
+    Tile* bridges[4];
+    i32 bridgeCount = get_bridge_array(set, bridges);
+
+    i32 spanNumbers[13] = {-1};
+    i32 numberOfSpans = get_spans(normalCount, normals, spanNumbers, jokerCount);
+
+    i32 jokerIndex = 0;
+    i32 bridgeIndex = 0;
+
+    add_tile_to_table_space(normals[0], vec2(leftVec.x, left));
+    left++;
+
+    //need to handle replacing joker... 
+    for(i32 i = 1; i < normalCount; ++i) {
+        i32 distance = normals[i] - normals[i - 1];
+        if(distance > 1) {
+            if(jokerCount >= (distance - 1)) {
+                for(i32 j = jokerIndex; j < jokerCount; ++j) {
+                    add_tile_to_table_space(jokers[j], vec2(leftVec.x, left));
+                    jokerIndex++;
+                    left++;
+                }
+            } else {
+                add_tile_to_table_space(bridges[bridgeIndex], vec2(leftVec.x, left));
+                bridgeIndex++;
+                left++;
+            } 
+        }
+        add_tile_to_table_space(normals[i], vec2(leftVec.x, left));
+        left++;
+    }
 }
 
 u8 add_tile_to_set(Set *set, Tile *tile) {
@@ -1177,7 +1242,10 @@ u8 add_tile_to_set(Set *set, Tile *tile) {
       set->setType = GROUP;
       if(set->numberOfTiles == 4) set->isComplete = true;
     }
-    if(is_run(set)) set->setType = RUN;
+    if(is_run(set)) {
+      set->setType = RUN;
+      order_set_tiles(set);
+    }
    
     return true;
 }
@@ -1358,6 +1426,18 @@ u8 is_table_valid() {
 }
 
 void add_in_game_ui() {
+    UIElement a = UIElement{ Anchor::CENTER, 99, UI_BG_T, 0, 0, 0.075f, 0.1f};
+    a.cols = 3;
+    a.rows = 3;
+    a.isPanel = true;
+    a.color = vec3(1.0f);
+    a.visible = false;
+    add_ui_element(gState->uiPage, a);
+
+    TextElement text = TextElement{ Anchor::CENTER, "", 0, 0, 99, true, 0.0005f, vec3(0.0f)};
+    text.visible = false;
+    add_dynamic_text_element(gState->uiPage, text, "+", "ee", TextType::UINT_64); 
+
     add_button(gState->uiPage, BUTTON_T, "DRAW", vec2(0.949f, 0.05f), vec2(0.1f), vec3(1.0f, 0.0f, 0.0f), &end_turn);
     add_button(gState->uiPage, BUTTON_T, "RESET", vec2(0.845f, 0.05f), vec2(0.1f), vec3(0.0f, 1.0f, 0.0f), &reset_board);
 
@@ -1366,7 +1446,6 @@ void add_in_game_ui() {
     add_button(gState->uiPage, BUTTON_T, "C", vec2(0.975f, 0.84f), vec2(0.09f, 0.05f), vec3(0.0f, 0.0f, 1.0f), &sort_rack_by_color);
     add_button(gState->uiPage, BUTTON_T, "#", vec2(0.925f, 0.84f), vec2(0.09f, 0.05f), vec3(1.0f, 0.0f, 1.0f), &sort_rack_by_number);
 
-    
     UIElement e = UIElement{ Anchor::TOP_LEFT, -1, UI_BG_T, 0.0f, 0.0f, 0.104f, 1.0f, true};
     e.cols = 3;
     e.rows = 3;
@@ -1395,18 +1474,6 @@ void add_in_game_ui() {
 
     add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.62f, 0.02f, -1, true, 0.0005f, vec3(1.0f)}, 
         "Table Status: ", &(i32)gState->table.isValid, TextType::INT_32);
-
-
-    UIElement a = UIElement{ Anchor::CENTER, 99, UI_BG_T, 0, 0, 0.075f, 0.1f};
-    a.cols = 3;
-    a.rows = 3;
-    a.isPanel = true;
-    a.color = vec3(1.0f);
-    add_ui_element(gState->uiPage, a);
-
-    TextElement text = TextElement{ Anchor::CENTER, "", 0, 0, 99, true, 0.0005f, vec3(0.0f)};
-    text.visible = false;
-    add_dynamic_text_element(gState->uiPage, text, "+", "ee", TextType::UINT_64); 
 }
 
 void add_end_game_ui() {
@@ -1474,7 +1541,7 @@ void add_options_ui() {
 }
 
 void init_game() {
-    gState->gameData = GameData{35, 0};
+    gState->gameData = GameData{35, 99999};
 
     create_tiles();
     init_pool();
@@ -1581,7 +1648,10 @@ void end_turn() {
         if(is_table_valid()) {
             gState->player.playerData.score += gState->table.value;
             
-            if(gState->playerRack.numberOfTiles == 0 || gState->gameData.turnLimit == 0) {
+            if(gState->playerRack.numberOfTiles == 0 || 
+                gState->gameData.turnLimit == 0 || 
+                gState->gameData.minimumScore < gState->player.playerData.score) {
+
                 complete_round();
             } else {
                 if(draw_from_pool(gState->playerRack)) {

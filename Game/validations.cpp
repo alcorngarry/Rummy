@@ -1,4 +1,3 @@
-
 #include "game.h"
 
 i32 get_joker_array(Set *set, Tile** jokerArray) {
@@ -16,14 +15,19 @@ i32 get_joker_array(Set *set, Tile** jokerArray) {
     return jokerCount;
 }
 
-u8 contains_bridge(Set *set) {
-    for(i32 i = 0; i < set->numberOfTiles; ++i) {
-      if(set->tiles[i]->details.type == TILE_TYPE::BRIDGE) {
-        return true;
-      }
+i32 get_bridge_array(Set *set, Tile** bridgeArray) {
+    i32 bridgeCount = 0;
+    if(set->numberOfTiles > 13) {
+        assert(set->numberOfTiles <= 13);
     }
 
-    return false;
+    for(i32 i = 0; i < set->numberOfTiles; ++i) {
+        if(set->tiles[i]->details.type == TILE_TYPE::BRIDGE) {
+            bridgeArray[bridgeCount++] = set->tiles[i];
+        }
+    }
+
+    return bridgeCount;
 }
 
 i32 get_normal_array_sorted(Set *set, Tile** normalArray) {
@@ -52,6 +56,43 @@ i32 get_normal_array_sorted(Set *set, Tile** normalArray) {
     return normalCount;
 }
 
+//helper function, get number of spans ie 1,2 (span), 8,9, and return array of numbers in the span
+//good IDEA!
+i32 get_spans(i32 size, Tile** normalArraySorted, i32* outArray, i32 jokerCount) {
+    if(size < 2) return 0;
+
+    i32 spanCount = 0;
+    i32 index = 0;
+
+    i32 jokersLeft = jokerCount;
+
+    for(i32 i = 1; i < size; ++i) {
+        if(normalArraySorted[i]->details.tileNumber != normalArraySorted[i-1]->details.tileNumber + 1) {
+            if(jokersLeft > ((normalArraySorted[i]->details.tileNumber) - normalArraySorted[i - 1]->details.tileNumber + 1)) {
+                jokersLeft -= ((normalArraySorted[i-1]->details.tileNumber + 1) - normalArraySorted[i]->details.tileNumber); 
+                continue;
+            }
+
+            for(i32 j = normalArraySorted[i-1]->details.tileNumber + 1; j <= normalArraySorted[i-1]->details.tileNumber + 1 + jokerCount; ++j) {
+                outArray[index++] = j;
+            }
+
+            for(i32 j = normalArraySorted[i]->details.tileNumber - 1; j >= normalArraySorted[i]->details.tileNumber - 1 - jokerCount; --j) {
+                outArray[index++] = j;
+            }
+            spanCount++;
+        }
+    }
+
+    printf("Span numbers: ");
+    for (i32 i = 0; i < 13; ++i) {
+        printf("%i ", outArray[i]);
+    }
+    printf("\n");
+
+    return spanCount;
+}
+
 u8 tile_valid_in_run(Set *set, Tile *tile) {
     Tile* jokers[4];
     i32 jokerCount = get_joker_array(set, jokers);
@@ -59,38 +100,51 @@ u8 tile_valid_in_run(Set *set, Tile *tile) {
     Tile* normals[13];
     i32 normalCount = get_normal_array_sorted(set, normals);
 
-    u8 containsBridge = contains_bridge(set);
+    Tile* bridges[4];
+    i32 bridgeCount = get_bridge_array(set, bridges);
+
+    i32 spanNumbers[13] = {-1};
+    i32 numberOfSpans = get_spans(normalCount, normals, spanNumbers, jokerCount);
 
     if(normalCount == 0) return true;
+    if(set->numberOfTiles == 13) return false;
 
     if(tile->details.tileColor != normals[0]->details.tileColor) return false;
 
-    i32 min = normals[0]->details.tileNumber;
-    i32 max = normals[normalCount-1]->details.tileNumber;
+    if(bridgeCount > 0) {
+        printf("NUMBER OF SPANS: %i\n", numberOfSpans);
+        if(numberOfSpans == 0) return true;
 
-    if(tile->details.tileNumber < min)
-        min = tile->details.tileNumber;
+        if(numberOfSpans > bridgeCount) {
+            for(i32 j = 0; j <= jokerCount; ++j) {
+                if(normals[normalCount - 1]->details.tileNumber + 1 + j == tile->details.tileNumber) return true;
+                if(normals[0]->details.tileNumber - 1 - j == tile->details.tileNumber) return true;
+            }
+        }
 
-    if(tile->details.tileNumber > max)
-        max = tile->details.tileNumber;
+        for(i32 i = 0; i < 13; ++i) {
+            printf("span number %i == %i\n", spanNumbers[i], tile->details.tileNumber);
+            if(spanNumbers[i] == tile->details.tileNumber) return true;
+        }
 
-    i32 span = max - min + 1;
-    i32 normalsAfterInsert = normalCount + 1;
+        return false;
+    } else {
+        i32 min = normals[0]->details.tileNumber;
+        i32 max = normals[normalCount-1]->details.tileNumber;
+        
+        if(tile->details.tileNumber < min)
+            min = tile->details.tileNumber;
 
-    i32 jokersNeeded = span - normalsAfterInsert;
+        if(tile->details.tileNumber > max)
+            max = tile->details.tileNumber;
 
-    if(containsBridge && normalCount == 1) return true;
-    // jokers mess this up.. need to handle with joker count
-    if(containsBridge && 
-        (tile->details.tileNumber == set->highTileNumber + 1 || tile->details.tileNumber == set->lowTileNumber - 1) ||
-        (tile->details.tileNumber == set->highTileNumber - 1 || tile->details.tileNumber == set->lowTileNumber + 1))  {
-      
-        return true;
+        i32 span = (max - min) + 1;
+        i32 normalsAfterInsert = normalCount + 1;
+        i32 jokersNeeded = span - normalsAfterInsert;
+
+        if(jokersNeeded > jokerCount) return false;
+        if(span > 13) return false;
     }
-
-    if(jokersNeeded > jokerCount) return false;
-
-    if(span > 13) return false;
 
     return true;
 }
