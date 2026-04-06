@@ -1172,6 +1172,10 @@ void update_set_ui(Set *set) {
 }
 
 void add_tile_to_table_space(Tile* tile, vec2 tableSpace) {
+    if(!tile) {
+        printf("Cannot add null tile to table space!\n");
+        return;
+    }
     tile->tableSpace = tableSpace;
     tile->object.model = glm::scale(gState->table.tableSpaces[(i32)tableSpace.x][(i32)tableSpace.y].object, vec3(1.0f / TABLE_SCALE));
 }
@@ -1197,20 +1201,23 @@ void order_set_tiles(Set* set) {
     i32 jokerIndex = 0;
     i32 bridgeIndex = 0;
 
-    add_tile_to_table_space(normals[0], vec2(leftVec.x, left));
-    left++;
+    if(normalCount != 0) {
+        add_tile_to_table_space(normals[0], vec2(leftVec.x, left));
+        left++;
+    }
 
     //need to handle replacing joker... 
     for(i32 i = 1; i < normalCount; ++i) {
         i32 distance = normals[i] - normals[i - 1];
+        printf("index %i, normalCount %i, distance %i\n", i, normalCount, distance);
         if(distance > 1) {
-            if(jokerCount >= (distance - 1)) {
-                for(i32 j = jokerIndex; j < jokerCount; ++j) {
-                    add_tile_to_table_space(jokers[j], vec2(leftVec.x, left));
-                    jokerIndex++;
+            if(jokerCount != 0 && jokerCount >= (distance - 1)) {
+                for(jokerIndex; jokerIndex < (distance - 1); ++jokerIndex) {
+                    add_tile_to_table_space(jokers[jokerIndex], vec2(leftVec.x, left));
                     left++;
                 }
-            } else {
+                printf("JOKER index %i, jokerCount %i, distance %i\n", jokerIndex, jokerCount, (distance - 1));
+            } else if(bridgeCount != 0) {
                 add_tile_to_table_space(bridges[bridgeIndex], vec2(leftVec.x, left));
                 bridgeIndex++;
                 left++;
@@ -1219,6 +1226,20 @@ void order_set_tiles(Set* set) {
         add_tile_to_table_space(normals[i], vec2(leftVec.x, left));
         left++;
     }
+
+    while(jokerIndex < jokerCount) {
+        add_tile_to_table_space(jokers[jokerIndex], vec2(leftVec.x, left));
+        left++;
+        jokerIndex++;
+    }
+
+    while(bridgeIndex < bridgeCount) {
+        //maybe make invalid if left over bridges
+        add_tile_to_table_space(bridges[bridgeIndex], vec2(leftVec.x, left));
+        left++;
+        bridgeIndex++;
+    }
+
 }
 
 u8 add_tile_to_set(Set *set, Tile *tile) {
@@ -1253,6 +1274,7 @@ u8 add_tile_to_set(Set *set, Tile *tile) {
 void remove_tile_from_set(Set *set, Tile *tile) {
     set->tiles[tile->locationIndex] = nullptr;
     set->numberOfTiles--;
+    set->value -= tile->details.tileNumber;
 
     if(set->numberOfTiles != 0) {
         get_high_tile_number(set);

@@ -28,13 +28,19 @@ ie player 1 (W)  + 12, player 2 (L) -5, player 3 (L) -7
 
 --(X) Sets move around the table when added to, gross// somewhat mitigated
 
---() aspect ratios gets messed up update window management
+--(X) aspect ratios gets messed up update window management
+  --() reset to previous window width and height after F11
 
 --(X) adding a tile to a set where the tile is already in the spot for it to go won't allow
 
 --(X) adding two jokers and a tile is still invalid!
 
---() adding bridge to two tiles broken. 2, 3 , bridge 8 doesn't work
+--(X) adding bridge to two tiles broken. 2, 3 , bridge 8 doesn't work
+
+--() adding and removing tile increases the score of the set, remove
+
+--()
+
 
 --[GOALS]--
 

@@ -68,7 +68,7 @@ i32 get_spans(i32 size, Tile** normalArraySorted, i32* outArray, i32 jokerCount)
 
     for(i32 i = 1; i < size; ++i) {
         if(normalArraySorted[i]->details.tileNumber != normalArraySorted[i-1]->details.tileNumber + 1) {
-            if(jokersLeft > ((normalArraySorted[i]->details.tileNumber) - normalArraySorted[i - 1]->details.tileNumber + 1)) {
+            if(jokersLeft >= ((normalArraySorted[i]->details.tileNumber) - normalArraySorted[i - 1]->details.tileNumber + 1)) {
                 jokersLeft -= ((normalArraySorted[i-1]->details.tileNumber + 1) - normalArraySorted[i]->details.tileNumber); 
                 continue;
             }
@@ -111,27 +111,25 @@ u8 tile_valid_in_run(Set *set, Tile *tile) {
 
     if(tile->details.tileColor != normals[0]->details.tileColor) return false;
 
+    i32 min = normals[0]->details.tileNumber;
+    i32 max = normals[normalCount-1]->details.tileNumber;
+
     if(bridgeCount > 0) {
         printf("NUMBER OF SPANS: %i\n", numberOfSpans);
-        if(numberOfSpans == 0) return true;
+        if(numberOfSpans == 0 || bridgeCount > numberOfSpans) return true;
 
-        if(numberOfSpans > bridgeCount) {
-            for(i32 j = 0; j <= jokerCount; ++j) {
-                if(normals[normalCount - 1]->details.tileNumber + 1 + j == tile->details.tileNumber) return true;
-                if(normals[0]->details.tileNumber - 1 - j == tile->details.tileNumber) return true;
-            }
+        for(i32 j = 0; j <= jokerCount; ++j) {
+            if(normals[normalCount - 1]->details.tileNumber + 1 + j == tile->details.tileNumber) return true;
+            if(normals[0]->details.tileNumber - 1 - j == tile->details.tileNumber) return true;
         }
 
         for(i32 i = 0; i < 13; ++i) {
-            printf("span number %i == %i\n", spanNumbers[i], tile->details.tileNumber);
+            //printf("span number %i == %i\n", spanNumbers[i], tile->details.tileNumber);
             if(spanNumbers[i] == tile->details.tileNumber) return true;
         }
 
         return false;
     } else {
-        i32 min = normals[0]->details.tileNumber;
-        i32 max = normals[normalCount-1]->details.tileNumber;
-        
         if(tile->details.tileNumber < min)
             min = tile->details.tileNumber;
 

@@ -295,7 +295,7 @@ void framebuffer_size_callback(GLFWwindow* window, i32 width, i32 height) {
     windowHeight = height;
     glViewport(0, 0, width, height);
 
-    aspect = static_cast<f32>(width) / static_cast<f32>(height);
+    //aspect = static_cast<f32>(width) / static_cast<f32>(height);
     projection = glm::ortho(0.0f, aspect, 1.0f, 0.0f, -10.0f, 10.0f);
 }
 
