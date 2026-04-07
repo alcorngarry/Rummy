@@ -389,7 +389,7 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, vec3 co
     glDisable(GL_BLEND);
 }
 
-void draw_image_ui(Anchor anchor, i32 textureId, f32 posx, f32 posy, f32 width, f32 height, i32 cols, i32 rows, i32 currentFrame, bool isAnimated, u32 vao, u8 isPanel, vec3 color, u8 isHovered) {
+void draw_image_ui(Anchor anchor, i32 textureId, f32 posx, f32 posy, f32 width, f32 height, i32 cols, i32 rows, i32 currentFrame, bool isAnimated, u32 vao, u8 isPanel, vec4 color, u8 isHovered) {
     glDepthMask(GL_FALSE);
     glEnable(GL_BLEND);
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
@@ -403,7 +403,7 @@ void draw_image_ui(Anchor anchor, i32 textureId, f32 posx, f32 posy, f32 width, 
     uiShader->setInt("cols", cols);
     uiShader->setInt("rows", rows);
     uiShader->setBool("isPanel", isPanel);
-    uiShader->setVec3("color", color);
+    uiShader->setVec4("color", color);
     uiShader->setBool("flipped", isHovered);
 
     //TODO(garry) fix this garbage

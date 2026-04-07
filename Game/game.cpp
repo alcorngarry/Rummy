@@ -264,7 +264,7 @@ void init_table() {
 
     GameObject tableObject = GameObject {
         vec3(0.0f),
-        glm::scale(glm::translate(mat4(1.0f), vec3(0.5f * gMemory->aspect, 0.2 + (2.5f * tileWidth), 0.0f)), vec3(20.0f * tileWidth, 7.0f * tileWidth, 0.0f)),
+        glm::scale(glm::translate(mat4(1.0f), vec3(0.5f * gMemory->aspect, 0.5, 0.0f)), vec3(50.0f * tileWidth, 20.0f * tileWidth, 0.0f)),
         -1
     };
 
@@ -488,7 +488,7 @@ void draw_table() {
         false,
         0,
         true,
-        vec2(12, 10)
+        vec2(24, 20)
     };
 
     gMemory->push_entity_fn(gMemory->renderBuffer, &table);
@@ -1452,7 +1452,7 @@ void add_in_game_ui() {
     a.cols = 3;
     a.rows = 3;
     a.isPanel = true;
-    a.color = vec3(1.0f);
+    a.color = vec4(1.0f);
     a.visible = false;
     add_ui_element(gState->uiPage, a);
 
@@ -1460,28 +1460,33 @@ void add_in_game_ui() {
     text.visible = false;
     add_dynamic_text_element(gState->uiPage, text, "+", "ee", TextType::UINT_64); 
 
-    add_button(gState->uiPage, BUTTON_T, "DRAW", vec2(0.949f, 0.05f), vec2(0.1f), vec3(1.0f, 0.0f, 0.0f), &end_turn);
-    add_button(gState->uiPage, BUTTON_T, "RESET", vec2(0.845f, 0.05f), vec2(0.1f), vec3(0.0f, 1.0f, 0.0f), &reset_board);
+    add_button(gState->uiPage, BUTTON_T, "DRAW", vec2(0.949f, 0.05f), vec2(0.1f), vec4(1.0f, 0.0f, 0.0f, 1.0f), &end_turn);
+    add_button(gState->uiPage, BUTTON_T, "RESET", vec2(0.845f, 0.05f), vec2(0.1f), vec4(0.0f, 1.0f, 0.0f, 1.0f), &reset_board);
 
 //    add_ui_element(gState->uiPage, UIElement{ Anchor::TOP_RIGHT, -1, SORT_COLOR_T, 1.0f, 0.8f, 0.08f, 0.05f, true, &sort_rack_by_color}, true);
 //    add_ui_element(gState->uiPage, UIElement{ Anchor::TOP_RIGHT, -1, SORT_NUMBER_T, 0.95f, 0.8f, 0.08f, 0.05f, true, &sort_rack_by_number}, true);
-    add_button(gState->uiPage, BUTTON_T, "C", vec2(0.975f, 0.84f), vec2(0.09f, 0.05f), vec3(0.0f, 0.0f, 1.0f), &sort_rack_by_color);
-    add_button(gState->uiPage, BUTTON_T, "#", vec2(0.925f, 0.84f), vec2(0.09f, 0.05f), vec3(1.0f, 0.0f, 1.0f), &sort_rack_by_number);
+    add_button(gState->uiPage, BUTTON_T, "C", vec2(0.975f, 0.84f), vec2(0.09f, 0.05f), vec4(0.0f, 0.0f, 1.0f, 1.0f), &sort_rack_by_color);
+    add_button(gState->uiPage, BUTTON_T, "#", vec2(0.925f, 0.84f), vec2(0.09f, 0.05f), vec4(1.0f, 0.0f, 1.0f, 1.0f), &sort_rack_by_number);
 
-    UIElement e = UIElement{ Anchor::TOP_LEFT, -1, UI_BG_T, 0.0f, 0.0f, 0.104f, 1.0f, true};
+    UIElement e = UIElement{ Anchor::TOP_LEFT, -1, UI_BG_T, 0.01f, 0.01f, 0.104f, 0.6f, true};
     e.cols = 3;
     e.rows = 3;
     e.isPanel = true;
-    e.color = vec3(0.1f);
+    e.color = vec4(0.1f, 0.1f, 0.1f, 1.0f);
     add_ui_element(gState->uiPage, e);
 
-    UIElement e1 = UIElement{ Anchor::TOP_LEFT, -1, UI_BG_T, 0.0f, 0.896f, 0.104f, 1.0f, true};
-    e1.cols = 3;
-    e1.rows = 3;
-    e1.isPanel = true;
-    e1.color = vec3(0.1f);
-    add_ui_element(gState->uiPage, e1);
+    UIElement e2 = UIElement{ Anchor::TOP_LEFT, -1, UI_BG_T, 0.005f, 0.02f, 0.104f, 0.6f, true};
+    e2.color = vec4(0.0f, 0.0f, 0.0f, 0.5f);
+    add_ui_element(gState->uiPage, e2);
 
+//
+//    UIElement e1 = UIElement{ Anchor::TOP_LEFT, -1, UI_BG_T, 0.0f, 0.896f, 0.104f, 1.0f, true};
+//    e1.cols = 3;
+//    e1.rows = 3;
+//    e1.isPanel = true;
+//    e1.color = vec3(0.1f);
+//    add_ui_element(gState->uiPage, e1);
+//
     add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.02f, 0.02f, -1, true, 0.0005f, vec3(1.0f)}, 
         "Score: ", &gState->player.playerData.score, TextType::UINT_64);
     
@@ -1500,22 +1505,22 @@ void add_in_game_ui() {
 
 void add_end_game_ui() {
     UIElement newGame = UIElement{ Anchor::CENTER, -1, BUTTON_T, 0.4f, 0.7f, 0.1f, 0.1f, true, &init_game};
-    newGame.color = vec3(1.0f, 0.0f, 0.0f);
+    newGame.color = vec4(1.0f, 0.0f, 0.0f, 1.0f);
     add_ui_element(gState->uiPage, newGame, true);
 
     UIElement toMenu = UIElement{ Anchor::CENTER, -1, BUTTON_T, 0.6f, 0.7f, 0.1f, 0.1f, true, &init_game};
-    toMenu.color = vec3(0.0f, 0.0f, 1.0f);
+    toMenu.color = vec4(0.0f, 0.0f, 1.0f, 1.0f);
     add_ui_element(gState->uiPage, toMenu, true);
 
     UIElement e = UIElement{ Anchor::CENTER, -1, UI_BG_T, 0.5f, 0.5f, 0.75f, 0.5f, true};
     e.cols = 3;
     e.rows = 3;
     e.isPanel = true;
-    e.color = vec3(0.2f);
+    e.color = vec4(0.2f);
     add_ui_element(gState->uiPage, e);
 
     UIElement blur = UIElement{ Anchor::CENTER, -1, TILE_SLOT_T, 0.5f, 0.5f, 1.0f, 1.0f * gMemory->aspect, true};
-    blur.color = vec3(0.1f);
+    blur.color = vec4(0.1f);
     add_ui_element(gState->uiPage, blur);
 
 
@@ -1531,35 +1536,38 @@ void add_end_game_ui() {
 }
 
 void add_main_menu_ui() {
-    add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.35f, 0.9f), vec2(0.1f), vec3(1.0f, 0.0f, 0.0f), &init_game);
-    add_button(gState->uiPage, BUTTON_T, "Options", vec2(0.5f, 0.9f), vec2(0.1f), vec3(0.0f, 0.0f, 1.0f), &add_options_ui);
-    add_button(gState->uiPage, BUTTON_T, "Profile", vec2(0.65f, 0.9f), vec2(0.1f), vec3(0.0f, 1.0f, 0.0f), &quit);
-    add_button(gState->uiPage, BUTTON_T, "Quit", vec2(0.9f, 0.9f), vec2(0.1f), vec3(1.0f, 0.0f, 0.0f), &quit);
+    add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.35f, 0.9f), vec2(0.1f), vec4(1.0f, 0.0f, 0.0f, 1.0f), &init_game);
+    add_button(gState->uiPage, BUTTON_T, "Options", vec2(0.5f, 0.9f), vec2(0.1f), vec4(0.0f, 0.0f, 1.0f, 1.0f), &add_options_ui);
+    add_button(gState->uiPage, BUTTON_T, "Profile", vec2(0.65f, 0.9f), vec2(0.1f), vec4(0.0f, 1.0f, 0.0f, 1.0f), &quit);
+    add_button(gState->uiPage, BUTTON_T, "Quit", vec2(0.9f, 0.9f), vec2(0.1f), vec4(1.0f, 0.0f, 0.0f, 1.0f), &quit);
 
     UIElement e = UIElement{ Anchor::CENTER, -1, UI_BG_T, 0.5f, 0.9f, 0.15f, 0.5f, true};
     e.cols = 3;
     e.rows = 3;
     e.isPanel = true;
-    e.color = vec3(0.2f);
+    e.color = vec4(0.2f, 0.2f, 0.2f, 1.0f);
     add_ui_element(gState->uiPage, e);
 }
 
 void add_profile_ui() {
-    add_button(gState->uiPage, BUTTON_T, "TEST", vec2(0,0), vec2(0.1f), vec3(1.0f), &quit);
+    add_button(gState->uiPage, BUTTON_T, "TEST", vec2(0,0), vec2(0.1f), vec4(1.0f), &quit);
 }
 
 void add_options_ui() {
     clear_game_ui();
-    add_button(gState->uiPage, BUTTON_T, "General", vec2(0.35f, 0.1f), vec2(0.1f), vec3(1.0f, 0.0f, 0.0f), &init_game);
-    add_button(gState->uiPage, BUTTON_T, "Video", vec2(0.5f, 0.1f), vec2(0.1f), vec3(1.0f, 0.0f, 0.0f), &init_game);
-    add_button(gState->uiPage, BUTTON_T, "Audio", vec2(0.65f, 0.1f), vec2(0.1f), vec3(1.0f, 0.0f, 0.0f), &init_game);
+    add_button(gState->uiPage, BUTTON_T, "General", vec2(0.35f, 0.1f), vec2(0.1f), vec4(1.0f, 0.0f, 0.0f, 1.0f), &init_game);
+    add_button(gState->uiPage, BUTTON_T, "Video", vec2(0.5f, 0.1f), vec2(0.1f), vec4(1.0f, 0.0f, 0.0f, 1.0f), &init_game);
+    add_button(gState->uiPage, BUTTON_T, "Audio", vec2(0.65f, 0.1f), vec2(0.1f), vec4(1.0f, 0.0f, 0.0f, 1.0f), &init_game);
 
     UIElement e = UIElement{ Anchor::CENTER, -1, UI_BG_T, 0.5f, 0.5f, 1.0f, 0.5f, true};
     e.cols = 3;
     e.rows = 3;
     e.isPanel = true;
-    e.color = vec3(0.2f);
+    e.color = vec4(0.2f, 0.2f, 0.2f, 1.0f);
     add_ui_element(gState->uiPage, e);
+    
+//    add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.3f * gMemory->aspect, 0.35f, -1, true, 0.0005f }, 
+//        "Resolution: ", &gMemory->windowWidth, TextType::INT_32_ARR);
 }
 
 void init_game() {
@@ -1768,13 +1776,18 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
             grab_tile(xpos, ypos);
 
             if(gState->uiPage->elementHovered != -1) {
-                gState->uiPage->uiElements[gState->uiPage->elementHovered].action();
+                BUTTON_PRESS(gState->uiPage->uiElements[gState->uiPage->elementHovered]);
             } 
         }
         else if(action == 0) {
             gMemory->play_audio_fn("./audio/collect1.wav");
             clickHeld = false;
             release_tile();
+
+            if(gState->uiPage->elementHovered != -1 && gState->player.heldTile == nullptr) {
+                printf("ELEMENT HOVERED %i\n", (i32)gState->uiPage->elementHovered);
+                BUTTON_RELEASE(gState->uiPage->uiElements[gState->uiPage->elementHovered]);
+            }
         }
     }
 

@@ -71,8 +71,11 @@ ie player 1 (W)  + 12, player 2 (L) -5, player 3 (L) -7
 -challenges maybe?
 -text blitting animation (blitting may be the wrong word but text loading char by char)
 -animation adding the tiles to the rack
+--have child and parents set properly!!! that will fix all issues!!!!
+
+
 -hover 'bobble' animation for tiles
--drop shadow for buttons that goes away on press down
+-(--inprogress--) drop shadow for buttons that goes away on press down
 -counting animation after every draw button click that adds to table total
 -maybe do +tile number animation where the 'bobble' occurs for every tile on table, maybe only do per set
 

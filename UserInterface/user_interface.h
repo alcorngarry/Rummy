@@ -4,6 +4,20 @@
 
 #define MAX_ELEMENTS 100
 #define MAX_MESSAGE_SIZE 512
+#define BUTTON_PRESS(el) \
+    do { \
+        if ((el).action) { \
+            button_press((void*)&(el)); \
+        } \
+    } while(0)
+
+#define BUTTON_RELEASE(el) \
+    do { \
+        if ((el).action) { \
+            button_release((void*)&(el)); \
+            (el).action(); \
+        } \
+    } while(0)
 
 struct MessageBuffer {
     u32 maxBufferSize;
@@ -33,7 +47,7 @@ enum Anchor {
 
 struct UIElement {
 	Anchor anchor = Anchor::TOP_LEFT;
-	i16 childId = -1;
+	i32 imageChildId = -1;
 	i32 textureName;
 	f64 posx;
 	f64 posy;
@@ -59,7 +73,8 @@ struct UIElement {
 	bool canDelete = false;
   u32 meshHandle;
   u8 isPanel = false;
-  vec3 color = vec3(-1.0f);
+  vec4 color = vec4(-1.0f);
+  i32 textChildId = -1;
 };
 
 enum TextType {
@@ -90,6 +105,15 @@ struct TextElement {
 	bool canDelete = false;
 	const char* id;
 	I64ActionFuncPtr onCompleteAction;
+  i32 textChildId = -1;
+  i32 imageChildId = -1;
+};
+
+struct UIGroup {
+  i32 uiElements[MAX_ELEMENTS];
+  i32 textElements[MAX_ELEMENTS];
+  i32 uiElementCount = 0;
+  i32 textElementCount = 0;
 };
 
 struct UIPage {
@@ -100,6 +124,7 @@ struct UIPage {
 	i32 numberOfImageElements = 0;
 	i32 numberOfTextElements = 0;
 	bool mouseHoverDisabled = false;
+  UIGroup groups[MAX_ELEMENTS];
   f32 aspect;
 };
 
@@ -123,11 +148,14 @@ void free_ui_page(UIPage* page);
 void reset_animation(UIElement* element);
 void set_source(TextElement* text, const char* label, const void* ptr, TextType t, f32 mult = 1.0f);
 
-void add_ui_element(UIPage* page, UIElement element, bool actionable = false);
-void add_text_element(UIPage* page, TextElement text);
+i32 add_ui_element(UIPage* page, UIElement element, bool actionable = false);
+i32 add_text_element(UIPage* page, TextElement text);
 void add_dynamic_text_element(UIPage* page, TextElement text, const char* label, const void* ptr, TextType t, f32 mult = 1.0f);
-void add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 scale, vec3 color, ActionFuncPtr action);
-  
+
+void add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 scale, vec4 color, ActionFuncPtr action);
+void button_press(void* ptr);
+void button_release(void* ptr);
+
 TextElement* get_element_by_text(UIPage* page, const char* text);
 UIElement* get_element_by_id(UIPage* page, const char* id);
 TextElement* get_text_element_by_id(UIPage* page, const char* id);

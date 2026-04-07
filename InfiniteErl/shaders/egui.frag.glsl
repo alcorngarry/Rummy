@@ -10,7 +10,7 @@ uniform int cols;
 uniform bool isPanel;
 uniform bool flipped;
 uniform vec2 size;
-uniform vec3 color;
+uniform vec4 color;
 
 const float BORDER_SIZE = 0.5f;
 
@@ -61,7 +61,7 @@ void main()
     }
 
     if(color.x != -1.0f) {
-        FragColor = texture(Texture, uv) * vec4(color, 1.0f);
+        FragColor = texture(Texture, uv) * color;
     } else {
         FragColor = texture(Texture, uv);
     }

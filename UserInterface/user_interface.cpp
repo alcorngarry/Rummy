@@ -73,16 +73,9 @@ void check_elements_hovered(UIPage* page, f64 xpos, f64 ypos) {
             page->uiElements[i].hovered = true;
             page->elementHovered = i; 
 
-            if (page->uiElements[i].childId != -1) {
-                page->textElements[page->uiElements[i].childId].color = vec3(1.0f, 0.0f, 0.0f);
-            }
             break;
         } else {
             page->uiElements[i].hovered = false;
-
-            if (page->uiElements[i].childId != -1) {
-                page->textElements[page->uiElements[i].childId].color = vec3(1.0f);
-            }
         }
     }
 }
@@ -199,7 +192,7 @@ TextElement* get_text_element_by_parent_id(UIPage* page, i16 parentId) {
 
 UIElement* get_element_by_parent_id(UIPage* page, i16 parentId) {
     for(i32 i = 0; i < page->numberOfImageElements; ++i) {
-        if(page->uiElements[i].childId == parentId) return &page->uiElements[i];
+        if(page->uiElements[i].imageChildId == parentId) return &page->uiElements[i];
     }
 
     return nullptr;
@@ -209,7 +202,8 @@ void default_action() {
     printf("No action specified for selected element.\n");
 }
 
-void add_ui_element(UIPage* page, UIElement element, bool actionable) {
+i32 add_ui_element(UIPage* page, UIElement element, bool actionable) {
+    i32 index = page->numberOfImageElements;
     element.meshHandle = imageMeshHandle;
     page->uiElements[page->numberOfImageElements] = element;
     if (actionable) page->actionableElementCount++;
@@ -217,22 +211,48 @@ void add_ui_element(UIPage* page, UIElement element, bool actionable) {
 
     char message_buffer[100];
     OutputDebugStringA(message_buffer);
+
+    return index;
 }
 
-void add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 scale, vec3 color, ActionFuncPtr action) {
+void add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 scale, vec4 color, ActionFuncPtr action) {
+    i32 shadowId = page->numberOfImageElements + 1;
+    i32 textId = page->numberOfTextElements;
+
     UIElement button = UIElement{ Anchor::CENTER, -1, buttonHandle, pos.x, pos.y, scale.x, scale.y, true, action};
     button.color = color;
+    button.imageChildId = shadowId;
 
     add_ui_element(page, button, true);
+    button.color = vec4(0.0f, 0.0f, 0.0f, 0.5f);
+    button.posy += 0.01f;
+    button.textChildId = textId;
+    button.action = nullptr;
 
+    add_ui_element(page, button, true);
+    
     TextElement bText = TextElement{ Anchor::CENTER, "", pos.x * page->aspect, pos.y, -1, true, 0.0006f, vec3(1.0f)};
     strcpy(bText.text, text);
     add_text_element(page, bText);
 }
 
-void add_text_element(UIPage* page, TextElement text) {
+void button_press(void* ptr) {
+    UIElement* el = (UIElement*)ptr;
+    el->posy += 0.01;
+    printf("press\n");
+}
+
+void button_release(void* ptr) {
+    UIElement* el = (UIElement*)ptr;
+    el->posy -= 0.01;
+    printf("release\n");
+}
+
+i32 add_text_element(UIPage* page, TextElement text) {
+    i32 index = page->numberOfTextElements;
     page->textElements[page->numberOfTextElements] = text;
     page->numberOfTextElements++;
+    return index;
 }
 
 void add_dynamic_text_element(UIPage* page, TextElement text, const char* label, const void* ptr, TextType t, f32 mult) {
