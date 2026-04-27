@@ -18,6 +18,7 @@
             (el).action(); \
         } \
     } while(0)
+#define DEFAULT_FONT_SCALE 0.0006f
 
 struct MessageBuffer {
     u32 maxBufferSize;
@@ -45,6 +46,8 @@ enum Anchor {
 	CENTER
 };
 
+struct TextElement;
+
 struct UIElement {
 	Anchor anchor = Anchor::TOP_LEFT;
 	i32 imageChildId = -1;
@@ -63,18 +66,22 @@ struct UIElement {
 	bool loopAnimation = true;
 	f32 animTimer = 0.0f;
 	i32 currentFrame = 0;
-	UIElement* dependentElements[3];
+	UIElement* dependentElements[50];
+  i32 numberOfDependentElements = 0;
 	vec2 destination = vec2(posx, posy);
 	vec2 start = vec2(posx, posy);
 	f32 speed = 10.0f;
-	bool autoAnimate = true;
+	bool autoAnimate = false;
 	bool playOnce = false;
 	const char* id;
 	bool canDelete = false;
   u32 meshHandle;
   u8 isPanel = false;
   vec4 color = vec4(-1.0f);
-  i32 textChildId = -1;
+  TextElement* textChild = nullptr;
+
+  TextElement* dependentTextElements[50];
+  i32 numberOfDependentTextElements = 0;
 };
 
 enum TextType {
@@ -150,11 +157,14 @@ void set_source(TextElement* text, const char* label, const void* ptr, TextType 
 
 i32 add_ui_element(UIPage* page, UIElement element, bool actionable = false);
 i32 add_text_element(UIPage* page, TextElement text);
-void add_dynamic_text_element(UIPage* page, TextElement text, const char* label, const void* ptr, TextType t, f32 mult = 1.0f);
+i32 add_dynamic_text_element(UIPage* page, TextElement text, const char* label, const void* ptr, TextType t, f32 mult = 1.0f);
+void add_text_to_window(UIPage *page, i32 windowId, i32 elementId);
+void add_button_to_window(UIPage *page, i32 windowId, i32 elementId);
 
-void add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 scale, vec4 color, ActionFuncPtr action);
+i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 scale, vec4 color, ActionFuncPtr action);
 void button_press(void* ptr);
 void button_release(void* ptr);
+i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 start, vec2 destination);
 
 TextElement* get_element_by_text(UIPage* page, const char* text);
 UIElement* get_element_by_id(UIPage* page, const char* id);

@@ -17,6 +17,7 @@
 #define I32_MAX 2147483647
 #define F32_MAX 3.402823466e+38f 
 #define assert(Expression) if(!(Expression)) { *(int *)0 = 0; }
+#define RUN_SELF_ACTION(obj) (obj)->action(obj)
 
 typedef int8_t i8;
 typedef int16_t i16;
@@ -36,5 +37,6 @@ typedef glm::mat4 mat4;
 typedef glm::ivec2 ivec2;
 typedef void (*ActionFuncPtr)();
 typedef void (*I64ActionFuncPtr)(i64 val);
+typedef void (*SelfActionFuncPtr)(void* self);
 
 #endif

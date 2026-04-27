@@ -8,13 +8,19 @@ ma_sound homeMusic;
 i32 isInitialized = false;
 
 void init_audio() {
-  ma_engine_init(NULL, &engine);
+  printf("Initializing audio engine.\n");
+  ma_result result = ma_engine_init(NULL, &engine);
+  if(result != MA_SUCCESS) printf("Engine initialization failed! %d\n", result);
   isInitialized = true;
 }
 
 void play_audio(const char* fileName) {
-    if(!isInitialized) init_audio();
-    ma_engine_play_sound(&engine, fileName, NULL);
+    if(!isInitialized) {
+      printf("not initialized!\n");
+      init_audio();
+    }
+    ma_result result = ma_engine_play_sound(&engine, fileName, NULL);
+    if(result != MA_SUCCESS) printf("Playing audio failed %d\n", result);
 }
 
 void load_home_music() {

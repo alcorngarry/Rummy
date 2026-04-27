@@ -7,11 +7,10 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
-static Shader* baseShader;
 static Shader* textShader;
 static Shader* uiShader;
-static Shader* platformShader;
 static Shader* itemShader;
+static Shader* bgShader;
 
 static Character* characters[128];
 static f32 fontAscent;

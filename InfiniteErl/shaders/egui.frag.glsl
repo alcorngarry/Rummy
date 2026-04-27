@@ -12,17 +12,19 @@ uniform bool flipped;
 uniform vec2 size;
 uniform vec4 color;
 
-const float BORDER_SIZE = 0.5f;
-
 void main()
 {
     vec2 uv = TexCoords;
 
     if(isPanel)
     {
-        //(height, width)
-        float b = BORDER_SIZE * size.y;
-        float bY = BORDER_SIZE * size.x;
+        float borderPx = 64.0;
+
+        vec2 uvPerPixel = fwidth(localUV);
+        vec2 bVec = uvPerPixel * borderPx;
+
+        float b  = bVec.x;
+        float bY = bVec.y; 
 
         int colIndex = 1;
         int rowIndex = 1;

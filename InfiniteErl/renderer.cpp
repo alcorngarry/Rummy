@@ -43,8 +43,9 @@ void load_fonts() {
         printf("ERROR::FREETYPE: Could not init FreeType Library\n");
     }
     FT_Face face;
-    if (FT_New_Face(ft, "./fonts/HV.ttf", 0, &face)) {
-        printf("ERROR::FREETYPE: Failed to load font\n");
+    FT_Error e = FT_New_Face(ft, "./fonts/m6x11.ttf", 0, &face);
+    if (e) {
+        printf("ERROR::FREETYPE: Failed to load font (code: %d)\n", e);
     }
     else {
         FT_Set_Pixel_Sizes(face, 0, 48);
@@ -113,10 +114,10 @@ void load_shaders() {
         "./shaders/text.frag.glsl");
     uiShader = new Shader("./shaders/egui.vert.glsl",
         "./shaders/egui.frag.glsl");
-    platformShader = new Shader("./shaders/platform_scroll.vert.glsl",
-        "./shaders/platform_scroll.frag.glsl");
     itemShader = new Shader("./shaders/item.vert.glsl",
         "./shaders/item.frag.glsl");
+    bgShader = new Shader("./shaders/bg.vert.glsl",
+        "./shaders/bg.frag.glsl");
 }
 
 void push_ui_page(RenderBuffer* buffer, UIPage* uiPage) {
@@ -289,28 +290,41 @@ void render_buffer(RenderBuffer* buffer) {
     buffer->bufferSize = 0;
 }
 
+f32 T = 0;
+
 void draw_entity(mat4 model, mat4 view, mat4 projection, u32 vao, i32 textureId, vec4 color, i8 useSpriteSheet, i32 frameIndex, u8 tiled, vec2 tileCount) {
     glDepthMask(GL_FALSE);
     glEnable(GL_BLEND);
-    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
-    itemShader->use();
-    itemShader->setMat4("view", view);
-    itemShader->setMat4("projection", projection);
-    itemShader->setMat4("model", model);
-    itemShader->setVec4("color", color);
-    itemShader->setBool("useColorOnly", textureId == -1);
-    itemShader->setBool("useSpriteSheet", useSpriteSheet);
-    itemShader->setInt("frameIndex", frameIndex);
+    // fix this using for testing bg purposes
+    if(tiled) {
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        T += dT;
+        bgShader->use();
+        bgShader->setMat4("view", view);
+        bgShader->setMat4("projection", projection);
+        bgShader->setMat4("model", model);
+        bgShader->setFloat("time", T);
+    } else {
 
-    itemShader->setInt("cols", 7);
-    itemShader->setInt("rows", 2);
+        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+        itemShader->use();
+        itemShader->setMat4("view", view);
+        itemShader->setMat4("projection", projection);
+        itemShader->setMat4("model", model);
+        itemShader->setVec4("color", color);
+        itemShader->setBool("useColorOnly", textureId == -1);
+        itemShader->setBool("useSpriteSheet", useSpriteSheet);
+        itemShader->setInt("frameIndex", frameIndex);
 
-    itemShader->setBool("tiled", tiled);
-    itemShader->setVec2("tileCount", tileCount);
+        itemShader->setInt("cols", 7);
+        itemShader->setInt("rows", 2);
 
-    itemShader->setVec2("scrollOffset", vec2(0.0f));
+        itemShader->setBool("tiled", tiled);
+        itemShader->setVec2("tileCount", tileCount);
 
+        itemShader->setVec2("scrollOffset", vec2(0.0f));
+    }
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, textureId);
 
@@ -607,10 +621,8 @@ void unload_renderer() {
         glDeleteBuffers(1, &gMeshes[i].ebo);
     }
 
-    delete baseShader;
     delete textShader;
     delete uiShader;
-    delete platformShader;
     delete itemShader;
 
     gMeshCount = 1;

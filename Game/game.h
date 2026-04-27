@@ -5,6 +5,7 @@
 #include "platform.h"
 
 #define TOTAL_TILES 60
+
 const i32 TABLE_ROWS = 6;
 const i32 TABLE_COLUMNS = 16;
 
@@ -20,7 +21,8 @@ struct GameObject {
     i32 fps = 0;
     f32 animTimer = 0.0f;
     i32 currentFrame = 0;
-    ActionFuncPtr action = &default_action;
+    SelfActionFuncPtr action = nullptr;
+    mat4 target;
 
     void update_animation(f32 deltaTime) {
         f32 frameTime = 1.0f / f32(fps);
@@ -140,6 +142,8 @@ struct Table {
 struct PlayerData {
     i32 timesDrawn = 0;
     u64 score = 0;
+    i32 runMultipliers = 1;
+    i32 groupMultipliers = 1;
 };
 
 struct Player {
@@ -158,6 +162,8 @@ struct RoundSnapshot {
 struct GameData {
     i32 turnLimit;
     u64 minimumScore;
+    u64 dollaBills;
+    u64 rounds;
 };
 
 struct GameState {

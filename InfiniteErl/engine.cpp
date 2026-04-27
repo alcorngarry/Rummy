@@ -340,8 +340,8 @@ void load_textures() {
     load_texture(END_TURN_T, "./res/end-run.png", true, false, true);
     load_texture(RESET_BOARD_T, "./res/reset-board.png", true, false, false);
     load_texture(DISCARD_T, "./res/discard.png", true, false, false);
-    load_texture(TILE_FACE_T, "./res/tile-face.png", true, true, false);
-    load_texture(TILE_SIDES_T, "./res/tile-bg.png", true, true, false);
+    load_texture(TILE_FACE_T, "./res/tile-face64.png", true, true, false);
+    load_texture(TILE_SIDES_T, "./res/tile-bg64.png", true, true, false);
     load_texture(NUMBER_SHEET_T, "./res/number-sheet.png", true, true, true);
     load_texture(SORT_NUMBER_T, "./res/sort-number.png", true, false, true);
     load_texture(SORT_COLOR_T, "./res/sort-color.png", true, false, true);
@@ -350,4 +350,5 @@ void load_textures() {
     load_texture(BG_PATTERN_T, "./res/bg-pattern.png", true, true, true);
     load_texture(UI_BG_T, "./res/ui-bg1.png", true, false, false);
     load_texture(BUTTON_T, "./res/button.png", true, false, false);
+    load_texture(POOL_T, "./res/pool.png", true, false, false);
 }
