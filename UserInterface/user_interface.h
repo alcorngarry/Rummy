@@ -46,6 +46,24 @@ enum Anchor {
 	CENTER
 };
 
+struct Animation {
+  vec2 destination;
+	vec2 start;
+	f32 speed = 10.0f;
+	bool autoAnimate = false;
+	bool playOnce = false;
+	bool canDelete = false;
+	bool loopAnimation = true;
+};
+
+struct SheetAnimation {
+	i32 cols = 0;
+	i32 rows = 0;
+	i32 fps = 0;
+	f32 animTimer = 0.0f;
+	i32 currentFrame = 0;
+};
+
 struct TextElement;
 
 struct UIElement {
@@ -56,32 +74,21 @@ struct UIElement {
 	f64 posy;
 	f32 height;
 	f32 width;
-	bool visible = true;
+	u8 visible = true;
 	ActionFuncPtr action;
-	bool hovered = false;
-	bool isAnimated = false;
-	i32 cols = 0;
-	i32 rows = 0;
-	i32 fps = 0;
-	bool loopAnimation = true;
-	f32 animTimer = 0.0f;
-	i32 currentFrame = 0;
+	u8 hovered = false;
 	UIElement* dependentElements[50];
   i32 numberOfDependentElements = 0;
-	vec2 destination = vec2(posx, posy);
-	vec2 start = vec2(posx, posy);
-	f32 speed = 10.0f;
-	bool autoAnimate = false;
-	bool playOnce = false;
 	const char* id;
-	bool canDelete = false;
   u32 meshHandle;
   u8 isPanel = false;
   vec4 color = vec4(-1.0f);
   TextElement* textChild = nullptr;
-
   TextElement* dependentTextElements[50];
   i32 numberOfDependentTextElements = 0;
+  SheetAnimation sheetAnimation;
+  Animation animations[8];
+  u8 numberOfAnimations = 0;
 };
 
 enum TextType {
@@ -106,14 +113,12 @@ struct TextElement {
 	TextType type = TextType::NONE;
 	const char* prefix = "";
 	f32 multiplier = 1.0f;
-	vec2 destination = vec2(posx, posy);
-	vec2 start = vec2(posx, posy);
-	f32 speed = 10.0f;
-	bool canDelete = false;
 	const char* id;
 	I64ActionFuncPtr onCompleteAction;
   i32 textChildId = -1;
   i32 imageChildId = -1;
+  Animation animations[8];
+  u8 numberOfAnimations = 0;
 };
 
 struct UIGroup {

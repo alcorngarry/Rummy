@@ -18,7 +18,7 @@ void main()
 
     if(isPanel)
     {
-        float borderPx = 64.0;
+        float borderPx = 32.0;
 
         vec2 uvPerPixel = fwidth(localUV);
         vec2 bVec = uvPerPixel * borderPx;

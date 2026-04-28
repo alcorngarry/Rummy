@@ -65,7 +65,7 @@ inline bool ui_point_inside(const UIElement& e, f64 x, f64 y) {
 
 void check_elements_hovered(UIPage* page, f64 xpos, f64 ypos) {
     page->elementHovered = -1;
-    for (int i = 0; i < page->numberOfImageElements; i++) {
+    for (i32 i = 0; i < page->numberOfImageElements; ++i) {
         if(!page->uiElements[i].action) continue;
 
         //ANCHOR EFFECTS THIS LETS ASSUME ANCHOR IS CENTER
@@ -81,54 +81,64 @@ void check_elements_hovered(UIPage* page, f64 xpos, f64 ypos) {
 }
 
 void move_element(UIElement *element, f32 deltaTime) {
-    vec2 dist = (element->destination - element->start) * element->speed * deltaTime;
-    element->start += dist;
-    element->posx = element->start.x;
-    element->posy = element->start.y;
+    for(i32 i = 0; i < element->numberOfAnimations; ++i) {
+        if (element->animations[i].destination != element->animations[i].start) {
+            vec2 dist = (element->animations[i].destination - element->animations[i].start) * element->animations[i].speed * deltaTime;
+            element->animations[i].start += dist;
+            element->posx = element->animations[i].start.x;
+            element->posy = element->animations[i].start.y;
 
-    if (glm::distance(element->destination, element->start) < 0.01f) {
-        element->posx = element->destination.x;
-        element->posy = element->destination.y;
-        element->destination = element->start;
+            if (glm::distance(element->animations[i].destination, element->animations[i].start) < 0.01f) {
+                element->posx = element->animations[i].destination.x;
+                element->posy = element->animations[i].destination.y;
+                element->animations[i].destination = element->animations[i].start;
+            }
+        }
     }
 }
 
 void move_text_element(TextElement *element, f32 deltaTime) {
-    vec2 dist = (element->destination - element->start) * element->speed * deltaTime;
-    element->start += dist;
-    element->posx = element->start.x;
-    element->posy = element->start.y;
+    for(i32 i = 0; i < element->numberOfAnimations; ++i) {
+        if (element->animations[i].destination != element->animations[i].start) {
+            vec2 dist = (element->animations[i].destination - element->animations[i].start) * element->animations[i].speed * deltaTime;
+            element->animations[i].start += dist;
+            element->posx = element->animations[i].start.x;
+            element->posy = element->animations[i].start.y;
 
-    if (glm::distance(element->destination, element->start) < 0.01f) {
-        element->posx = element->destination.x;
-        element->posy = element->destination.y;
-        element->destination = element->start;
+            if (glm::distance(element->animations[i].destination, element->animations[i].start) < 0.01f) {
+                element->posx = element->animations[i].destination.x;
+                element->posy = element->animations[i].destination.y;
+                element->animations[i].destination = element->animations[i].start;
+            }
+        }
     }
 }
 
 void update_animation(UIElement* element, f32 deltaTime) {
-    if (element->autoAnimate && element->isAnimated) {
-        if (!element->loopAnimation && element->currentFrame == (element->fps - 1)) {
-            for (i32 i = 0; i < 3; i++) {
-                if (element->dependentElements[i] && !element->dependentElements[i]->visible) {
-                    element->dependentElements[i]->currentFrame = 0;
-                    element->dependentElements[i]->visible = true;
-                    element->dependentElements[i] = nullptr;
-                }
-            }
-            if (element->playOnce) element->visible = false;
-            return;
-        }
+    //sheet animation
+    //if (element->numberOfAnimations > 0) {
+    //    if (!element->loopAnimation && element->sheetAnimation.currentFrame == (element->fps - 1)) {
+    //        for (i32 i = 0; i < 3; i++) {
+    //            if (element->dependentElements[i] && !element->dependentElements[i]->visible) {
+    //                element->dependentElements[i]->sheetAnimation.currentFrame = 0;
+    //                element->dependentElements[i]->visible = true;
+    //                element->dependentElements[i] = nullptr;
+    //            }
+    //        }
+    //        if (element->playOnce) element->visible = false;
+    //        return;
+    //    }
 
-        f32 frameTime = 1.0f / f32(element->fps);
-        element->animTimer += deltaTime;
-        while (element->animTimer >= frameTime) {
-            element->animTimer -= frameTime;
-            element->currentFrame = (element->currentFrame + 1) % element->fps;
-        }
-    }
+    //    f32 frameTime = 1.0f / f32(element->fps);
+    //    element->animTimer += deltaTime;
+    //    while (element->animTimer >= frameTime) {
+    //        element->animTimer -= frameTime;
+    //        element->sheetAnimation.currentFrame = (element->currentFrame + 1) % element->fps;
+    //    }
+    //}
 
-    if (element->autoAnimate && element->destination != element->start) {
+    //default animations
+    if(element->animations[0].autoAnimate) {
         move_element(element, deltaTime);
         for(i32 i = 0; i < element->numberOfDependentTextElements; ++i) {
           if(element->dependentTextElements[i]) {
@@ -148,7 +158,7 @@ void update(UIElement* element, f32 deltaTime) {
 }
 
 void reset_animation(UIElement* element) {
-    element->currentFrame = 0;
+    element->sheetAnimation.currentFrame = 0;
 }
 
 void update(TextElement* text, f32 deltaTime) {
@@ -158,20 +168,20 @@ void update(TextElement* text, f32 deltaTime) {
         case TextType::INT_32: {
             i32 val = *reinterpret_cast<const int*>(text->valuePtr);
 
-            if (text->destination != text->start) {
-                vec2 dist = (text->destination - text->start) * text->speed * deltaTime;
-                text->start += dist;
-                text->posx = text->start.x;
-                text->posy = text->start.y;
+            if (text->animations[0].destination != text->animations[0].start) {
+                vec2 dist = (text->animations[0].destination - text->animations[0].start) * text->animations[0].speed * deltaTime;
+                text->animations[0].start += dist;
+                text->posx = text->animations[0].start.x;
+                text->posy = text->animations[0].start.y;
 
-                if (glm::distance(text->destination, text->start) < 0.05f) {
-                    text->destination = text->start;
+                if (glm::distance(text->animations[0].destination, text->animations[0].start) < 0.05f) {
+                    text->animations[0].destination = text->animations[0].start;
                     if(text->onCompleteAction) {
                         text->onCompleteAction((i64)val);
                         text->onCompleteAction = nullptr;
                     }
                     text->visible = false;
-                    text->canDelete = true;
+                    //text->canDelete = true;
                 }
             }
 
@@ -247,16 +257,19 @@ i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 
     UIElement button = UIElement{ Anchor::CENTER, -1, buttonHandle, pos.x, pos.y, scale.x, scale.y, true, action};
     button.color = color;
     button.imageChildId = shadowId;
-    button.destination = vec2(button.posx, button.posy + 0.01f);
+
+    Animation buttonClick = Animation{vec2(button.posx, button.posy + 0.01f), pos};
+    button.animations[button.numberOfAnimations++] = buttonClick;
 
     add_ui_element(page, button, true);
+
     button.color = vec4(0.0f, 0.0f, 0.0f, 0.5f);
     button.posy += 0.01f;
     button.width *= 0.95f;
     button.height *= 0.95f;
     button.action = nullptr;
-
-    add_ui_element(page, button, true);
+    button.animations[0] = {};
+    add_ui_element(page, button, false);
     
     TextElement bText = TextElement{ Anchor::CENTER, "", pos.x * page->aspect, pos.y, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
     strcpy(bText.text, text);
@@ -268,8 +281,8 @@ i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 
 }
 
 void add_shadow(UIPage *page, UIElement element) {
-    element.start = vec2(element.start.x - 0.005f, element.start.y + 0.01f);
-    element.destination = vec2(element.destination.x - 0.005f, element.destination.y + 0.01f);
+    element.animations[0].start = vec2(element.animations[0].start.x - 0.005f, element.animations[0].start.y + 0.01f);
+    element.animations[0].destination = vec2(element.animations[0].destination.x - 0.005f, element.animations[0].destination.y + 0.01f);
 
     element.color = vec4(0.0f, 0.0f, 0.0f, 0.5f);
     add_ui_element(page, element);
@@ -277,69 +290,78 @@ void add_shadow(UIPage *page, UIElement element) {
 
 i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 start, vec2 destination) {
     UIElement e = UIElement{ anchor, -1, windowHandle, start.x, start.y, scale.x, scale.y, true};
-    e.cols = 3;
-    e.rows = 3;
+
+    SheetAnimation panelSheet = SheetAnimation{3, 3};
+    e.sheetAnimation = panelSheet;
+
     e.isPanel = true;
     e.color = vec4(0.2f, 0.2f, 0.2f, 1.0f);
     e.hovered = true;
-    e.isAnimated = false;
-    e.start = start;
-    e.destination = destination;
-    e.autoAnimate = true;
+
+    Animation moveWindow = Animation{destination, start};
+    moveWindow.autoAnimate = true;
+    e.animations[e.numberOfAnimations++] = moveWindow; 
+
     i32 index = add_ui_element(page, e);
     add_shadow(page, e);
     return index;
 }
 
 void add_text_to_window(UIPage *page, i32 windowId, i32 elementId) {
-    vec2 motionDifference = page->uiElements[windowId].start - page->uiElements[windowId].destination;
-    
-    page->textElements[elementId].start = vec2(page->textElements[elementId].posx + motionDifference.x, page->textElements[elementId].posy + motionDifference.y);
-    page->textElements[elementId].destination = vec2(page->textElements[elementId].posx, page->textElements[elementId].posy);
+    UIElement *window = &page->uiElements[windowId];
+    TextElement *text = &page->textElements[elementId];
 
-    page->uiElements[windowId].dependentTextElements[page->uiElements[windowId].numberOfDependentTextElements] = 
-      &page->textElements[elementId];
-    page->uiElements[windowId].numberOfDependentTextElements++;
+    vec2 motionDifference = window->animations[window->numberOfAnimations - 1].start - window->animations[window->numberOfAnimations - 1].destination;
+    
+    text->animations[text->numberOfAnimations].start = vec2(text->posx + motionDifference.x, text->posy + motionDifference.y);
+    text->animations[text->numberOfAnimations].destination = vec2(text->posx, text->posy);
+    text->numberOfAnimations++;
+
+    window->dependentTextElements[page->uiElements[windowId].numberOfDependentTextElements] = text;
+    window->numberOfDependentTextElements++;
 }
 
 void add_button_to_window(UIPage *page, i32 windowId, i32 elementId) {
-    vec2 motionDifference = page->uiElements[windowId].start - page->uiElements[windowId].destination;
-    
-    page->uiElements[elementId].start = vec2(page->uiElements[elementId].posx + motionDifference.x, page->uiElements[elementId].posy + motionDifference.y);
-    page->uiElements[elementId].destination = vec2(page->uiElements[elementId].posx, page->uiElements[elementId].posy);
+    UIElement *window = &page->uiElements[windowId];
+    UIElement *button = &page->uiElements[elementId];
+    UIElement *shadow = &page->uiElements[elementId + 1];
 
-    page->uiElements[windowId].dependentElements[page->uiElements[windowId].numberOfDependentElements] = 
-      &page->uiElements[elementId];
-    page->uiElements[windowId].numberOfDependentElements++;
+    vec2 motionDifference = window->animations[window->numberOfAnimations - 1].start - window->animations[window->numberOfAnimations - 1].destination;
+    button->animations[button->numberOfAnimations].start = vec2(button->posx + motionDifference.x, button->posy + motionDifference.y);
+    button->animations[button->numberOfAnimations].destination = vec2(button->posx, button->posy);
+    button->numberOfAnimations++;
+
+    window->dependentElements[window->numberOfDependentElements] = button;
+    window->numberOfDependentElements++;
 
     //shadow
-    page->uiElements[elementId + 1].start = vec2(page->uiElements[elementId + 1].posx + motionDifference.x, page->uiElements[elementId + 1].posy + motionDifference.y);
-    page->uiElements[elementId + 1].destination = vec2(page->uiElements[elementId + 1].posx, page->uiElements[elementId + 1].posy);
+    shadow->animations[shadow->numberOfAnimations].start = vec2(shadow->posx + motionDifference.x, shadow->posy + motionDifference.y);
+    shadow->animations[shadow->numberOfAnimations++].destination = vec2(shadow->posx, shadow->posy);
+    shadow->numberOfAnimations++;
 
-    page->uiElements[windowId].dependentElements[page->uiElements[windowId].numberOfDependentElements] = 
-      &page->uiElements[elementId + 1];
+    page->uiElements[windowId].dependentElements[page->uiElements[windowId].numberOfDependentElements] = shadow;
     page->uiElements[windowId].numberOfDependentElements++;
 
     //text
-    TextElement* text = page->uiElements[elementId].textChild;
-    text->start = vec2(text->posx + motionDifference.x, text->posy + motionDifference.y);
-    text->destination = vec2(text->posx, text->posy);
+    TextElement* text = button->textChild;
+    text->animations[text->numberOfAnimations].start = vec2(text->posx + motionDifference.x, text->posy + motionDifference.y);
+    text->animations[text->numberOfAnimations++].destination = vec2(text->posx, text->posy);
+    text->numberOfAnimations++;
 
-    page->uiElements[windowId].dependentTextElements[page->uiElements[windowId].numberOfDependentTextElements] = 
-      text;
+    page->uiElements[windowId].dependentTextElements[window->numberOfDependentTextElements] = text;
     page->uiElements[windowId].numberOfDependentTextElements++;
 }
 
 void button_press(void* ptr) {
     UIElement* el = (UIElement*)ptr;
-    vec2 destination = el->destination;
+    vec2 destination = el->animations[0].destination;
     el->posy = destination.y;
     el->textChild->posy = destination.y;
 }
 
 void button_release(void* ptr) {
     UIElement* el = (UIElement*)ptr;
-    vec2 start = el->start;
+    vec2 start = el->animations[0].start;
     el->posy = start.y;
     el->textChild->posy = start.y;
 }
@@ -458,28 +480,28 @@ void draw_messages(f32 deltaTime) {
 void update(UIPage* page, f32 deltaTime) {
     for (i32 i = 0; i < page->numberOfImageElements; i++) {
         if (page->uiElements[i].hovered) update(&page->uiElements[i], deltaTime);
-        if (page->uiElements[i].canDelete) {
-            clear_image_elements(page->uiElements[i]);
+        //if (page->uiElements[i].canDelete) {
+        //    clear_image_elements(page->uiElements[i]);
 
-            for (i32 j = i; j < page->numberOfImageElements - 1; j++) {
-                page->uiElements[j] = page->uiElements[j + 1];
-            }
-            page->numberOfImageElements--;
-            i--;
-        }
+        //    for (i32 j = i; j < page->numberOfImageElements - 1; j++) {
+        //        page->uiElements[j] = page->uiElements[j + 1];
+        //    }
+        //    page->numberOfImageElements--;
+        //    i--;
+        //}
     }
 
     for (i32 i = 0; i < page->numberOfTextElements; i++) {
         update(&page->textElements[i], deltaTime);
-        if (page->textElements[i].canDelete) {
-            clear_text_elements(page->textElements[i]);
+        //if (page->textElements[i].canDelete) {
+        //    clear_text_elements(page->textElements[i]);
 
-            for (i32 j = i; j < page->numberOfTextElements - 1; j++) {
-                page->textElements[j] = page->textElements[j + 1];
-            }
-            page->numberOfTextElements--;
-            i--;
-        }
+        //    for (i32 j = i; j < page->numberOfTextElements - 1; j++) {
+        //        page->textElements[j] = page->textElements[j + 1];
+        //    }
+        //    page->numberOfTextElements--;
+        //    i--;
+        //}
     }
 
     draw_messages(deltaTime);

@@ -1534,8 +1534,10 @@ u8 is_table_valid() {
 
 void add_in_game_ui() {
     UIElement a = UIElement{ Anchor::CENTER, 99, UI_BG_T, 0, 0, 0.075f, 0.1f};
-    a.cols = 3;
-    a.rows = 3;
+
+    SheetAnimation panelSheet = SheetAnimation {3, 3};
+    a.sheetAnimation = panelSheet;
+
     a.isPanel = true;
     a.color = vec4(1.0f);
     a.visible = false;
@@ -1556,7 +1558,7 @@ void add_in_game_ui() {
     add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.16f, 0.03f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}, 
         "Score: ", &gState->player.playerData.score, TextType::UINT_64));
 
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.1f, 0.07f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}, 
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.16f, 0.07f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}, 
         "Draws remaining: ", &gState->gameData.turnLimit, TextType::INT_32));
 
     add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.4f, 0.07f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}, 
@@ -1578,32 +1580,32 @@ void add_in_game_ui() {
 }
 
 void add_end_game_ui() {
-    add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.4f, 0.7f), vec2(0.1f), vec4(0.6f, 0.6f, 0.6f, 6.0f), &init_game);
-    add_button(gState->uiPage, BUTTON_T, "Main Menu", vec2(0.6f, 0.7f), vec2(0.1f), vec4(0.6f, 0.6f, 0.6f, 6.0f), &init_game);
-
-    UIElement e = UIElement{ Anchor::CENTER, -1, UI_BG_T, 0.5f, 0.5f, 0.75f, 0.5f, true};
-    e.cols = 3;
-    e.rows = 3;
-    e.isPanel = true;
-    e.color = vec4(0.2f, 0.2f, 0.2f, 1.0f);
-    add_ui_element(gState->uiPage, e);
-
-    UIElement blur = UIElement{ Anchor::CENTER, -1, TILE_SLOT_T, 0.5f, 0.5f, 1.0f, 1.0f * gMemory->aspect, true};
-    blur.color = vec4(0.1f);
-    add_ui_element(gState->uiPage, blur);
-
-    add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.62f * gMemory->aspect, 0.03f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f, 1.0f, 0.0f)}, 
-        "$", &gState->gameData.dollaBills, TextType::UINT_64);
-
-    add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * gMemory->aspect, 0.33f, -1, true, DEFAULT_FONT_SCALE }, 
-        "COMPLETED ROUND WITH SCORE: ", &gState->player.playerData.score, TextType::UINT_64);
-
-    for(i32 i = 0; i < gState->table.numberOfSets; i++) {
-        numTableTiles += gState->table.sets[i].numberOfTiles;
-    }
-
-    add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * gMemory->aspect, 0.36f, -1, true, DEFAULT_FONT_SCALE }, 
-        "TILES USED: ", &numTableTiles, TextType::UINT_64);
+//    add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.4f, 0.7f), vec2(0.1f), vec4(0.6f, 0.6f, 0.6f, 6.0f), &init_game);
+//    add_button(gState->uiPage, BUTTON_T, "Main Menu", vec2(0.6f, 0.7f), vec2(0.1f), vec4(0.6f, 0.6f, 0.6f, 6.0f), &init_game);
+//
+//    UIElement e = UIElement{ Anchor::CENTER, -1, UI_BG_T, 0.5f, 0.5f, 0.75f, 0.5f, true};
+//    e.cols = 3;
+//    e.rows = 3;
+//    e.isPanel = true;
+//    e.color = vec4(0.2f, 0.2f, 0.2f, 1.0f);
+//    add_ui_element(gState->uiPage, e);
+//
+//    UIElement blur = UIElement{ Anchor::CENTER, -1, TILE_SLOT_T, 0.5f, 0.5f, 1.0f, 1.0f * gMemory->aspect, true};
+//    blur.color = vec4(0.1f);
+//    add_ui_element(gState->uiPage, blur);
+//
+//    add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.62f * gMemory->aspect, 0.03f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f, 1.0f, 0.0f)}, 
+//        "$", &gState->gameData.dollaBills, TextType::UINT_64);
+//
+//    add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * gMemory->aspect, 0.33f, -1, true, DEFAULT_FONT_SCALE }, 
+//        "COMPLETED ROUND WITH SCORE: ", &gState->player.playerData.score, TextType::UINT_64);
+//
+//    for(i32 i = 0; i < gState->table.numberOfSets; i++) {
+//        numTableTiles += gState->table.sets[i].numberOfTiles;
+//    }
+//
+//    add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * gMemory->aspect, 0.36f, -1, true, DEFAULT_FONT_SCALE }, 
+//        "TILES USED: ", &numTableTiles, TextType::UINT_64);
 }
 
 void add_group_multiplier() {
@@ -1647,8 +1649,8 @@ void add_main_menu_ui() {
     add_button(gState->uiPage, BUTTON_T, "Quit", vec2(0.9f, 0.9f), vec2(0.1f), vec4(1.0f, 0.0f, 0.0f, 1.0f), &quit);
 
     UIElement e = UIElement{ Anchor::CENTER, -1, UI_BG_T, 0.5f, 0.9f, 0.15f, 0.5f, true};
-    e.cols = 3;
-    e.rows = 3;
+    SheetAnimation panelSheet = SheetAnimation{3,3};
+    e.sheetAnimation = panelSheet;
     e.isPanel = true;
     e.color = vec4(0.2f, 0.2f, 0.2f, 1.0f);
     add_ui_element(gState->uiPage, e);
@@ -1669,8 +1671,8 @@ void add_options_ui() {
     add_button(gState->uiPage, BUTTON_T, "Audio", vec2(0.65f, 0.1f), vec2(0.1f), vec4(1.0f, 0.0f, 0.0f, 1.0f), &init_game);
 
     UIElement e = UIElement{ Anchor::CENTER, -1, UI_BG_T, 0.5f, 0.5f, 1.0f, 0.5f, true};
-    e.cols = 3;
-    e.rows = 3;
+    SheetAnimation panelSheet = SheetAnimation{3,3};
+    e.sheetAnimation = panelSheet;
     e.isPanel = true;
     e.color = vec4(0.2f, 0.2f, 0.2f, 1.0f);
     add_ui_element(gState->uiPage, e);
@@ -1679,7 +1681,6 @@ void add_options_ui() {
 void init_game() {
     create_tiles();
     init_pool();
-    init_player();
     init_player_rack();
     init_table();
     snapshot_round_start();
@@ -1703,6 +1704,7 @@ void complete_round() {
     clear_game_ui();
     //add_end_game_ui();
     add_shop_ui();
+    gState->gameData.turnLimit = 20; 
     gState->gameData.dollaBills += gState->gameData.rounds * 2;
     gState->gameData.rounds++;
     gState->gameData.minimumScore *= gState->gameData.rounds;
@@ -1842,6 +1844,8 @@ extern "C" GAME_DLL void game_init(GameMemory* memory, i32 preserveState) {
 
     if(!preserveState) {
         //init_game();
+
+        init_player();
         gState->mode = GM_START_MENU;
         add_main_menu_ui();
     } else {
