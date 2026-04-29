@@ -307,13 +307,14 @@ void init_pool() {
 }
 
 void init_rack_space() {
-    mat4 startPos = glm::translate(mat4(1.0f), vec3(0.5f + (defaultTileScale.x * 0.5f), 1.0f - (defaultTileScale.y * 2.0f), 0.0f));
+    mat4 startPos = glm::translate(mat4(1.0f), 
+        vec3(0.5f + (defaultTileScale.x * 0.5f), 1.0f - (defaultTileScale.y * 2.0f), 0.0f));
     
-    for(i32 i = 0; i < RACK_SPACES; i++) {
+    for(i32 i = 0; i < RACK_SPACES; ++i) {
         f32 row = i > 9 ? TABLE_SCALE : 0.0f;
         
         mat4 space = glm::scale(startPos, defaultTileScale);
-        rackSpaces[i] = glm::translate(space, vec3(i % (RACK_SPACES / 2), row, 0));
+        rackSpaces[i] = glm::translate(space, vec3((i % (RACK_SPACES / 2)), row, 0));
     }
 
     mat4 model = glm::scale(rackSpaces[10], vec3((f32)RACK_SPACES * 2.0f, 1.0f, 1.0f));
@@ -494,7 +495,7 @@ void create_tile_render_entry(Tile* tile, vec4 color, u8 isShadow = false) {
 
 void draw_pool() {
     RenderEntryEntity sides = RenderEntryEntity {
-        gState->pool.object.model,
+      glm::scale(gState->pool.object.model, vec3(2.0f, 2.0f, 1.0f)),
         gState->quadMesh,
         POOL_T,
         vec4(1.0f)
@@ -528,7 +529,7 @@ void draw_player_rack() {
             glm::scale(rackSpaces[row], vec3(1.0f, TABLE_SCALE, 0.0f)),
             gState->quadMesh,
             TILE_SLOT_T,
-            vec4(vec3(0.2f), 1.0f)
+            vec4(1.0f)
         };
 
         gMemory->push_entity_fn(gMemory->renderBuffer, &X);
@@ -551,7 +552,9 @@ void draw_background() {
         gState->table.object.model,
         gState->quadMesh,
         gState->table.object.textureName,
-        vec4(0.0f, 0.667f, 0.333f, 1.0f),
+//        vec4(0.0f, 0.667f, 0.333f, 1.0f),
+//        vec4(0.863, 0.667, 0.471, 1.0f),
+          vec4(0.353, 0.549, 0.353, 1.0f)
     };
 
     gMemory->push_entity_fn(gMemory->renderBuffer, &table1);
@@ -586,7 +589,7 @@ void draw_table() {
               if(gState->table.tableSpaces[row][col].isHovered) {
                 color = vec3(0.0f, 0.0f, 1.0f);
               } else {
-                color = vec3(0.2f);
+                color = vec3(1.0f);
               }
             }
 
@@ -644,7 +647,7 @@ void draw_table() {
 void draw_held_tile() {
     Tile *tile = gState->player.heldTile;
     if(!tile) return;        
-    vec4 color = vec4(1.0f);
+    vec4 color = vec4(0.0f, 0.0f, 0.0f, 1.0f);
 
     // need to allow alpha for shadows.. i.e vec4
     Tile shadow = *tile;
@@ -1547,17 +1550,19 @@ void add_in_game_ui() {
     text.visible = false;
     add_dynamic_text_element(gState->uiPage, text, "+", "ee", TextType::UINT_64); 
 
-    add_button(gState->uiPage, BUTTON_T, "DRAW", vec2(0.949f, 0.06f), vec2(0.1f), vec4(0.6f, 0.6f, 0.6f, 6.0f), &end_turn);
-    add_button(gState->uiPage, BUTTON_T, "RESET", vec2(0.845f, 0.06f), vec2(0.1f), vec4(0.6f, 0.6f, 0.6f, 6.0f), &reset_board);
+    add_button(gState->uiPage, BUTTON_T, "DRAW", vec2(0.88f, 0.06f), vec2(0.1f), vec4(0.588, 0.706, 0.839, 1.0f), &end_turn);
+    add_button(gState->uiPage, BUTTON_T, "RESET", vec2(0.77f, 0.06f), vec2(0.1f), vec4(0.95, 0.388, 0.388, 1.0f), &reset_board);
 
-    add_button(gState->uiPage, BUTTON_T, "C", vec2(0.975f, 0.835f), vec2(0.09f, 0.05f), vec4(0.6f, 0.6f, 0.6f, 1.0f), &sort_rack_by_color);
-    add_button(gState->uiPage, BUTTON_T, "#", vec2(0.925f, 0.835f), vec2(0.09f, 0.05f), vec4(0.6f, 0.6f, 0.6f, 1.0f), &sort_rack_by_number);
+    add_button(gState->uiPage, BUTTON_T, "C", vec2(0.9f, 0.835f), vec2(0.09f, 0.06f), vec4(0.845, 0.547, 0.939, 1.0f), &sort_rack_by_color);
+    add_button(gState->uiPage, BUTTON_T, "#", vec2(0.9f, 0.935f), vec2(0.09f, 0.06f), vec4(0.527, 0.984, 0.667, 1.0f), &sort_rack_by_number);
 
     i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::TOP_LEFT, vec2(0.104f, 0.6f), vec2(-1.0f, 0.01f), vec2(0.075f, 0.01f)); 
 
     add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.16f, 0.03f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}, 
         "Score: ", &gState->player.playerData.score, TextType::UINT_64));
 
+    // why is this weird??
+    printf("Turn limit %i\n", gState->gameData.turnLimit);
     add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.16f, 0.07f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}, 
         "Draws remaining: ", &gState->gameData.turnLimit, TextType::INT_32));
 
@@ -1571,6 +1576,9 @@ void add_in_game_ui() {
         "$", &gState->gameData.dollaBills, TextType::UINT_64));
 
     add_window(gState->uiPage, UI_BG_T, Anchor::TOP_LEFT, vec2(0.2, 0.2f), vec2(0.075f, 2.0f), vec2(0.075f, 0.78f)); 
+
+    add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.8f * gMemory->aspect, 0.98f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}, "", &(i32)gState->pool.numberOfTiles, TextType::INT_32);
+
 
 
     //add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.63f, 0.03f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}, 
@@ -1637,7 +1645,7 @@ void add_shop_ui() {
     add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * gMemory->aspect, 0.36f, -1, true, DEFAULT_FONT_SCALE }, 
         "TILES USED: ", &numTableTiles, TextType::UINT_64));
 
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * gMemory->aspect, 0.53f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f, 1.0f, 0.0f)}, 
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * gMemory->aspect, 0.25f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f, 1.0f, 0.0f)}, 
         "$", &gState->gameData.dollaBills, TextType::UINT_64));
 }
 
@@ -1690,7 +1698,6 @@ void init_game() {
     clear_game_ui();
     add_in_game_ui();
 }
-
 
 void clear_game_ui() {
     ui_reset(&gMemory->uiMem);

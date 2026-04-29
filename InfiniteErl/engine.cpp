@@ -350,5 +350,5 @@ void load_textures() {
     load_texture(BG_PATTERN_T, "./res/bg-pattern.png", true, true, true);
     load_texture(UI_BG_T, "./res/ui-bg1.png", true, false, false);
     load_texture(BUTTON_T, "./res/button.png", true, false, false);
-    load_texture(POOL_T, "./res/pool.png", true, false, false);
+    load_texture(POOL_T, "./res/pool.png", true, true, false);
 }

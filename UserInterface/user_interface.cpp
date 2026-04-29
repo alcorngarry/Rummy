@@ -167,24 +167,6 @@ void update(TextElement* text, f32 deltaTime) {
     switch (text->type) {
         case TextType::INT_32: {
             i32 val = *reinterpret_cast<const int*>(text->valuePtr);
-
-            if (text->animations[0].destination != text->animations[0].start) {
-                vec2 dist = (text->animations[0].destination - text->animations[0].start) * text->animations[0].speed * deltaTime;
-                text->animations[0].start += dist;
-                text->posx = text->animations[0].start.x;
-                text->posy = text->animations[0].start.y;
-
-                if (glm::distance(text->animations[0].destination, text->animations[0].start) < 0.05f) {
-                    text->animations[0].destination = text->animations[0].start;
-                    if(text->onCompleteAction) {
-                        text->onCompleteAction((i64)val);
-                        text->onCompleteAction = nullptr;
-                    }
-                    text->visible = false;
-                    //text->canDelete = true;
-                }
-            }
-
             snprintf(text->text, sizeof(text->text), "%s%d", text->prefix, val);
             break;
         }
