@@ -29,11 +29,13 @@ void sort_rack_by_number();
 void sort_rack_by_color();
 void end_turn();
 void init_game();
+void init_main_menu();
 void quit();
 u8 is_table_valid();
 void add_options_ui();
 void update_set_ui(Set* set);
 Set* get_hovered_set();
+void clear_player_data();
 
 // validations.cpp
 i32 get_joker_array(Set *set, Tile** jokerArray);
@@ -1558,6 +1560,9 @@ void add_in_game_ui() {
     add_button(gState->uiPage, BUTTON_T, "C", vec2(0.9f, 0.835f), vec2(0.09f, 0.06f), vec4(0.845, 0.547, 0.939, 1.0f), &sort_rack_by_color);
     add_button(gState->uiPage, BUTTON_T, "#", vec2(0.9f, 0.935f), vec2(0.09f, 0.06f), vec4(0.527, 0.984, 0.667, 1.0f), &sort_rack_by_number);
 
+    // change the button image for this!
+    add_button(gState->uiPage, BUTTON_T, "X", vec2(0.035f, 0.95f), vec2(0.07f, 0.04f), vec4(0.3, 0.3, 0.3, 1.0f), &init_main_menu);
+
     i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::TOP_LEFT, vec2(0.104f, 0.6f), vec2(-1.0f, 0.01f), vec2(0.075f, 0.01f)); 
 
     add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.16f, 0.03f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}, 
@@ -1592,32 +1597,23 @@ void add_in_game_ui() {
 }
 
 void add_end_game_ui() {
-//    add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.4f, 0.7f), vec2(0.1f), vec4(0.6f, 0.6f, 0.6f, 6.0f), &init_game);
-//    add_button(gState->uiPage, BUTTON_T, "Main Menu", vec2(0.6f, 0.7f), vec2(0.1f), vec4(0.6f, 0.6f, 0.6f, 6.0f), &init_game);
-//
-//    UIElement e = UIElement{ Anchor::CENTER, -1, UI_BG_T, 0.5f, 0.5f, 0.75f, 0.5f, true};
-//    e.cols = 3;
-//    e.rows = 3;
-//    e.isPanel = true;
-//    e.color = vec4(0.2f, 0.2f, 0.2f, 1.0f);
-//    add_ui_element(gState->uiPage, e);
-//
-//    UIElement blur = UIElement{ Anchor::CENTER, -1, TILE_SLOT_T, 0.5f, 0.5f, 1.0f, 1.0f * gMemory->aspect, true};
-//    blur.color = vec4(0.1f);
-//    add_ui_element(gState->uiPage, blur);
-//
-//    add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.62f * gMemory->aspect, 0.03f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f, 1.0f, 0.0f)}, 
-//        "$", &gState->gameData.dollaBills, TextType::UINT_64);
-//
-//    add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * gMemory->aspect, 0.33f, -1, true, DEFAULT_FONT_SCALE }, 
-//        "COMPLETED ROUND WITH SCORE: ", &gState->player.playerData.score, TextType::UINT_64);
-//
-//    for(i32 i = 0; i < gState->table.numberOfSets; i++) {
-//        numTableTiles += gState->table.sets[i].numberOfTiles;
-//    }
-//
-//    add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * gMemory->aspect, 0.36f, -1, true, DEFAULT_FONT_SCALE }, 
-//        "TILES USED: ", &numTableTiles, TextType::UINT_64);
+    i32 newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.4f, 0.75f), vec2(0.1f), vec4(0.6f, 0.6f, 0.6f, 6.0f), &init_game);
+    i32 mainMenu = add_button(gState->uiPage, BUTTON_T, "Main menu", vec2(0.4f, 0.51f), vec2(0.1f), vec4(0.6f, 0.6f, 0.6f, 6.0f), &init_main_menu);
+
+    i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::CENTER, vec2(0.75f, 0.5f), vec2(0.5f, 2.0f), vec2(0.5f, 0.5f)); 
+
+    add_button_to_window(gState->uiPage, windowIndex, newGame);
+    add_button_to_window(gState->uiPage, windowIndex, mainMenu);
+
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * gMemory->aspect, 0.33f, -1, true, DEFAULT_FONT_SCALE }, 
+        "COMPLETED ROUND WITH SCORE: ", &gState->player.playerData.score, TextType::UINT_64));
+
+    for(i32 i = 0; i < gState->table.numberOfSets; i++) {
+        numTableTiles += gState->table.sets[i].numberOfTiles;
+    }
+
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * gMemory->aspect, 0.36f, -1, true, DEFAULT_FONT_SCALE }, 
+        "TILES USED: ", &numTableTiles, TextType::UINT_64));
 }
 
 void add_group_multiplier() {
@@ -1704,9 +1700,16 @@ void init_game() {
     snapshot_round_start();
 
     gState->mode = GM_PLAYING;
-    
     clear_game_ui();
     add_in_game_ui();
+}
+
+void init_main_menu() {
+    gState->gameData = GameData{20, 150, 0, 1};
+    clear_player_data();
+    gState->mode = GM_START_MENU;
+    clear_game_ui();
+    add_main_menu_ui();
 }
 
 void clear_game_ui() {
@@ -1719,12 +1722,20 @@ void clear_game_ui() {
 
 void complete_round() {
     clear_game_ui();
-    //add_end_game_ui();
-    add_shop_ui();
-    gState->gameData.turnLimit = 20; 
-    gState->gameData.dollaBills += gState->gameData.rounds * 2;
-    gState->gameData.rounds++;
-    gState->gameData.minimumScore *= gState->gameData.rounds;
+    GameData gd = gState->gameData;
+
+    if(gd.turnLimit == 0 && (gState->playerRack.numberOfTiles > 0 || gd.minimumScore > gState->player.playerData.score)) {
+        gState->mode = GM_GAME_OVER;
+        gState->gameData = GameData{20, 150, 0, 1};
+        clear_player_data();
+        add_end_game_ui();
+    } else {
+        add_shop_ui();
+        gState->gameData.turnLimit = 20; 
+        gState->gameData.dollaBills += gState->gameData.rounds * 2;
+        gState->gameData.rounds++;
+        gState->gameData.minimumScore *= gState->gameData.rounds;
+    }
 }
 
 void sort_rack_by_color() {
@@ -1819,7 +1830,6 @@ void end_turn() {
             }
             snapshot_round_start();
         } else {
-            //reset_board(); 
             // maybe not enable button when invalid sets
             push_message(&Message{0, 2.0f, "Table not valid"});
         }
@@ -1845,6 +1855,13 @@ void init_player() {
     gState->player.playerData = PlayerData{};
 }
 
+void clear_player_data() {
+    gState->player.playerData.timesDrawn = 0;
+    gState->player.playerData.score = 0;
+    gState->player.playerData.runMultipliers = 1;
+    gState->player.playerData.groupMultipliers = 1;
+}
+
 void quit() {
     gMemory->shouldWindowClose = true;
 }
@@ -1857,22 +1874,20 @@ extern "C" GAME_DLL void game_init(GameMemory* memory, i32 preserveState) {
     create_quad();
     set_seed();
     init_rack_space();
-    clear_game_ui();
 
     if(!preserveState) {
-        //init_game();
-
+        gState->gameData = GameData{20, 150, 0, 1};
         init_player();
-        gState->mode = GM_START_MENU;
-        add_main_menu_ui();
+        init_main_menu();
     } else {
         if(gState->mode == GM_PLAYING) {
+            clear_game_ui();
             add_in_game_ui();
         }
     }
+
     init_table();
     snapshot_round_start();
-    gState->gameData = GameData{20, 150, 0, 1};
 }
 
 extern "C" GAME_DLL void game_update_and_render() {
@@ -1888,6 +1903,7 @@ extern "C" GAME_DLL void game_update_and_render() {
             break;
         }
         case GM_GAME_OVER : {
+            draw_background();
             break;
         }
         case GM_START_MENU : {
