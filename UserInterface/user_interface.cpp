@@ -282,6 +282,7 @@ i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 s
 
     Animation moveWindow = Animation{destination, start};
     moveWindow.autoAnimate = true;
+    moveWindow.speed = 5.0f;
     e.animations[e.numberOfAnimations++] = moveWindow; 
 
     i32 index = add_ui_element(page, e);
@@ -292,11 +293,12 @@ i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 s
 void add_text_to_window(UIPage *page, i32 windowId, i32 elementId) {
     UIElement *window = &page->uiElements[windowId];
     TextElement *text = &page->textElements[elementId];
-
+    f32 speed = window->animations[window->numberOfAnimations - 1].speed;
     vec2 motionDifference = window->animations[window->numberOfAnimations - 1].start - window->animations[window->numberOfAnimations - 1].destination;
     
     text->animations[text->numberOfAnimations].start = vec2(text->posx + motionDifference.x, text->posy + motionDifference.y);
     text->animations[text->numberOfAnimations].destination = vec2(text->posx, text->posy);
+    text->animations[text->numberOfAnimations].speed = speed;
     text->numberOfAnimations++;
 
     window->dependentTextElements[page->uiElements[windowId].numberOfDependentTextElements] = text;
@@ -308,9 +310,12 @@ void add_button_to_window(UIPage *page, i32 windowId, i32 elementId) {
     UIElement *button = &page->uiElements[elementId];
     UIElement *shadow = &page->uiElements[elementId + 1];
 
+    f32 speed = window->animations[window->numberOfAnimations - 1].speed;
     vec2 motionDifference = window->animations[window->numberOfAnimations - 1].start - window->animations[window->numberOfAnimations - 1].destination;
+
     button->animations[button->numberOfAnimations].start = vec2(button->posx + motionDifference.x, button->posy + motionDifference.y);
     button->animations[button->numberOfAnimations].destination = vec2(button->posx, button->posy);
+    button->animations[button->numberOfAnimations].speed = speed;
     button->numberOfAnimations++;
 
     window->dependentElements[window->numberOfDependentElements] = button;
@@ -318,7 +323,8 @@ void add_button_to_window(UIPage *page, i32 windowId, i32 elementId) {
 
     //shadow
     shadow->animations[shadow->numberOfAnimations].start = vec2(shadow->posx + motionDifference.x, shadow->posy + motionDifference.y);
-    shadow->animations[shadow->numberOfAnimations++].destination = vec2(shadow->posx, shadow->posy);
+    shadow->animations[shadow->numberOfAnimations].destination = vec2(shadow->posx, shadow->posy);
+    shadow->animations[shadow->numberOfAnimations].speed = speed;
     shadow->numberOfAnimations++;
 
     page->uiElements[windowId].dependentElements[page->uiElements[windowId].numberOfDependentElements] = shadow;
@@ -327,7 +333,8 @@ void add_button_to_window(UIPage *page, i32 windowId, i32 elementId) {
     //text
     TextElement* text = button->textChild;
     text->animations[text->numberOfAnimations].start = vec2(text->posx + motionDifference.x, text->posy + motionDifference.y);
-    text->animations[text->numberOfAnimations++].destination = vec2(text->posx, text->posy);
+    text->animations[text->numberOfAnimations].destination = vec2(text->posx, text->posy);
+    text->animations[text->numberOfAnimations].speed = speed;
     text->numberOfAnimations++;
 
     page->uiElements[windowId].dependentTextElements[window->numberOfDependentTextElements] = text;

@@ -93,6 +93,16 @@ struct Tile {
     vec2 tableSpace = vec2(-1, -1);
 };
 
+enum ITEM_TYPE {
+  PASSIVE
+};
+
+struct Item {
+  ITEM_TYPE type;
+  i32 cost;
+  const char* name;
+};
+
 struct Set {
   i32 id;
   SET_TYPE setType;
@@ -150,7 +160,6 @@ struct Player {
     PlayerData playerData;
     Tile* heldTile;
 };
-
 
 struct RoundSnapshot {
     Tile tiles[TOTAL_TILES];

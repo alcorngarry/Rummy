@@ -4,63 +4,53 @@ in vec2 uv;
 out vec4 FragColor;
 
 uniform float time;
+uniform vec4 color;
 
-float random(in vec2 st) {
-    return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+float diamond(vec2 p, float size) {
+    return step(abs(p.x) + abs(p.y), size);
 }
 
-float noise(in vec2 st) {
-    vec2 i = floor(st);
-    vec2 f = fract(st);
-
-    float a = random(i);
-    float b = random(i + vec2(1.0, 0.0));
-    float c = random(i + vec2(0.0, 1.0));
-    float d = random(i + vec2(1.0, 1.0));
-
-    vec2 u = f*f*(3.0 - 2.0*f);
-    return mix(a,b,u.x) + (c-a)*u.y*(1.0-u.x) + (d-b)*u.x*u.y;
-}
-
-#define NUM_OCTAVES 5
-
-float fbm(in vec2 st) {
-    float v = 0.0;
-    float a = 0.5;
-    vec2 shift = vec2(100.0);
-    mat2 rot = mat2(cos(0.5), sin(0.5), -sin(0.5), cos(0.5));
-    for(int i=0;i<NUM_OCTAVES;i++){
-        v += a*noise(st);
-        st = rot*st*2.0 + shift;
-        a *= 0.5;
-    }
-    return v;
+float box(vec2 p, vec2 size){
+    size = vec2(0.5) - size * 0.5;
+    vec2 uv = smoothstep(size, size + vec2(1e-4), p);
+    uv *= smoothstep(size, size + vec2(1e-4), vec2(1.0) - p);
+    return uv.x * uv.y;
 }
 
 void main() {
-    vec2 st = uv * 3.0;
+    //diamond
+    vec2 p = uv;
+    p = p * vec2(20.0, 15.0);
+    p += vec2(time * 0.02, time * 0.015);
+    p *= 4.0;
 
-    vec2 q = vec2(0.0);
-    q.x = fbm(st + 0.0*time);
-    q.y = fbm(st + vec2(1.0));
+    vec3 dark = color.rgb * 0.4;
+    vec3 light = color.rgb;
+    vec3 medium = color.rgb * 0.6;
 
-    vec2 r = vec2(0.0);
-    r.x = fbm(st + q + vec2(1.7,9.2) + 0.15*time * 3.0);
-    r.y = fbm(st + q + vec2(8.3,2.8) + 0.126*time * 3.0);
+    vec2 id = floor(p);
+    vec2 gv = fract(p) - 0.5;
 
-    float f = fbm(st + r);
+    if (mod(id.x + id.y, 2.0) < 1.0)
+        gv.x = -gv.x;
 
-    vec3 color = mix(vec3(0.2,0.2,0.2),
-                     vec3(0.8,0.8,0.8),
-                     clamp((f*f)*4.0, 0.0, 1.0));
+    //float d = diamond(gv * 2, 0.1);
+    float edgeOffset = 0.5;
+    float mover = sin(time) * 0.5;
 
-    color = mix(color,
-                vec3(0.0,0.0,0.0),
-                clamp(length(q), 0.0, 1.0));
+    float dTop    = diamond((gv - vec2(edgeOffset * mover,  edgeOffset)) * 2.0, 0.1);
+    float dBottom = diamond((gv - vec2(-edgeOffset * mover, -edgeOffset)) * 2.0, 0.1);
+    float dLeft   = diamond((gv - vec2(-edgeOffset, edgeOffset * mover)) * 2.0, 0.1);
+    float dRight  = diamond((gv - vec2( edgeOffset, -edgeOffset * mover)) * 2.0, 0.1);
 
-    color = mix(color,
-                vec3(1.0,1.0,1.0),
-                clamp(length(r.x), 0.0, 1.0));
+    float d = max(max(dTop, dBottom), max(dLeft, dRight));
+    vec3 dColor = mix(medium, light, d); 
 
-    FragColor = vec4((f*f*f + 0.6*f*f + 0.5*f) * color, 0.2);
+    //box
+    vec2 st = fract(p);
+    float b = box(st, vec2(0.95));
+
+    vec3 bColor = mix(dark, light, b);
+
+    FragColor = vec4(mix(dColor, bColor, 0.05), color.a);
 }

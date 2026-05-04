@@ -305,8 +305,8 @@ void draw_entity(mat4 model, mat4 view, mat4 projection, u32 vao, i32 textureId,
         bgShader->setMat4("projection", projection);
         bgShader->setMat4("model", model);
         bgShader->setFloat("time", T);
+        bgShader->setVec4("color", color);
     } else {
-
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
         itemShader->use();
         itemShader->setMat4("view", view);
