@@ -82,7 +82,7 @@ void check_elements_hovered(UIPage* page, f64 xpos, f64 ypos) {
 
 void move_element(UIElement *element, f32 deltaTime) {
     for(i32 i = 0; i < element->numberOfAnimations; ++i) {
-        if (element->animations[i].destination != element->animations[i].start) {
+        if(!element->animations[i].complete) {
             vec2 dist = (element->animations[i].destination - element->animations[i].start) * element->animations[i].speed * deltaTime;
             element->animations[i].start += dist;
             element->posx = element->animations[i].start.x;
@@ -92,6 +92,7 @@ void move_element(UIElement *element, f32 deltaTime) {
                 element->posx = element->animations[i].destination.x;
                 element->posy = element->animations[i].destination.y;
                 element->animations[i].destination = element->animations[i].start;
+                if(element->animations[i].playOnce) element->animations[i].complete = true;
             }
         }
     }
@@ -99,7 +100,8 @@ void move_element(UIElement *element, f32 deltaTime) {
 
 void move_text_element(TextElement *element, f32 deltaTime) {
     for(i32 i = 0; i < element->numberOfAnimations; ++i) {
-        if (element->animations[i].destination != element->animations[i].start) {
+        if(!element->animations[i].complete) {
+            //instead of modifying start can just use posx/pgState->gameDgState->gameDataay
             vec2 dist = (element->animations[i].destination - element->animations[i].start) * element->animations[i].speed * deltaTime;
             element->animations[i].start += dist;
             element->posx = element->animations[i].start.x;
@@ -109,6 +111,7 @@ void move_text_element(TextElement *element, f32 deltaTime) {
                 element->posx = element->animations[i].destination.x;
                 element->posy = element->animations[i].destination.y;
                 element->animations[i].destination = element->animations[i].start;
+                if(element->animations[i].playOnce) element->animations[i].complete = true;
             }
         }
     }
@@ -162,6 +165,12 @@ void reset_animation(UIElement* element) {
 }
 
 void update(TextElement* text, f32 deltaTime) {
+    for(i32 i = 0; i < (i32)text->numberOfAnimations; ++i) {
+        if(text->animations[i].autoAnimate) {
+            move_text_element(text, deltaTime);
+        }
+    }
+
     if (!text->valuePtr || text->type == TextType::NONE) return;
 
     switch (text->type) {
@@ -268,6 +277,18 @@ void add_shadow(UIPage *page, UIElement element) {
 
     element.color = vec4(0.0f, 0.0f, 0.0f, 0.5f);
     add_ui_element(page, element);
+}
+
+void add_move_animation(UIPage *page, i32 elementId, vec2 destination) {
+    UIElement *e = &page->uiElements[elementId];
+    Animation a = Animation{destination, vec2(e->posx, e->posy)};
+    e->animations[e->numberOfAnimations++] = a;
+}
+
+void add_move_text_animation(UIPage *page, i32 elementId, vec2 destination) {
+    TextElement *e = &page->textElements[elementId];
+    Animation a = Animation{destination, vec2(e->posx, e->posy), 10.0f, true};
+    e->animations[e->numberOfAnimations++] = a;
 }
 
 i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 start, vec2 destination) {

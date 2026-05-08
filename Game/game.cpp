@@ -3,6 +3,7 @@
 #include <xstring>
 
 #define START_RACK_AMOUNT 4
+#define PUSH_TYPE(buf, type) (type*)push(buf, sizeof(type))
 
 const f32 TABLE_SCALE = 1.2f;
 const vec3 defaultTileScale = vec3(0.08f);
@@ -36,6 +37,7 @@ void add_options_ui();
 void update_set_ui(Set* set);
 Set* get_hovered_set();
 void clear_player_data();
+void* push(ActionBuffer *b, u64 size);
 
 // validations.cpp
 i32 get_joker_array(Set *set, Tile** jokerArray);
@@ -377,6 +379,37 @@ void move_tile(void* ptr) {
     }
 }
 
+void add_tile_amount(void* ptr) {
+    GameObject* self = (GameObject*)ptr;
+
+    self->animTimer += gState->deltaTime;
+
+    f32 t = self->animTimer / 0.25f;
+    if (t > 1.0f) t = 1.0f;
+
+    f32 pop = sinf(t * PI32);
+    f32 scale = 1.0f + pop * 0.2f;
+
+    vec3 pos = vec3(
+        self->baseModel[3][0],
+        self->baseModel[3][1],
+        self->baseModel[3][2]
+    );
+
+    self->model = self->baseModel;
+    self->model = glm::scale(self->model, vec3(scale));
+
+    self->model[3][0] = pos.x;
+    self->model[3][1] = pos.y;
+    self->model[3][2] = pos.z;
+
+    if (t >= 1.0f) {
+        gMemory->play_audio_fn("./audio/place_tile.wav");
+        self->model = self->baseModel;
+        self->action = nullptr;
+    }
+}
+
 void add_tile_to_rack(Tile *tile) {
     tile->location = TILE_LOCATION::P_RACK;
     tile->object.model = gState->pool.object.model;
@@ -386,6 +419,8 @@ void add_tile_to_rack(Tile *tile) {
     tile->originalPosition = tile->object.model;
 
     tile->object.action = move_tile; 
+    GameObject** slot = PUSH_TYPE(&gState->actionBuffer, GameObject*);
+    *slot = &tile->object;
 
     gState->playerRack.tiles[gState->playerRack.numberOfTiles] = tile;
     gState->playerRack.numberOfTiles++;
@@ -1597,21 +1632,27 @@ void add_in_game_ui() {
 }
 
 void add_end_game_ui() {
+    TextElement gameOver = TextElement{ Anchor::CENTER, "Game Over!", 0.5f * gMemory->aspect, 0.06f, -1, true, DEFAULT_FONT_SCALE * 5.0 };
+    gameOver.color = vec3(1.0f, 0.0f, 0.0f);
+
+    i32 gameOverText = add_text_element(gState->uiPage, gameOver);
+
     i32 newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.4f, 0.75f), vec2(0.1f), vec4(0.6f, 0.6f, 0.6f, 6.0f), &init_game);
-    i32 mainMenu = add_button(gState->uiPage, BUTTON_T, "Main menu", vec2(0.4f, 0.51f), vec2(0.1f), vec4(0.6f, 0.6f, 0.6f, 6.0f), &init_main_menu);
+    i32 mainMenu = add_button(gState->uiPage, BUTTON_T, "Main menu", vec2(0.6f, 0.75f), vec2(0.1f), vec4(0.6f, 0.6f, 0.6f, 6.0f), &init_main_menu);
 
     i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::CENTER, vec2(0.75f, 0.5f), vec2(0.5f, 2.0f), vec2(0.5f, 0.5f)); 
-
+    add_text_to_window(gState->uiPage, windowIndex, gameOverText);
     add_button_to_window(gState->uiPage, windowIndex, newGame);
     add_button_to_window(gState->uiPage, windowIndex, mainMenu);
 
+    //maybe do a run total score...
     add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * gMemory->aspect, 0.33f, -1, true, DEFAULT_FONT_SCALE }, 
         "COMPLETED ROUND WITH SCORE: ", &gState->player.playerData.score, TextType::UINT_64));
 
     for(i32 i = 0; i < gState->table.numberOfSets; i++) {
         numTableTiles += gState->table.sets[i].numberOfTiles;
     }
-
+    //maybe do total tiles played
     add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * gMemory->aspect, 0.36f, -1, true, DEFAULT_FONT_SCALE }, 
         "TILES USED: ", &numTableTiles, TextType::UINT_64));
 }
@@ -1631,37 +1672,50 @@ void add_run_multiplier() {
 }
 
 void add_shop_ui() {
-    i32 nextRoundId = add_button(gState->uiPage, BUTTON_T, "Next Round", vec2(0.4f, 0.75f), vec2(0.1f), vec4(0.6f, 0.6f, 0.6f, 6.0f), &init_game);
-    i32 groupId = add_button(gState->uiPage, BUTTON_T, "Group X", vec2(0.4f, 0.51f), vec2(0.1f), vec4(0.6f, 0.6f, 0.6f, 6.0f), &add_group_multiplier);
-    i32 runId = add_button(gState->uiPage, BUTTON_T, "Run X", vec2(0.4f, 0.63f), vec2(0.1f), vec4(0.6f, 0.6f, 0.6f, 6.0f), &add_run_multiplier);
+//    i32 nextRoundId = add_button(gState->uiPage, BUTTON_T, "Next Round", vec2(0.4f, 0.75f), vec2(0.1f), vec4(0.6f, 0.6f, 0.6f, 6.0f), &init_game);
+//    i32 groupId = add_button(gState->uiPage, BUTTON_T, "Group X", vec2(0.4f, 0.51f), vec2(0.1f), vec4(0.6f, 0.6f, 0.6f, 6.0f), &add_group_multiplier);
+//    i32 runId = add_button(gState->uiPage, BUTTON_T, "Run X", vec2(0.4f, 0.63f), vec2(0.1f), vec4(0.6f, 0.6f, 0.6f, 6.0f), &add_run_multiplier);
+//
+    i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::CENTER, vec2(0.12f, 0.85f), vec2(0.5f, 0.0f), vec2(0.5f, 0.07f)); 
 
-    i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::CENTER, vec2(0.75f, 0.5f), vec2(0.5f, 2.0f), vec2(0.5f, 0.5f)); 
+//    add_button_to_window(gState->uiPage, windowIndex, nextRoundId);
+//    add_button_to_window(gState->uiPage, windowIndex, groupId);
+//    add_button_to_window(gState->uiPage, windowIndex, runId);
+//
+//    TextElement dollarSign = TextElement{ Anchor::CENTER, "$1", 0.6f * gMemory->aspect, 0.51f, -1, true, DEFAULT_FONT_SCALE * 4.0, vec3(1.0f, 0.0f, 0.0f)};
+//    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, dollarSign));
+//
+//    dollarSign.posy += 0.12f;
+//    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, dollarSign));
+//
+//    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * gMemory->aspect, 0.33f, -1, true, DEFAULT_FONT_SCALE }, 
+//        "COMPLETED ROUND WITH SCORE: ", &gState->player.playerData.score, TextType::UINT_64));
+//
+//    for(i32 i = 0; i < gState->table.numberOfSets; i++) {
+//        numTableTiles += gState->table.sets[i].numberOfTiles;
+//    }
+//
+//    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * gMemory->aspect, 0.36f, -1, true, DEFAULT_FONT_SCALE }, 
+//        "TILES USED: ", &numTableTiles, TextType::UINT_64));
 
-    add_button_to_window(gState->uiPage, windowIndex, nextRoundId);
-    add_button_to_window(gState->uiPage, windowIndex, groupId);
-    add_button_to_window(gState->uiPage, windowIndex, runId);
-
-    TextElement dollarSign = TextElement{ Anchor::CENTER, "$1", 0.6f * gMemory->aspect, 0.51f, -1, true, DEFAULT_FONT_SCALE * 4.0, vec3(1.0f, 0.0f, 0.0f)};
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, dollarSign));
-
-    dollarSign.posy += 0.12f;
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, dollarSign));
-
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * gMemory->aspect, 0.33f, -1, true, DEFAULT_FONT_SCALE }, 
-        "COMPLETED ROUND WITH SCORE: ", &gState->player.playerData.score, TextType::UINT_64));
-
-    for(i32 i = 0; i < gState->table.numberOfSets; i++) {
-        numTableTiles += gState->table.sets[i].numberOfTiles;
-    }
-
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * gMemory->aspect, 0.36f, -1, true, DEFAULT_FONT_SCALE }, 
-        "TILES USED: ", &numTableTiles, TextType::UINT_64));
-
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * gMemory->aspect, 0.25f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f, 1.0f, 0.0f)}, 
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * gMemory->aspect, 0.07f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f, 1.0f, 0.0f)}, 
         "$", &gState->gameData.dollaBills, TextType::UINT_64));
+
+//    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * gMemory->aspect, 0.63f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f, 1.0f, 1.0f)}, 
+//            "x", &gState->player.playerData.runMultipliers, TextType::INT_32));
+//    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * gMemory->aspect, 0.51f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f, 1.0f, 1.0f)},  
+//            "x", &gState->player.playerData.groupMultipliers, TextType::INT_32));
+
+
+    i32 multWindowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::CENTER, vec2(0.2, 0.2f), vec2(0.175f, 2.0f), vec2(0.175f, 0.875f)); 
+
+    add_text_to_window(gState->uiPage, multWindowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "SHOP", 0.18f * gMemory->aspect, 0.825f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f, 1.0f, 1.0f)}));
 }
 
 void add_main_menu_ui() {
+//    TextElement bonus = TextElement{ Anchor::CENTER, "+", 0.5f * gMemory->aspect, 0.05f, -1, true, DEFAULT_FONT_SCALE * 5.0 };
+//    add_move_text_animation(gState->uiPage, add_text_element(gState->uiPage, bonus), vec2(0.0f));
+//
     i32 newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.35f, 0.9f), vec2(0.1f), vec4(1.0f, 0.0f, 0.0f, 1.0f), &init_game);
     i32 options = add_button(gState->uiPage, BUTTON_T, "Options", vec2(0.5f, 0.9f), vec2(0.1f), vec4(0.0f, 0.0f, 1.0f, 1.0f), &add_options_ui);
     i32 profile = add_button(gState->uiPage, BUTTON_T, "Profile", vec2(0.65f, 0.9f), vec2(0.1f), vec4(0.0f, 1.0f, 0.0f, 1.0f), &quit);
@@ -1705,7 +1759,7 @@ void init_game() {
 }
 
 void init_main_menu() {
-    gState->gameData = GameData{20, 150, 0, 1};
+    gState->gameData = GameData{20, 1, 0, 1};
     clear_player_data();
     gState->mode = GM_START_MENU;
     clear_game_ui();
@@ -1720,21 +1774,53 @@ void clear_game_ui() {
     gState->uiPage->actionableElementCount = 0;
 }
 
+void count_table() {
+    for(i32 i = 0; i < gState->table.numberOfSets; ++i) {
+        Set *set = &gState->table.sets[i];
+        for(i32 j = 0; j < set->numberOfTiles; ++j) {
+            Tile *tile = set->tiles[j];
+            tile->object.baseModel = tile->object.model;
+            tile->object.action = add_tile_amount;
+            GameObject** slot = PUSH_TYPE(&gState->actionBuffer, GameObject*);
+            *slot = &tile->object;
+        }
+    }
+}
+
+void calculate_round_bonus(GameData *gd, PlayerData pd) {
+    count_table();
+
+    gd->dollaBills += gd->rounds * 2;
+
+    i32 extraDollas = 0;
+    if(gd->minimumScore > pd.score) {
+      //add bonus for board clear
+      extraDollas += 5;
+
+      TextElement bonus = TextElement{ Anchor::CENTER, "+5", 0.5f * gMemory->aspect, 0.05f, -1, true, DEFAULT_FONT_SCALE * 5.0 };
+      add_move_text_animation(gState->uiPage, add_text_element(gState->uiPage, bonus), vec2(0.5f * gMemory->aspect, 0.25f));
+
+    }
+
+    gd->dollaBills += extraDollas;
+}
+
 void complete_round() {
     clear_game_ui();
     GameData gd = gState->gameData;
 
     if(gd.turnLimit == 0 && (gState->playerRack.numberOfTiles > 0 || gd.minimumScore > gState->player.playerData.score)) {
         gState->mode = GM_GAME_OVER;
-        gState->gameData = GameData{20, 150, 0, 1};
+        gState->gameData = GameData{20, 1, 0, 1};
         clear_player_data();
         add_end_game_ui();
     } else {
-        add_shop_ui();
+        calculate_round_bonus(&gState->gameData, gState->player.playerData);
         gState->gameData.turnLimit = 20; 
-        gState->gameData.dollaBills += gState->gameData.rounds * 2;
         gState->gameData.rounds++;
         gState->gameData.minimumScore *= gState->gameData.rounds;
+
+        add_shop_ui();
     }
 }
 
@@ -1836,13 +1922,34 @@ void end_turn() {
     }
 }
 
+void* push(ActionBuffer *b, u64 size) {
+    if(b->at + size > b->end) {
+      printf("Too large to add to action buffer!\n");
+      return nullptr;
+    }
+
+    void* result = b->at;
+    b->at += size;
+    return result;
+}
+
+//void* pop(ActionBuffer *b, u64 size) {
+//    
+//}
+
 void update_game_objects() {
-    for(i32 i = 0; i < TOTAL_TILES; ++i) {
-        if(gState->tiles[i].object.action) {
-          RUN_SELF_ACTION(&gState->tiles[i].object);
-          return;
+    u8* at = gState->actionBuffer.base;
+
+    while (at < gState->actionBuffer.at) {
+        GameObject* obj = *(GameObject**)at;
+        at += sizeof(GameObject*);
+
+        if (obj && obj->action) {
+            RUN_SELF_ACTION(obj);
         }
     }
+
+    gState->actionBuffer.at = gState->actionBuffer.base;
 }
 
 void draw_ui() {
@@ -1866,17 +1973,35 @@ void quit() {
     gMemory->shouldWindowClose = true;
 }
 
+void debug_state_memory(GameMemory* memory, u8* cursor)
+{
+    size_t used = (size_t)(cursor - (u8*)memory->stateMemory);
+    size_t total = memory->stateMemorySize;
+
+    printf("State Memory Used: %zu / %zu bytes (%.2f%%)\n",
+        used, total, (used / (float)total) * 100.0f);
+}
+
 extern "C" GAME_DLL void game_init(GameMemory* memory, i32 preserveState) {
     gMemory = memory;
-    gState = (GameState*)memory->stateMemory;
+    u8* memoryCursor = (u8*)memory->stateMemory;
+    gState = (GameState*)memoryCursor;
+    memoryCursor += sizeof(GameState);
+
     gMemory->renderBuffer->view = mat4(1.0f);
+    
+    gState->actionBuffer.base = memoryCursor;
+    gState->actionBuffer.at = memoryCursor;
+    gState->actionBuffer.end = memoryCursor + MB;
+  
+    debug_state_memory(memory, memoryCursor);
 
     create_quad();
     set_seed();
     init_rack_space();
 
     if(!preserveState) {
-        gState->gameData = GameData{20, 150, 0, 1};
+        gState->gameData = GameData{20, 1, 0, 1};
         init_player();
         init_main_menu();
     } else {
@@ -1931,7 +2056,25 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
 
     if (key == 299 && action == 1) {
         //__debugbreak();
+        //add_shop_ui();
+        clear_game_ui();
+        add_end_game_ui();
+    }
+
+    if (key == 298 && action == 1) {
+        //__debugbreak();
+        clear_game_ui();
         add_shop_ui();
+    }
+
+    if(key == 297 && action == 1) {
+        clear_game_ui();
+        add_in_game_ui();
+    }
+
+    if (key == 296 && action == 1) {
+      TextElement bonus = TextElement{ Anchor::CENTER, "+5", 0.5f * gMemory->aspect, 0.05f, -1, true, DEFAULT_FONT_SCALE * 5.0 };
+      add_move_text_animation(gState->uiPage, add_text_element(gState->uiPage, bonus), vec2(0.5f * gMemory->aspect, 0.25f));
     }
 
     if(key == 0) {

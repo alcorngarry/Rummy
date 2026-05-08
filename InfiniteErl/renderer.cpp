@@ -207,6 +207,10 @@ void push_ui_image(RenderBuffer* buffer, RenderEntryUIImage* image) {
     *entry = *image;
 }
 
+f32 get_render_buffer_usage_percent(RenderBuffer* buffer) {
+    return (buffer->bufferSize / (f32)buffer->maxBufferSize) * 100.0f;
+}
+
 void render_buffer(RenderBuffer* buffer) {
     //default clearing leaving here at the moment.
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -215,6 +219,8 @@ void render_buffer(RenderBuffer* buffer) {
     u8* end = buffer->bufferBase + buffer->bufferSize;
 
     dT = buffer->deltaTime;
+
+    printf("Render Buffer: %.2f%% (%u / %u bytes)\n", get_render_buffer_usage_percent(buffer), buffer->bufferSize, buffer->maxBufferSize);
 
     while (at < end) {
         RenderEntryHeader* header = (RenderEntryHeader*)at;

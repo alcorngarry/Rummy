@@ -23,6 +23,7 @@ struct GameObject {
     i32 currentFrame = 0;
     SelfActionFuncPtr action = nullptr;
     mat4 target;
+    mat4 baseModel;
 
     void update_animation(f32 deltaTime) {
         f32 frameTime = 1.0f / f32(fps);
@@ -33,6 +34,12 @@ struct GameObject {
             currentFrame = (currentFrame + 1) % fps;
         }
     };
+};
+
+struct ActionBuffer {
+    u8 *base;
+    u8 *at;
+    u8 *end;
 };
 
 struct RNG {
@@ -193,6 +200,8 @@ struct GameState {
     Pool pool;
     Rack playerRack;
     Table table;
+
+    ActionBuffer actionBuffer;
 };
 
 extern GameState* gState;

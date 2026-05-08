@@ -107,7 +107,7 @@ boolean hot_reload(GameDLL* g, const char* dllPath) {
 
 GameMemory allocate_game_memory(RenderBuffer* buffer) {
     GameMemory memory = {};
-    memory.stateMemorySize = 64 * 1024 * 1024;
+    memory.stateMemorySize = 16 * MB;
     memory.stateMemory = VirtualAlloc(0,
         memory.stateMemorySize,
         MEM_RESERVE | MEM_COMMIT,
@@ -129,7 +129,7 @@ GameMemory allocate_game_memory(RenderBuffer* buffer) {
     memory.load_walls_buffer_fn = load_walls_buffer;
     memory.load_platform_buffer_fn = load_platform_buffers;
     
-    memory.uiMem.size = 32 * 1024 * 1024; // 8 MB
+    memory.uiMem.size = MB;
     memory.uiMem.base = (u8*)memory.stateMemory + (memory.stateMemorySize - memory.uiMem.size);
     memory.uiMem.used = 0;
     memory.uiMem.load_ui_quad_buffer_fn = load_ui_quad_buffer;
@@ -153,7 +153,7 @@ i32 APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, i32 cmd
     load_shaders();
 
     load(&game, "../build/Game.dll");
-    RenderBuffer* buffer = allocate_render_buffer(2 * 1024 * 1024);
+    RenderBuffer* buffer = allocate_render_buffer(MB / 2);
     if (!buffer) {
         OutputDebugStringA("Failed to allocate render buffer\n");
         return -1;

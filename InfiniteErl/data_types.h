@@ -18,6 +18,7 @@
 #define F32_MAX 3.402823466e+38f 
 #define assert(Expression) if(!(Expression)) { *(int *)0 = 0; }
 #define RUN_SELF_ACTION(obj) (obj)->action(obj)
+#define MB 1232896
 
 typedef int8_t i8;
 typedef int16_t i16;

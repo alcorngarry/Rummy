@@ -50,10 +50,10 @@ struct Animation {
   vec2 destination;
 	vec2 start;
 	f32 speed = 10.0f;
-	bool autoAnimate = false;
-	bool playOnce = false;
-	bool canDelete = false;
-	bool loopAnimation = true;
+	u8 autoAnimate = false;
+	u8 playOnce = true;
+	u8 complete = false;
+	u8 loopAnimation = true;
 };
 
 struct SheetAnimation {
@@ -165,6 +165,8 @@ i32 add_text_element(UIPage* page, TextElement text);
 i32 add_dynamic_text_element(UIPage* page, TextElement text, const char* label, const void* ptr, TextType t, f32 mult = 1.0f);
 void add_text_to_window(UIPage *page, i32 windowId, i32 elementId);
 void add_button_to_window(UIPage *page, i32 windowId, i32 elementId);
+void add_move_animation(UIPage *page, i32 elementId, vec2 destination);
+void add_move_text_animation(UIPage *page, i32 elementId, vec2 destination);
 
 i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 scale, vec4 color, ActionFuncPtr action);
 void button_press(void* ptr);
