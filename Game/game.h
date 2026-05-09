@@ -38,8 +38,9 @@ struct GameObject {
 
 struct ActionBuffer {
     u8 *base;
-    u8 *at;
-    u8 *end;
+    u64 size;
+    u64 readIndex;
+    u64 writeIndex;
 };
 
 struct RNG {

@@ -4,6 +4,8 @@
 
 #define START_RACK_AMOUNT 4
 #define PUSH_TYPE(buf, type) (type*)push(buf, sizeof(type))
+#define POP_TYPE(buf, type) (type*)pop(buf, sizeof(type))
+#define PEEK_TYPE(buf, type) (type*)peek(buf, sizeof(type))
 
 const f32 TABLE_SCALE = 1.2f;
 const vec3 defaultTileScale = vec3(0.08f);
@@ -38,6 +40,7 @@ void update_set_ui(Set* set);
 Set* get_hovered_set();
 void clear_player_data();
 void* push(ActionBuffer *b, u64 size);
+void move_tile(void* ptr);
 
 // validations.cpp
 i32 get_joker_array(Set *set, Tile** jokerArray);
@@ -215,6 +218,15 @@ void revert_to_round_start() {
         &gState->roundStart.rack,
         sizeof(Rack)
     );
+
+    for(i32 i = 0; i < gState->playerRack.numberOfTiles; ++i) {
+        Tile *tile = gState->playerRack.tiles[i];
+        if(tile->object.target != tile->object.model) {
+            tile->object.action = move_tile; 
+            GameObject** slot = PUSH_TYPE(&gState->actionBuffer, GameObject*);
+            *slot = &tile->object;
+        }
+    }
     
     gState->player.heldTile = nullptr;
 }
@@ -1922,34 +1934,71 @@ void end_turn() {
     }
 }
 
+u64 next_index(ActionBuffer *b, u64 index, u64 amount) {
+    return (index + amount) % b->size;
+}
+
 void* push(ActionBuffer *b, u64 size) {
-    if(b->at + size > b->end) {
-      printf("Too large to add to action buffer!\n");
-      return nullptr;
+    u64 used = (b->writeIndex >= b->readIndex)
+        ? (b->writeIndex - b->readIndex)
+        : (b->size - (b->readIndex - b->writeIndex));
+
+    u64 freeSpace = b->size - used;
+
+    if (size > freeSpace) {
+        printf("Action buffer full!\n");
+        return nullptr;
     }
 
-    void* result = b->at;
-    b->at += size;
+    void* result = b->base + b->writeIndex;
+    b->writeIndex = next_index(b, b->writeIndex, size);
+
     return result;
 }
 
-//void* pop(ActionBuffer *b, u64 size) {
-//    
-//}
-
-void update_game_objects() {
-    u8* at = gState->actionBuffer.base;
-
-    while (at < gState->actionBuffer.at) {
-        GameObject* obj = *(GameObject**)at;
-        at += sizeof(GameObject*);
-
-        if (obj && obj->action) {
-            RUN_SELF_ACTION(obj);
-        }
+void* pop(ActionBuffer *b, u64 size) {
+    if (b->readIndex == b->writeIndex) {
+        return nullptr;
     }
 
-    gState->actionBuffer.at = gState->actionBuffer.base;
+    void* result = b->base + b->readIndex;
+    b->readIndex = next_index(b, b->readIndex, size);
+
+    return result;
+}
+
+void* peek(ActionBuffer *b, u64 size) {
+    if (b->readIndex == b->writeIndex) {
+        return nullptr;
+    }
+
+    return b->base + b->readIndex;
+}
+
+void update_game_objects() {
+    ActionBuffer *b = &gState->actionBuffer;
+
+    if (b->readIndex == b->writeIndex) {
+        return;
+    }
+
+    GameObject **objPtr = PEEK_TYPE(b, GameObject*);
+
+    if (!objPtr) return;
+
+    GameObject *obj = *objPtr;
+
+    if (!obj) {
+        POP_TYPE(b, GameObject*);
+        return;
+    }
+
+    if (obj->action) {
+        RUN_SELF_ACTION(obj);
+        return;
+    }
+
+    POP_TYPE(b, GameObject*);
 }
 
 void draw_ui() {
@@ -1991,8 +2040,9 @@ extern "C" GAME_DLL void game_init(GameMemory* memory, i32 preserveState) {
     gMemory->renderBuffer->view = mat4(1.0f);
     
     gState->actionBuffer.base = memoryCursor;
-    gState->actionBuffer.at = memoryCursor;
-    gState->actionBuffer.end = memoryCursor + MB;
+    gState->actionBuffer.size = MB;
+    gState->actionBuffer.readIndex = 0;
+    gState->actionBuffer.writeIndex = 0;
   
     debug_state_memory(memory, memoryCursor);
 
@@ -2105,3 +2155,5 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
         check_tile_hovered(xpos, ypos);
     }
 }
+#define POP_TYPE(buf, type) (type*)pop(buf, sizeof(type))
+

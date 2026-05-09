@@ -220,7 +220,7 @@ void render_buffer(RenderBuffer* buffer) {
 
     dT = buffer->deltaTime;
 
-    printf("Render Buffer: %.2f%% (%u / %u bytes)\n", get_render_buffer_usage_percent(buffer), buffer->bufferSize, buffer->maxBufferSize);
+    //printf("Render Buffer: %.2f%% (%u / %u bytes)\n", get_render_buffer_usage_percent(buffer), buffer->bufferSize, buffer->maxBufferSize);
 
     while (at < end) {
         RenderEntryHeader* header = (RenderEntryHeader*)at;
