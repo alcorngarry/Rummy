@@ -207,5 +207,4 @@ struct GameState {
 
 extern GameState* gState;
 extern GameMemory* gMemory;
-
 #endif

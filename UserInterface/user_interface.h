@@ -114,7 +114,7 @@ struct TextElement {
 	const char* prefix = "";
 	f32 multiplier = 1.0f;
 	const char* id;
-	I64ActionFuncPtr onCompleteAction;
+	SelfActionFuncPtr onCompleteAction;
   i32 textChildId = -1;
   i32 imageChildId = -1;
   Animation animations[8];

@@ -111,7 +111,10 @@ void move_text_element(TextElement *element, f32 deltaTime) {
                 element->posx = element->animations[i].destination.x;
                 element->posy = element->animations[i].destination.y;
                 element->animations[i].destination = element->animations[i].start;
-                if(element->animations[i].playOnce) element->animations[i].complete = true;
+                if(element->animations[i].playOnce) { 
+                    element->animations[i].complete = true;
+                    if(element->onCompleteAction) RUN_ON_COMPLETE_ACTION(element);
+                }
             }
         }
     }
@@ -279,6 +282,11 @@ void add_shadow(UIPage *page, UIElement element) {
     add_ui_element(page, element);
 }
 
+void toggle_visibility(void *ptr) {
+    TextElement* self = (TextElement*)ptr;
+    self->visible = !self->visible;
+}
+
 void add_move_animation(UIPage *page, i32 elementId, vec2 destination) {
     UIElement *e = &page->uiElements[elementId];
     Animation a = Animation{destination, vec2(e->posx, e->posy)};
@@ -289,6 +297,7 @@ void add_move_text_animation(UIPage *page, i32 elementId, vec2 destination) {
     TextElement *e = &page->textElements[elementId];
     Animation a = Animation{destination, vec2(e->posx, e->posy), 10.0f, true};
     e->animations[e->numberOfAnimations++] = a;
+    e->onCompleteAction = toggle_visibility;
 }
 
 i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 start, vec2 destination) {

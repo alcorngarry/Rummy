@@ -417,8 +417,12 @@ void add_tile_amount(void* ptr) {
 
     if (t >= 1.0f) {
         gMemory->play_audio_fn("./audio/place_tile.wav");
+        TextElement bonus = TextElement{ Anchor::CENTER, "*", pos.x, pos.y, -1, true, DEFAULT_FONT_SCALE * 5.0 };
+        add_move_text_animation(gState->uiPage, add_text_element(gState->uiPage, bonus), vec2(0.5f * gMemory->aspect, 0.07f));
+        
         self->model = self->baseModel;
         self->action = nullptr;
+
     }
 }
 
@@ -1683,6 +1687,37 @@ void add_run_multiplier() {
     }
 }
 
+void add_shop_purchase_menu() {
+    i32 nextRoundId = add_button(gState->uiPage, BUTTON_T, "Next Round", vec2(0.4f, 0.72f), vec2(0.1f), vec4(0.6f, 0.6f, 0.6f, 6.0f), &init_game);
+    i32 groupId = add_button(gState->uiPage, BUTTON_T, "Group X", vec2(0.4f, 0.48f), vec2(0.1f), vec4(0.6f, 0.6f, 0.6f, 6.0f), &add_group_multiplier);
+    i32 runId = add_button(gState->uiPage, BUTTON_T, "Run X", vec2(0.4f, 0.60f), vec2(0.1f), vec4(0.6f, 0.6f, 0.6f, 6.0f), &add_run_multiplier);
+
+    i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::CENTER, vec2(0.6f, 0.4f), vec2(0.5f, 2.0f), vec2(0.5f, 0.5f)); 
+
+    add_button_to_window(gState->uiPage, windowIndex, nextRoundId);
+    add_button_to_window(gState->uiPage, windowIndex, groupId);
+    add_button_to_window(gState->uiPage, windowIndex, runId);
+
+    TextElement dollarSign = TextElement{ Anchor::CENTER, "$1", 0.6f * gMemory->aspect, 0.48f, -1, true, DEFAULT_FONT_SCALE * 4.0, vec3(1.0f, 0.0f, 0.0f)};
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, dollarSign));
+
+    dollarSign.posy += 0.12f;
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, dollarSign));
+
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * gMemory->aspect, 0.33f, -1, true, DEFAULT_FONT_SCALE }, 
+        "COMPLETED ROUND WITH SCORE: ", &gState->player.playerData.score, TextType::UINT_64));
+
+    for(i32 i = 0; i < gState->table.numberOfSets; i++) {
+        numTableTiles += gState->table.sets[i].numberOfTiles;
+    }
+
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * gMemory->aspect, 0.36f, -1, true, DEFAULT_FONT_SCALE }, 
+        "TILES USED: ", &numTableTiles, TextType::UINT_64));
+
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * gMemory->aspect, 0.25f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f, 1.0f, 0.0f)}, 
+        "$", &gState->gameData.dollaBills, TextType::UINT_64));
+}
+
 void add_shop_ui() {
 //    i32 nextRoundId = add_button(gState->uiPage, BUTTON_T, "Next Round", vec2(0.4f, 0.75f), vec2(0.1f), vec4(0.6f, 0.6f, 0.6f, 6.0f), &init_game);
 //    i32 groupId = add_button(gState->uiPage, BUTTON_T, "Group X", vec2(0.4f, 0.51f), vec2(0.1f), vec4(0.6f, 0.6f, 0.6f, 6.0f), &add_group_multiplier);
@@ -1718,9 +1753,10 @@ void add_shop_ui() {
 //    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * gMemory->aspect, 0.51f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f, 1.0f, 1.0f)},  
 //            "x", &gState->player.playerData.groupMultipliers, TextType::INT_32));
 
-
+    i32 shopId = add_button(gState->uiPage, BUTTON_T, "$$$", vec2(0.175f, 0.91f), vec2(0.09f), vec4(1.0f, 1.0f, 0.0f, 1.0f), &add_shop_purchase_menu);
     i32 multWindowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::CENTER, vec2(0.2, 0.2f), vec2(0.175f, 2.0f), vec2(0.175f, 0.875f)); 
 
+    add_button_to_window(gState->uiPage, multWindowIndex, shopId);
     add_text_to_window(gState->uiPage, multWindowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "SHOP", 0.18f * gMemory->aspect, 0.825f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f, 1.0f, 1.0f)}));
 }
 
@@ -2022,8 +2058,7 @@ void quit() {
     gMemory->shouldWindowClose = true;
 }
 
-void debug_state_memory(GameMemory* memory, u8* cursor)
-{
+void debug_state_memory(GameMemory* memory, u8* cursor) {
     size_t used = (size_t)(cursor - (u8*)memory->stateMemory);
     size_t total = memory->stateMemorySize;
 
@@ -2155,5 +2190,3 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
         check_tile_hovered(xpos, ypos);
     }
 }
-#define POP_TYPE(buf, type) (type*)pop(buf, sizeof(type))
-
