@@ -43,6 +43,11 @@ struct ActionBuffer {
     u64 writeIndex;
 };
 
+struct UIActions {
+    ActionFuncPtr actions[20];
+    u8 numberOfUIActions = 0;
+};
+
 struct RNG {
   u64 state;
 };
@@ -203,6 +208,7 @@ struct GameState {
     Table table;
 
     ActionBuffer actionBuffer;
+    UIActions uiActions;
 };
 
 extern GameState* gState;

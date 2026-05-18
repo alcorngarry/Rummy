@@ -190,6 +190,7 @@ i32 APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, i32 cmd
         buffer->projection = projection;
         buffer->deltaTime = deltaTime;
         buffer->bufferSize = 0;
+        buffer->aspect = aspect;
         
         glfwPollEvents();
 
@@ -351,4 +352,5 @@ void load_textures() {
     load_texture(UI_BG_T, "./res/ui-bg1.png", true, false, false);
     load_texture(BUTTON_T, "./res/button.png", true, false, false);
     load_texture(POOL_T, "./res/pool.png", true, true, false);
+    load_texture(CIRCLE_BUTTON_T, "./res/circle-button.png", true, true, false);
 }

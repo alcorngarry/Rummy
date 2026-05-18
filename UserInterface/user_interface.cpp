@@ -66,7 +66,7 @@ inline bool ui_point_inside(const UIElement& e, f64 x, f64 y) {
 void check_elements_hovered(UIPage* page, f64 xpos, f64 ypos) {
     page->elementHovered = -1;
     for (i32 i = 0; i < page->numberOfImageElements; ++i) {
-        if(!page->uiElements[i].action) continue;
+        if(page->uiElements[i].actionId == -1) continue;
 
         //ANCHOR EFFECTS THIS LETS ASSUME ANCHOR IS CENTER
         if (ui_point_inside(page->uiElements[i], xpos, ypos)) {
@@ -113,7 +113,7 @@ void move_text_element(TextElement *element, f32 deltaTime) {
                 element->animations[i].destination = element->animations[i].start;
                 if(element->animations[i].playOnce) { 
                     element->animations[i].complete = true;
-                    if(element->onCompleteAction) RUN_ON_COMPLETE_ACTION(element);
+                    //if(element->onCompleteActionId) RUN_ON_COMPLETE_ACTION(element);
                 }
             }
         }
@@ -144,18 +144,21 @@ void update_animation(UIElement* element, f32 deltaTime) {
     //}
 
     //default animations
-    if(element->animations[0].autoAnimate) {
-        move_element(element, deltaTime);
-        for(i32 i = 0; i < element->numberOfDependentTextElements; ++i) {
-          if(element->dependentTextElements[i]) {
-              move_text_element(element->dependentTextElements[i], deltaTime);
-          }
-        }
-        for(i32 i = 0; i < element->numberOfDependentElements; ++i) {
-          if(element->dependentElements[i]) {
-              move_element(element->dependentElements[i], deltaTime);
-          }
-        }
+//    if(element->animations[0].autoAnimate) {
+//        move_element(element, deltaTime);
+//        for(i32 i = 0; i < element->numberOfDependentTextElements; ++i) {
+//            if(element->dependentTextElements[i]) {
+//                move_text_element(element->dependentTextElements[i], deltaTime);
+//            }
+//        }
+//        for(i32 i = 0; i < element->numberOfDependentElements; ++i) {
+//            if(element->dependentElements[i]) {
+//                move_element(element->dependentElements[i], deltaTime);
+//            }
+//        }
+//    }
+    for(i32 i = 0; i < (i32)element->numberOfAnimations; ++i) {
+        if(element->animations[i].autoAnimate) move_element(element, deltaTime);
     }
 };
 
@@ -233,6 +236,7 @@ UIElement* get_element_by_parent_id(UIPage* page, i16 parentId) {
 i32 add_ui_element(UIPage* page, UIElement element, bool actionable) {
     i32 index = page->numberOfImageElements;
     element.meshHandle = imageMeshHandle;
+    element.id = index;
     page->uiElements[page->numberOfImageElements] = element;
     if (actionable) page->actionableElementCount++;
     page->numberOfImageElements++;
@@ -243,12 +247,12 @@ i32 add_ui_element(UIPage* page, UIElement element, bool actionable) {
     return index;
 }
 
-i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 scale, vec4 color, ActionFuncPtr action) {
+i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 scale, vec4 color, i32 actionId) {
     i32 buttonId = page->numberOfImageElements;
     i32 shadowId = page->numberOfImageElements + 1;
     i32 textId = page->numberOfTextElements;
 
-    UIElement button = UIElement{ Anchor::CENTER, -1, buttonHandle, pos.x, pos.y, scale.x, scale.y, true, action};
+    UIElement button = UIElement{ Anchor::CENTER, -1, buttonHandle, pos.x, pos.y, scale.x, scale.y, true, actionId};
     button.color = color;
     button.imageChildId = shadowId;
 
@@ -261,7 +265,6 @@ i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 
     button.posy += 0.01f;
     button.width *= 0.95f;
     button.height *= 0.95f;
-    button.action = nullptr;
     button.animations[0] = {};
     add_ui_element(page, button, false);
     
@@ -297,7 +300,7 @@ void add_move_text_animation(UIPage *page, i32 elementId, vec2 destination) {
     TextElement *e = &page->textElements[elementId];
     Animation a = Animation{destination, vec2(e->posx, e->posy), 10.0f, true};
     e->animations[e->numberOfAnimations++] = a;
-    e->onCompleteAction = toggle_visibility;
+    //e->onCompleteAction = toggle_visibility;
 }
 
 i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 start, vec2 destination) {
@@ -320,6 +323,21 @@ i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 s
     return index;
 }
 
+void add_image_to_window(UIPage *page, i32 windowId, i32 elementId) {
+    UIElement *window = &page->uiElements[windowId];
+    UIElement *image = &page->uiElements[elementId];
+    f32 speed = window->animations[window->numberOfAnimations - 1].speed;
+    vec2 motionDifference = window->animations[window->numberOfAnimations - 1].start - window->animations[window->numberOfAnimations - 1].destination;
+    
+    image->animations[image->numberOfAnimations].start = vec2(image->posx + motionDifference.x, image->posy + motionDifference.y);
+    image->animations[image->numberOfAnimations].destination = vec2(image->posx, image->posy);
+    image->animations[image->numberOfAnimations].speed = speed;
+    image->numberOfAnimations++;
+
+    window->dependentElements[page->uiElements[windowId].numberOfDependentElements] = image;
+    window->numberOfDependentElements++;
+}
+
 void add_text_to_window(UIPage *page, i32 windowId, i32 elementId) {
     UIElement *window = &page->uiElements[windowId];
     TextElement *text = &page->textElements[elementId];
@@ -340,12 +358,15 @@ void add_button_to_window(UIPage *page, i32 windowId, i32 elementId) {
     UIElement *button = &page->uiElements[elementId];
     UIElement *shadow = &page->uiElements[elementId + 1];
 
+    printf("number of window animations %i\n", (i32)window->numberOfAnimations);
     f32 speed = window->animations[window->numberOfAnimations - 1].speed;
     vec2 motionDifference = window->animations[window->numberOfAnimations - 1].start - window->animations[window->numberOfAnimations - 1].destination;
 
+    printf("number of button animations %i\n", (i32)button->numberOfAnimations);
     button->animations[button->numberOfAnimations].start = vec2(button->posx + motionDifference.x, button->posy + motionDifference.y);
     button->animations[button->numberOfAnimations].destination = vec2(button->posx, button->posy);
     button->animations[button->numberOfAnimations].speed = speed;
+    button->animations[button->numberOfAnimations].autoAnimate = true;
     button->numberOfAnimations++;
 
     window->dependentElements[window->numberOfDependentElements] = button;
@@ -355,6 +376,7 @@ void add_button_to_window(UIPage *page, i32 windowId, i32 elementId) {
     shadow->animations[shadow->numberOfAnimations].start = vec2(shadow->posx + motionDifference.x, shadow->posy + motionDifference.y);
     shadow->animations[shadow->numberOfAnimations].destination = vec2(shadow->posx, shadow->posy);
     shadow->animations[shadow->numberOfAnimations].speed = speed;
+    shadow->animations[shadow->numberOfAnimations].autoAnimate = true;
     shadow->numberOfAnimations++;
 
     page->uiElements[windowId].dependentElements[page->uiElements[windowId].numberOfDependentElements] = shadow;
@@ -365,6 +387,7 @@ void add_button_to_window(UIPage *page, i32 windowId, i32 elementId) {
     text->animations[text->numberOfAnimations].start = vec2(text->posx + motionDifference.x, text->posy + motionDifference.y);
     text->animations[text->numberOfAnimations].destination = vec2(text->posx, text->posy);
     text->animations[text->numberOfAnimations].speed = speed;
+    text->animations[text->numberOfAnimations].autoAnimate = true;
     text->numberOfAnimations++;
 
     page->uiElements[windowId].dependentTextElements[window->numberOfDependentTextElements] = text;
@@ -387,6 +410,7 @@ void button_release(void* ptr) {
 
 i32 add_text_element(UIPage* page, TextElement text) {
     i32 index = page->numberOfTextElements;
+    text.id = index;
     page->textElements[page->numberOfTextElements] = text;
     page->numberOfTextElements++;
     return index;
@@ -403,29 +427,8 @@ i32 add_dynamic_text_element(UIPage* page, TextElement text, const char* label, 
     return page->numberOfTextElements - 1;
 }
 
-TextElement* get_element_by_text(UIPage* page, const char* text) {
-    for (i32 i = 0; i < page->numberOfTextElements; i++) {
-        if (page->textElements[i].id && strcmp(page->textElements[i].text, text) == 0) return &page->textElements[i];
-    }
-    return nullptr;
-}
-
-UIElement* get_element_by_id(UIPage* page, const char* id) {
-    for (i32 i = 0; i < page->numberOfImageElements; i++) {
-        if (page->uiElements[i].id && strcmp(page->uiElements[i].id, id) == 0) return &page->uiElements[i];
-    }
-    return nullptr;
-}
-
-TextElement* get_text_element_by_id(UIPage* page, const char* id) {
-    for (i32 i = 0; i < page->numberOfTextElements; i++) {
-        if (page->textElements[i].id && strcmp(page->textElements[i].id, id) == 0) return &page->textElements[i];
-    }
-    return nullptr;
-}
-
 void clear_image_elements(UIElement element) {
-    element.id = nullptr;
+    //element.id = nullptr;
 
     for(i32 i = 0; i < 3; i++) {
         element.dependentElements[i] = nullptr;
@@ -498,7 +501,8 @@ void draw_messages(f32 deltaTime) {
 
 void update(UIPage* page, f32 deltaTime) {
     for (i32 i = 0; i < page->numberOfImageElements; i++) {
-        if (page->uiElements[i].hovered) update(&page->uiElements[i], deltaTime);
+        //if (page->uiElements[i].hovered)
+        update(&page->uiElements[i], deltaTime);
         //if (page->uiElements[i].canDelete) {
         //    clear_image_elements(page->uiElements[i]);
 
@@ -524,6 +528,226 @@ void update(UIPage* page, f32 deltaTime) {
     }
 
     draw_messages(deltaTime);
+}
+
+S_UIElement serialize_element(UIElement *src) {
+    S_UIElement dst = {};
+
+    dst.anchor = src->anchor;
+    dst.imageChildId = src->imageChildId;
+    dst.textureName = src->textureName;
+    dst.posx = src->posx;
+    dst.posy = src->posy;
+    dst.height = src->height;
+    dst.width = src->width;
+    dst.visible = src->visible;
+    dst.hovered = src->hovered;
+    dst.numberOfDependentElements = src->numberOfDependentElements;
+    dst.meshHandle = src->meshHandle;
+    dst.isPanel = src->isPanel;
+    dst.color = src->color;
+    dst.numberOfDependentTextElements = src->numberOfDependentTextElements;
+    dst.sheetAnimation = src->sheetAnimation;
+    dst.numberOfAnimations = src->numberOfAnimations;
+    dst.actionId = src->actionId;
+
+    if(src->textChild) dst.textChildId = src->textChild->id;
+
+    for(i32 i = 0; i < src->numberOfAnimations; ++i) {
+        dst.animations[i] = src->animations[i];
+    }
+
+    for(i32 i = 0; i < src->numberOfDependentElements; ++i) {
+        dst.dependentElementIds[i] = src->dependentElements[i]->id;
+    }
+
+    for(i32 i = 0; i < src->numberOfDependentTextElements; ++i) {
+        dst.dependentTextIds[i] = src->dependentTextElements[i]->id;
+    }
+
+    return dst;
+}
+
+UIElement deserialize_element(S_UIElement *src, UIPage *page) {
+    UIElement dst = {};
+
+    dst.anchor = src->anchor;
+    dst.imageChildId = src->imageChildId;
+    dst.textureName = src->textureName;
+
+    dst.posx = src->posx;
+    dst.posy = src->posy;
+    dst.height = src->height;
+    dst.width = src->width;
+    dst.visible = src->visible;
+    dst.hovered = src->hovered;
+    dst.numberOfDependentElements = src->numberOfDependentElements;
+    dst.meshHandle = src->meshHandle;
+    dst.isPanel = src->isPanel;
+    dst.color = src->color;
+    dst.numberOfDependentTextElements = src->numberOfDependentTextElements;
+    dst.sheetAnimation = src->sheetAnimation;
+    dst.numberOfAnimations = src->numberOfAnimations;
+    dst.textChild = &page->textElements[src->textChildId];
+
+    for(i32 i = 0; i < src->numberOfAnimations; ++i) {
+        dst.animations[i] = src->animations[i];
+    }
+
+    for(i32 i = 0; i < src->numberOfDependentElements; ++i) {
+        dst.dependentElements[i] = &page->uiElements[src->dependentElementIds[i]];
+    }
+
+    for(i32 i = 0; i < src->numberOfDependentTextElements; ++i) {
+        dst.dependentTextElements[i] = &page->textElements[src->dependentTextIds[i]];
+    }
+
+    dst.actionId = src->actionId;
+
+    return dst;
+}
+
+S_TextElement serialize_text_element(TextElement *src) {
+    S_TextElement dst = {};
+
+    dst.anchor = src->anchor;
+
+    memcpy(
+        dst.text,
+        src->text,
+        sizeof(src->text)
+    );
+
+    dst.posx = src->posx;
+    dst.posy = src->posy;
+    dst.parentId = src->parentId;
+    dst.visible = src->visible;
+    dst.scale = src->scale;
+    dst.color = src->color;
+    dst.type = src->type;
+    dst.multiplier = src->multiplier;
+    dst.textChildId = src->textChildId;
+    dst.imageChildId = src->imageChildId;
+    dst.numberOfAnimations = src->numberOfAnimations;
+
+    for(i32 j = 0; j < src->numberOfAnimations; ++j) {
+        dst.animations[j] = src->animations[j];
+    }
+
+    return dst;
+}
+
+TextElement deserialize_text_element(S_TextElement *src) {
+    TextElement dst = {};
+
+    dst.anchor = src->anchor;
+
+    memcpy(
+        dst.text,
+        src->text,
+        sizeof(src->text)
+    );
+
+    dst.posx = src->posx;
+    dst.posy = src->posy;
+    dst.parentId = src->parentId;
+    dst.visible = src->visible;
+    dst.scale = src->scale;
+    dst.color = src->color;
+    dst.type = src->type;
+    dst.multiplier = src->multiplier;
+    dst.textChildId = src->textChildId;
+    dst.imageChildId = src->imageChildId;
+    dst.numberOfAnimations = src->numberOfAnimations;
+
+    for(i32 j = 0; j < src->numberOfAnimations; ++j) {
+        dst.animations[j] = src->animations[j];
+    }
+
+    dst.valuePtr = nullptr;
+    dst.prefix = "";
+    //dst.onCompleteAction = nullptr;
+
+    return dst;
+}
+
+S_UIPage serialize_page(UIPage *page) {
+   S_UIPage serialized = {};
+
+    serialized.elementHovered = page->elementHovered;
+    serialized.actionableElementCount = page->actionableElementCount;
+    serialized.numberOfImageElements = page->numberOfImageElements;
+    serialized.numberOfTextElements = page->numberOfTextElements;
+    serialized.mouseHoverDisabled = page->mouseHoverDisabled;
+
+    for(i32 i = 0; i < page->numberOfImageElements; ++i) {
+        serialized.uiElements[i] = serialize_element(&page->uiElements[i]);
+    }
+
+    for(i32 i = 0; i < page->numberOfTextElements; ++i) {
+        serialized.textElements[i] = serialize_text_element(&page->textElements[i]);
+    }
+
+    return serialized;
+}
+
+UIPage deserialize_page(S_UIPage *page) {
+    UIPage deserialized = {};
+
+    deserialized.elementHovered = page->elementHovered;
+    deserialized.actionableElementCount = page->actionableElementCount;
+    deserialized.numberOfImageElements = page->numberOfImageElements;
+    deserialized.numberOfTextElements = page->numberOfTextElements;
+    deserialized.mouseHoverDisabled = page->mouseHoverDisabled;
+
+    for(i32 i = 0; i < page->numberOfTextElements; ++i) {
+        deserialized.textElements[i] = deserialize_text_element(&page->textElements[i]);
+    }
+
+    for(i32 i = 0; i < page->numberOfImageElements; ++i) {
+        deserialized.uiElements[i] = deserialize_element(&page->uiElements[i], &deserialized);
+    }
+
+    return deserialized;
+}
+
+void write_page(UIPage *page, const char* path) {
+    FILE *uiPageFile;
+
+    uiPageFile = fopen(path, "wb");
+    if(uiPageFile == NULL) {
+        perror("Error writing to ui page file.");
+        return;
+    }
+    S_UIPage s = serialize_page(page);
+
+    fwrite(&s, sizeof(S_UIPage), 1, uiPageFile);
+    fclose(uiPageFile);
+    printf("UI page file saved successfully");
+}
+
+void read_page(UIPage *page, const char* path) {
+    FILE *uiPageFile = fopen(path, "rb");
+
+    if(uiPageFile == NULL) {
+        perror(path);
+        return;
+    }
+
+    S_UIPage s = {};
+    size_t result =
+        fread(&s, sizeof(S_UIPage), 1, uiPageFile);
+
+    if(result == 1) {
+        *page = deserialize_page(&s);
+        printf("Read successful\n");
+
+    } else {
+        printf("Read error\n");
+    }
+
+    fclose(uiPageFile);
+    printf("UI page file loaded successfully\n");
 }
 
 void ui_reset(UIMemory* mem) {

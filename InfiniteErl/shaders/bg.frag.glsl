@@ -5,6 +5,7 @@ out vec4 FragColor;
 
 uniform float time;
 uniform vec4 color;
+uniform float aspect;
 
 float diamond(vec2 p, float size) {
     return step(abs(p.x) + abs(p.y), size);
@@ -20,7 +21,8 @@ float box(vec2 p, vec2 size){
 void main() {
     //diamond
     vec2 p = uv;
-    p = p * vec2(20.0, 15.0);
+    p.x *= aspect;
+    p = p * vec2(5.0);
     p += vec2(time * 0.02, time * 0.015);
     p *= 4.0;
 

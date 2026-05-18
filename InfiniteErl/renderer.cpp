@@ -250,7 +250,8 @@ void render_buffer(RenderBuffer* buffer) {
                   entry->useSpriteSheet,
                   entry->frameIndex,
                   entry->tiled,
-                  entry->tileCount
+                  entry->tileCount,
+                  buffer->aspect
               );
               break;
           }
@@ -298,7 +299,7 @@ void render_buffer(RenderBuffer* buffer) {
 
 f32 T = 0;
 
-void draw_entity(mat4 model, mat4 view, mat4 projection, u32 vao, i32 textureId, vec4 color, i8 useSpriteSheet, i32 frameIndex, u8 tiled, vec2 tileCount) {
+void draw_entity(mat4 model, mat4 view, mat4 projection, u32 vao, i32 textureId, vec4 color, i8 useSpriteSheet, i32 frameIndex, u8 tiled, vec2 tileCount, f32 aspect) {
     glDepthMask(GL_FALSE);
     glEnable(GL_BLEND);
 
@@ -312,6 +313,7 @@ void draw_entity(mat4 model, mat4 view, mat4 projection, u32 vao, i32 textureId,
         bgShader->setMat4("model", model);
         bgShader->setFloat("time", T);
         bgShader->setVec4("color", color);
+        bgShader->setFloat("aspect", aspect);
     } else {
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
         itemShader->use();
