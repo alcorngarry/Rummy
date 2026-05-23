@@ -4,6 +4,8 @@
 
 #define MAX_ELEMENTS 100
 #define MAX_MESSAGE_SIZE 512
+#define DEFAULT_FONT_SCALE 0.0006f
+
 #define BUTTON_PRESS(el) \
     do { \
         if ((el).actionId != -1) { \
@@ -15,10 +17,11 @@
     do { \
         if ((el).actionId != -1) { \
             button_release((void*)&(el)); \
-            gState->uiActions.actions[(el).actionId](); \
+            gState->uiPage->actions[(el).actionId](); \
         } \
     } while(0)
-#define DEFAULT_FONT_SCALE 0.0006f
+
+#define RUN_ON_COMPLETE_ACTION(obj) selfActions[(obj)->onCompleteActionId](obj)
 
 struct MessageBuffer {
     u32 maxBufferSize;
@@ -75,7 +78,6 @@ struct UIElement {
 	f32 height;
 	f32 width;
 	u8 visible = true;
-	//ActionFuncPtr action;
   i32 actionId = -1;
 	u8 hovered = false;
 	UIElement* dependentElements[50];
@@ -101,7 +103,6 @@ struct S_UIElement {
 	f32 height;
 	f32 width;
 	u8 visible = true;
-	//ActionFuncPtr action;
   i32 actionId = -1;
 	u8 hovered = false;
   i32 dependentElementIds[50];
@@ -135,12 +136,11 @@ struct TextElement {
 	u8 visible = true;
 	f32 scale = 0.001;
 	vec3 color = vec3(1.0f);
-	const void* valuePtr = nullptr;
+  i32 valueId = -1;
 	TextType type = TextType::NONE;
 	const char* prefix = "";
 	f32 multiplier = 1.0f;
-	//SelfActionFuncPtr onCompleteAction;
-	i32 onCompleteActionId;
+	i32 onCompleteActionId = -1;
   i32 textChildId = -1;
   i32 imageChildId = -1;
   Animation animations[8];
@@ -154,10 +154,10 @@ struct S_TextElement {
 	f32 posx = 0;
 	f32 posy = 0;
 	i16 parentId = -1;
-	bool visible = true;
+	u8 visible = true;
 	f32 scale = 0.001;
 	vec3 color = vec3(1.0f);
-	//const void* valuePtr = nullptr;
+  i32 valueId = -1;
 	TextType type = TextType::NONE;
 	//const char* prefix = "";
 	f32 multiplier = 1.0f;
@@ -177,6 +177,13 @@ struct UIPage {
 	i32 numberOfTextElements = 0;
 	u8 mouseHoverDisabled = false;
   f32 aspect;
+
+  //maybe use buffers instead of arrays??
+  void* values[20];
+  u8 numberOfValues;
+
+  ActionFuncPtr actions[20];
+  u8 numberOfActions;
 };
 
 struct S_UIPage {
@@ -195,6 +202,7 @@ struct UIMemory {
   u32 used;
 
   u32(*load_ui_quad_buffer_fn)(f32* vertices, i32 vertexCount, u32* indices, i32 indexCount);
+  const void*(*get_ui_value_fn)(i32 valueId);
 };
 
 void ui_reset(UIMemory* mem);
@@ -211,7 +219,7 @@ void set_source(TextElement* text, const char* label, const void* ptr, TextType 
 
 i32 add_ui_element(UIPage* page, UIElement element, bool actionable = false);
 i32 add_text_element(UIPage* page, TextElement text);
-i32 add_dynamic_text_element(UIPage* page, TextElement text, const char* label, const void* ptr, TextType t, f32 mult = 1.0f);
+i32 add_dynamic_text_element(UIPage* page, TextElement text, const char* label, i32 valueId, TextType t, f32 mult = 1.0f);
 void add_text_to_window(UIPage *page, i32 windowId, i32 elementId);
 void add_button_to_window(UIPage *page, i32 windowId, i32 elementId);
 void add_image_to_window(UIPage *page, i32 windowId, i32 elementId);

@@ -3,6 +3,10 @@
 u32 imageMeshHandle;
 MessageBuffer* messageBuffer = nullptr;
 
+//note these are used for prebaked actions
+SelfActionFuncPtr selfActions[20];
+u8 numberOfSelfActions;
+
 static inline std::string add_commas_int64(int64_t value) {
     bool neg = value < 0;
     u64 v = neg ? -value : value;
@@ -101,7 +105,7 @@ void move_element(UIElement *element, f32 deltaTime) {
 void move_text_element(TextElement *element, f32 deltaTime) {
     for(i32 i = 0; i < element->numberOfAnimations; ++i) {
         if(!element->animations[i].complete) {
-            //instead of modifying start can just use posx/pgState->gameDgState->gameDataay
+            //instead of modifying start can just use posx
             vec2 dist = (element->animations[i].destination - element->animations[i].start) * element->animations[i].speed * deltaTime;
             element->animations[i].start += dist;
             element->posx = element->animations[i].start.x;
@@ -113,7 +117,7 @@ void move_text_element(TextElement *element, f32 deltaTime) {
                 element->animations[i].destination = element->animations[i].start;
                 if(element->animations[i].playOnce) { 
                     element->animations[i].complete = true;
-                    //if(element->onCompleteActionId) RUN_ON_COMPLETE_ACTION(element);
+                    if(element->onCompleteActionId != -1) RUN_ON_COMPLETE_ACTION(element);
                 }
             }
         }
@@ -170,51 +174,44 @@ void reset_animation(UIElement* element) {
     element->sheetAnimation.currentFrame = 0;
 }
 
-void update(TextElement* text, f32 deltaTime) {
+void update(TextElement* text, UIPage *page, f32 deltaTime) {
     for(i32 i = 0; i < (i32)text->numberOfAnimations; ++i) {
         if(text->animations[i].autoAnimate) {
             move_text_element(text, deltaTime);
         }
     }
 
-    if (!text->valuePtr || text->type == TextType::NONE) return;
+    if (!page->values[text->valueId] || text->type == TextType::NONE) return;
 
     switch (text->type) {
         case TextType::INT_32: {
-            i32 val = *reinterpret_cast<const int*>(text->valuePtr);
+            i32 val = *reinterpret_cast<const int*>(page->values[text->valueId]);
             snprintf(text->text, sizeof(text->text), "%s%d", text->prefix, val);
             break;
         }
         case TextType::INT_64: {
-            i64 val = *reinterpret_cast<const i64*>(text->valuePtr);
+            i64 val = *reinterpret_cast<const i64*>(page->values[text->valueId]);
             snprintf(text->text, sizeof(text->text), "%s%lld", text->prefix, (long long)val);
             break;
         }
         case TextType::UINT_64: {
-            u64 val = *reinterpret_cast<const u64*>(text->valuePtr);
+            u64 val = *reinterpret_cast<const u64*>(page->values[text->valueId]);
             auto s = add_commas_uint64(val);
             snprintf(text->text, sizeof(text->text), "%s%s", text->prefix, s.c_str());
             break;
         }
         case TextType::FLOAT_32: {
-            f32 val = *reinterpret_cast<const float*>(text->valuePtr) * text->multiplier;
+            f32 val = *reinterpret_cast<const float*>(page->values[text->valueId]) * text->multiplier;
             snprintf(text->text, sizeof(text->text), "%s%.1f", text->prefix, val);
             break;
         }
         case TextType::CHAR_TO_INT: {
-            i64 val = strtoll(reinterpret_cast<const char*>(text->valuePtr), nullptr, 10);
+            i64 val = strtoll(reinterpret_cast<const char*>(page->values[text->valueId]), nullptr, 10);
             snprintf(text->text, sizeof(text->text), "%s%lld", text->prefix, val);
             break;
         }
         default: break;
     }
-}
-
-void set_source(TextElement* text, const char* label, const void* ptr, TextType t, f32 mult) {
-    text->prefix = label;
-    text->valuePtr = ptr;
-    text->type = t;
-    text->multiplier = mult;
 }
 
 TextElement* get_text_element_by_parent_id(UIPage* page, i16 parentId) {
@@ -241,9 +238,6 @@ i32 add_ui_element(UIPage* page, UIElement element, bool actionable) {
     if (actionable) page->actionableElementCount++;
     page->numberOfImageElements++;
 
-    char message_buffer[100];
-    OutputDebugStringA(message_buffer);
-
     return index;
 }
 
@@ -266,8 +260,10 @@ i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 
     button.width *= 0.95f;
     button.height *= 0.95f;
     button.animations[0] = {};
+    button.numberOfAnimations = 0;
+    button.actionId = -1;
     add_ui_element(page, button, false);
-    
+  
     TextElement bText = TextElement{ Anchor::CENTER, "", pos.x * page->aspect, pos.y, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
     strcpy(bText.text, text);
     add_text_element(page, bText);
@@ -300,7 +296,7 @@ void add_move_text_animation(UIPage *page, i32 elementId, vec2 destination) {
     TextElement *e = &page->textElements[elementId];
     Animation a = Animation{destination, vec2(e->posx, e->posy), 10.0f, true};
     e->animations[e->numberOfAnimations++] = a;
-    //e->onCompleteAction = toggle_visibility;
+    e->onCompleteActionId = 0;
 }
 
 i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 start, vec2 destination) {
@@ -332,6 +328,7 @@ void add_image_to_window(UIPage *page, i32 windowId, i32 elementId) {
     image->animations[image->numberOfAnimations].start = vec2(image->posx + motionDifference.x, image->posy + motionDifference.y);
     image->animations[image->numberOfAnimations].destination = vec2(image->posx, image->posy);
     image->animations[image->numberOfAnimations].speed = speed;
+    image->animations[image->numberOfAnimations].autoAnimate = true;
     image->numberOfAnimations++;
 
     window->dependentElements[page->uiElements[windowId].numberOfDependentElements] = image;
@@ -343,10 +340,13 @@ void add_text_to_window(UIPage *page, i32 windowId, i32 elementId) {
     TextElement *text = &page->textElements[elementId];
     f32 speed = window->animations[window->numberOfAnimations - 1].speed;
     vec2 motionDifference = window->animations[window->numberOfAnimations - 1].start - window->animations[window->numberOfAnimations - 1].destination;
+
+    motionDifference.x *= page->aspect;
     
     text->animations[text->numberOfAnimations].start = vec2(text->posx + motionDifference.x, text->posy + motionDifference.y);
     text->animations[text->numberOfAnimations].destination = vec2(text->posx, text->posy);
     text->animations[text->numberOfAnimations].speed = speed;
+    text->animations[text->numberOfAnimations].autoAnimate = true;
     text->numberOfAnimations++;
 
     window->dependentTextElements[page->uiElements[windowId].numberOfDependentTextElements] = text;
@@ -416,10 +416,10 @@ i32 add_text_element(UIPage* page, TextElement text) {
     return index;
 }
 
-i32 add_dynamic_text_element(UIPage* page, TextElement text, const char* label, const void* ptr, TextType t, f32 mult) {
+i32 add_dynamic_text_element(UIPage* page, TextElement text, const char* label, i32 valueId, TextType t, f32 mult) {
     page->textElements[page->numberOfTextElements] = text;
     page->textElements[page->numberOfTextElements].prefix = label;
-    page->textElements[page->numberOfTextElements].valuePtr = ptr;
+    page->textElements[page->numberOfTextElements].valueId = valueId;
     page->textElements[page->numberOfTextElements].type = t;
     page->textElements[page->numberOfTextElements].multiplier = mult;
     page->numberOfTextElements++;
@@ -436,7 +436,7 @@ void clear_image_elements(UIElement element) {
 }
 
 void clear_text_elements(TextElement element) {
-    element.valuePtr = nullptr;
+    element.valueId = -1;
     element.prefix = nullptr;
 }
 
@@ -515,7 +515,7 @@ void update(UIPage* page, f32 deltaTime) {
     }
 
     for (i32 i = 0; i < page->numberOfTextElements; i++) {
-        update(&page->textElements[i], deltaTime);
+        update(&page->textElements[i], page, deltaTime);
         //if (page->textElements[i].canDelete) {
         //    clear_text_elements(page->textElements[i]);
 
@@ -629,6 +629,7 @@ S_TextElement serialize_text_element(TextElement *src) {
     dst.textChildId = src->textChildId;
     dst.imageChildId = src->imageChildId;
     dst.numberOfAnimations = src->numberOfAnimations;
+    dst.valueId = src->valueId;
 
     for(i32 j = 0; j < src->numberOfAnimations; ++j) {
         dst.animations[j] = src->animations[j];
@@ -664,7 +665,7 @@ TextElement deserialize_text_element(S_TextElement *src) {
         dst.animations[j] = src->animations[j];
     }
 
-    dst.valuePtr = nullptr;
+    dst.valueId = src->valueId;
     dst.prefix = "";
     //dst.onCompleteAction = nullptr;
 
@@ -776,10 +777,15 @@ void create_image_quad(UIMemory* mem) {
     imageMeshHandle = mem->load_ui_quad_buffer_fn(vertices, 16, indices, 6);
 }
 
+void load_self_actions() {
+  selfActions[numberOfSelfActions++] = &toggle_visibility;
+}
+
 UIPage* create_ui_page(UIMemory* mem) {
   create_image_quad(mem);
-  messageBuffer = allocateMessageBuffer(2048); 
-
+  load_self_actions();
+  messageBuffer = allocateMessageBuffer(128);
+  
   UIPage* page = (UIPage*)ui_push_size(mem, sizeof(UIPage));
   page->elementHovered = -1;
   memset(page, 0, sizeof(UIPage));

@@ -3,6 +3,7 @@
 #include <fstream>
 #include <random>
 #include "platform.h"
+#include "rummy_colors.h"
 
 #define TOTAL_TILES 60
 
@@ -41,11 +42,6 @@ struct ActionBuffer {
     u64 size;
     u64 readIndex;
     u64 writeIndex;
-};
-
-struct UIActions {
-    ActionFuncPtr actions[20];
-    u8 numberOfUIActions = 0;
 };
 
 struct RNG {
@@ -208,7 +204,6 @@ struct GameState {
     Table table;
 
     ActionBuffer actionBuffer;
-    UIActions uiActions;
 };
 
 extern GameState* gState;
