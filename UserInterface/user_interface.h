@@ -224,7 +224,7 @@ void add_text_to_window(UIPage *page, i32 windowId, i32 elementId);
 void add_button_to_window(UIPage *page, i32 windowId, i32 elementId);
 void add_image_to_window(UIPage *page, i32 windowId, i32 elementId);
 void add_move_animation(UIPage *page, i32 elementId, vec2 destination);
-void add_move_text_animation(UIPage *page, i32 elementId, vec2 destination);
+void add_move_text_animation(UIPage *page, i32 elementId, vec2 destination, f32 speed = 10.0f);
 
 i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 scale, vec4 color, i32 actionId);
 

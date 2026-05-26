@@ -16,7 +16,7 @@ struct GameObject {
     vec3 pos;
     mat4 model;
     i32 textureName;
-    bool isAnimated = false;
+    u8 isAnimated = false;
     i32 cols = 0;
     i32 rows = 0;
     i32 fps = 0;
@@ -53,7 +53,8 @@ enum GAME_MODE {
     GM_PLAYING,
     GM_GAME_OVER,
     GM_OPTIONS,
-    GM_PROFILE
+    GM_PROFILE,
+    GM_ROUND_COMPLETE
 };
 
 enum SET_TYPE {
@@ -113,6 +114,7 @@ struct Item {
 };
 
 struct Set {
+  GameObject object;
   i32 id;
   SET_TYPE setType;
   Tile* tiles[13];
@@ -128,7 +130,6 @@ struct Set {
   u8 isHovered = false;
 
   u64 value = 0;
-  GameObject object;
 };
 
 struct Pool {

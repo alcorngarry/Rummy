@@ -292,9 +292,9 @@ void add_move_animation(UIPage *page, i32 elementId, vec2 destination) {
     e->animations[e->numberOfAnimations++] = a;
 }
 
-void add_move_text_animation(UIPage *page, i32 elementId, vec2 destination) {
+void add_move_text_animation(UIPage *page, i32 elementId, vec2 destination, f32 speed) {
     TextElement *e = &page->textElements[elementId];
-    Animation a = Animation{destination, vec2(e->posx, e->posy), 10.0f, true};
+    Animation a = Animation{destination, vec2(e->posx, e->posy), speed, true};
     e->animations[e->numberOfAnimations++] = a;
     e->onCompleteActionId = 0;
 }
