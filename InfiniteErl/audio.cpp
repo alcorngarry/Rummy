@@ -23,17 +23,36 @@ void play_audio(const char* fileName) {
     if(result != MA_SUCCESS) printf("Playing audio failed %d\n", result);
 }
 
-void load_home_music() {
-    if (ma_sound_init_from_file(&engine,
-        "./audio/slow_space.wav",
-        0, NULL, NULL, &homeMusic) == MA_SUCCESS)
-    {
-        ma_sound_set_looping(&homeMusic, MA_TRUE);
-        ma_sound_start(&homeMusic);
+void load_home_music(const char* fileName) {
+    if (!isInitialized) {
+        printf("Audio not initialized. Initializing now...\n");
+        init_audio();
+
+        if (!isInitialized) {
+            printf("Audio init failed, cannot load music.\n");
+            return;
+        }
     }
-    else {
-        printf("Failed to load home music\n");
+
+    ma_result result = ma_sound_init_from_file(
+        &engine,
+        fileName,
+        0,
+        NULL,
+        NULL,
+        &homeMusic
+    );
+
+    if (result != MA_SUCCESS) {
+        printf("Failed to load home music: %s\n", fileName);
+        printf("miniaudio error code: %d\n", result);
+        return;
     }
+
+    ma_sound_set_looping(&homeMusic, MA_TRUE);
+    ma_sound_start(&homeMusic);
+
+    printf("Loaded home music: %s\n", fileName);
 }
 
 void unload_home_music() {

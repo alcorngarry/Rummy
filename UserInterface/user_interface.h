@@ -35,6 +35,14 @@ struct Message {
     char messageText[MAX_MESSAGE_SIZE];
 };
 
+enum EaseType {
+    LINEAR,
+    EASE_OUT,
+    EASE_IN,
+    EASE_IN_OUT,
+    BOUNCE
+};
+
 struct Character {
 	u32 TextureID;
 	ivec2 Size;
@@ -52,11 +60,14 @@ enum Anchor {
 struct Animation {
   vec2 destination;
 	vec2 start;
-	f32 speed = 10.0f;
 	u8 autoAnimate = false;
 	u8 playOnce = true;
 	u8 complete = false;
 	u8 loopAnimation = true;
+  f32 duration = 1.0f;
+  f32 elapsed = 0.0f;
+
+  EaseType ease = LINEAR;
 };
 
 struct SheetAnimation {
@@ -94,30 +105,6 @@ struct UIElement {
   i32 id;
 };
 
-struct S_UIElement {
-	Anchor anchor = Anchor::TOP_LEFT;
-	i32 imageChildId = -1;
-	i32 textureName;
-	f64 posx;
-	f64 posy;
-	f32 height;
-	f32 width;
-	u8 visible = true;
-  i32 actionId = -1;
-	u8 hovered = false;
-  i32 dependentElementIds[50];
-  i32 numberOfDependentElements = 0;
-  u32 meshHandle;
-  u8 isPanel = false;
-  vec4 color = vec4(-1.0f);
-  i32 textChildId;
-  i32 dependentTextIds[50];
-  i32 numberOfDependentTextElements = 0;
-  SheetAnimation sheetAnimation;
-  Animation animations[8];
-  u8 numberOfAnimations = 0;
-};
-
 enum TextType {
 	NONE,
 	INT_32,
@@ -148,26 +135,6 @@ struct TextElement {
   i32 id;
 };
 
-struct S_TextElement {
-	Anchor anchor = Anchor::TOP_LEFT;
-	char text[1024];
-	f32 posx = 0;
-	f32 posy = 0;
-	i16 parentId = -1;
-	u8 visible = true;
-	f32 scale = 0.001;
-	vec3 color = vec3(1.0f);
-  i32 valueId = -1;
-	TextType type = TextType::NONE;
-	//const char* prefix = "";
-	f32 multiplier = 1.0f;
-	i32 onCompleteActionId;
-  i32 textChildId = -1;
-  i32 imageChildId = -1;
-  Animation animations[8];
-  u8 numberOfAnimations = 0;
-};
-
 struct UIPage {
 	UIElement uiElements[MAX_ELEMENTS];
 	TextElement textElements[MAX_ELEMENTS];
@@ -184,16 +151,6 @@ struct UIPage {
 
   ActionFuncPtr actions[20];
   u8 numberOfActions;
-};
-
-struct S_UIPage {
-	S_UIElement uiElements[MAX_ELEMENTS];
-	S_TextElement textElements[MAX_ELEMENTS];
-	i8 elementHovered = -1;
-	u8 actionableElementCount = 0;
-	i32 numberOfImageElements = 0;
-	i32 numberOfTextElements = 0;
-	u8 mouseHoverDisabled = false;
 };
 
 struct UIMemory {
@@ -235,6 +192,8 @@ i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 s
 TextElement* get_element_by_text(UIPage* page, const char* text);
 UIElement* get_element_by_id(UIPage* page, const char* id);
 TextElement* get_text_element_by_id(UIPage* page, const char* id);
+
+void delete_text_element(UIPage* page, i32 index);
 
 void write_page(UIPage *page, const char* path);
 void read_page(UIPage *page, const char* path);

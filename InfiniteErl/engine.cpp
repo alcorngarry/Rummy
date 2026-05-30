@@ -137,6 +137,7 @@ GameMemory allocate_game_memory(RenderBuffer* buffer) {
     memory.toggleFullScreen = false;
   
     memory.play_audio_fn = play_audio;
+    memory.load_home_music_fn = load_home_music;
     return memory;
 }
 

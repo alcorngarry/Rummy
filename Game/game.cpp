@@ -395,7 +395,9 @@ void move_tile(void* ptr) {
     }
 }
 
-i32 stupidSetId = 0;
+i32 stupidSetId = -1;
+u8 tileStarted = false;
+i32 tileDone = -1;
 
 void add_tile_amount(void* ptr) {
     GameObject* self = (GameObject*)ptr;
@@ -424,7 +426,7 @@ void add_tile_amount(void* ptr) {
 
     if (t >= 1.0f) {
         Set *set = &gState->table.sets[tile->setId];
-        if(set->tiles[0] == tile) {
+        if(set->tiles[0] == tile && !tileStarted) {
             vec2 pos = world_to_ui(
                 set->object.model,
                 gMemory->renderBuffer->view,
@@ -438,22 +440,85 @@ void add_tile_amount(void* ptr) {
         }
 
         gMemory->play_audio_fn("./audio/place_tile.wav");
-
-        TextElement bonus = TextElement{ Anchor::CENTER, "", pos.x, pos.y, -1, true, DEFAULT_FONT_SCALE * 2.0 };
-        snprintf(bonus.text, sizeof(bonus.text), "+%d", (i32)tile->details.tileNumber);
-
-        add_move_text_animation(gState->uiPage, add_text_element(gState->uiPage, bonus), vec2(pos.x, pos.y - 0.1f), 8.0f);
         
-        self->model = self->baseModel;
-        self->action = nullptr;
+        if(!tileStarted) {
+            TextElement bonus = TextElement{ Anchor::CENTER, "", pos.x, pos.y, -1, true, DEFAULT_FONT_SCALE * 2.0 };
+            snprintf(bonus.text, sizeof(bonus.text), "+%d", (i32)tile->details.tileNumber);
+            tileDone = add_text_element(gState->uiPage, bonus);
+            add_move_text_animation(gState->uiPage, tileDone, vec2(pos.x, pos.y - 0.1f), 0.5f);
+            self->model = self->baseModel;
+            tileStarted = true;
+        }
+                
+        if(gState->uiPage->textElements[tileDone].animations[0].complete) {
+            set->value += tile->details.tileNumber;
+            self->action = nullptr;
+            tileStarted = false;
+            delete_text_element(gState->uiPage, tileDone);
+        }
+    }
+}
 
-        set->value += tile->details.tileNumber;
+i32 done = -1;
+u8 started = false;
 
-        if(set->tiles[set->numberOfTiles - 1] == tile) {
-            add_move_text_animation(gState->uiPage, stupidSetId, vec2(0.5 * gMemory->aspect, 0.07f), 8.0f);
+void add_set_amount(void *ptr) {
+    GameObject* self = (GameObject*)ptr;
+    Set* set = (Set*)self;
+
+    if(!started) {
+        if(set->setType == RUN && gState->player.playerData.runMultipliers > 1) {
+            vec2 setPos = world_to_ui(
+                set->object.model,
+                gMemory->renderBuffer->view,
+                gMemory->renderBuffer->projection        
+            );
+
+            TextElement multiplier = TextElement{ Anchor::CENTER, "", setPos.x + 0.4f * gMemory->aspect, setPos.y - 0.2f, -1, true, DEFAULT_FONT_SCALE * 3.0 };
+            multiplier.color = vec4(1.0f, 0.0f, 0.0f, 1.0f);
+            snprintf(multiplier.text, sizeof(multiplier.text), "x%d", gState->player.playerData.runMultipliers);
+            done = add_text_element(gState->uiPage, multiplier);
+            add_move_text_animation(gState->uiPage, done, vec2(setPos.x * gMemory->aspect, setPos.y - 0.2f), 0.75f);
+        } else if (set->setType == GROUP && gState->player.playerData.groupMultipliers > 1) {
+            vec2 setPos = world_to_ui(
+                set->object.model,
+                gMemory->renderBuffer->view,
+                gMemory->renderBuffer->projection        
+            );
+
+            TextElement multiplier = TextElement{ Anchor::CENTER, "", setPos.x + 0.4f * gMemory->aspect, setPos.y - 0.2f, -1, true, DEFAULT_FONT_SCALE * 3.0 };
+            multiplier.color = vec4(1.0f, 0.0f, 0.0f, 1.0f);
+            snprintf(multiplier.text, sizeof(multiplier.text), "x%d", gState->player.playerData.groupMultipliers);
+            done = add_text_element(gState->uiPage, multiplier);
+            add_move_text_animation(gState->uiPage, done, vec2(setPos.x * gMemory->aspect, setPos.y - 0.2f), 0.75f);
+
+        } else {
+            add_move_text_animation(gState->uiPage, stupidSetId, vec2(0.5 * gMemory->aspect, 0.07f), 0.5f);
             progressScore += set->value;
         }
     }
+
+    if(done != -1) {
+        if(gState->uiPage->textElements[done].animations[0].complete) {
+            if(set->setType == GROUP) {
+                set->value *= gState->player.playerData.groupMultipliers;
+            } else {
+                set->value *= gState->player.playerData.runMultipliers;
+            }
+
+            add_move_text_animation(gState->uiPage, stupidSetId, vec2(0.5 * gMemory->aspect, 0.07f), 0.5f);
+            done = -1;
+        }
+    }
+
+    started = true;
+    
+    if(gState->uiPage->textElements[stupidSetId].animations[0].complete) {
+        progressScore += set->value;
+        set->object.action = nullptr;
+        started = false;
+        delete_text_element(gState->uiPage, stupidSetId);
+    } 
 }
 
 void add_tile_to_rack(Tile *tile) {
@@ -1798,6 +1863,7 @@ void add_shop_ui() {
 
 void add_main_menu_ui() {
 //    read_page(gState->uiPage, "main_menu.eui");
+    
     i32 newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.35f, 0.9f), vec2(0.1f), R_GREEN, 0);
     i32 options = add_button(gState->uiPage, BUTTON_T, "Options", vec2(0.5f, 0.9f), vec2(0.1f), R_BLUE, 1);
     i32 profile = add_button(gState->uiPage, BUTTON_T, "Profile", vec2(0.65f, 0.9f), vec2(0.1f), R_PURPLE, 2);
@@ -1810,7 +1876,7 @@ void add_main_menu_ui() {
 
     //add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.0f, 0.0f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}, "", &gState->deltaTime, TextType::FLOAT_32);
 
-    add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Runza Rummi", 0.5f * gMemory->aspect, 0.5f, -1, true, DEFAULT_FONT_SCALE * 5.0 });
+    add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Conquian", 0.5f * gMemory->aspect, 0.5f, -1, true, DEFAULT_FONT_SCALE * 5.0 });
 //    write_page(gState->uiPage, "main_menu.eui");
 }
 
@@ -1872,6 +1938,10 @@ void count_table() {
             GameObject** slot = PUSH_TYPE(&gState->actionBuffer, GameObject*);
             *slot = &tile->object;
         }
+
+        set->object.action = add_set_amount;
+        GameObject** slot = PUSH_TYPE(&gState->actionBuffer, GameObject*);
+        *slot = &set->object;
     }
 }
 
@@ -1896,6 +1966,7 @@ void calculate_round_bonus(GameData *gd, PlayerData pd) {
 void complete_round() {
     clear_game_ui();
     GameData gd = gState->gameData;
+    progressScore = 0;
 
     if(gd.turnLimit == 0 && (gState->playerRack.numberOfTiles > 0 || gd.minimumScore > gState->player.playerData.score)) {
         gState->mode = GM_GAME_OVER;
@@ -2162,6 +2233,7 @@ extern "C" GAME_DLL void game_init(GameMemory* memory, i32 preserveState) {
 
     init_table();
     snapshot_round_start();
+    gMemory->load_home_music_fn("./audio/placeholder_music.wav");
 }
 
 extern "C" GAME_DLL void game_update_and_render() {

@@ -69,7 +69,13 @@ ie player 1 (W)  + 12, player 2 (L) -5, player 3 (L) -7
   -Discard
 
 --[TO-HAVES]--
-- (X) loading game screen when init game starts
+- () loading game screen when init game starts
+- () audio when text is being drawn
+- () text is drawn char by char..
+- () screen shake effect when ui loads in
+- () rolling numbers
+- () falling effect screen
+
 -background music
 - (X) continue game
 -challenges maybe? -- IN PROGRESS
@@ -88,3 +94,7 @@ ie player 1 (W)  + 12, player 2 (L) -5, player 3 (L) -7
   -finish completion (clear tiles after 35 draws is the current default one)
   -after finishing this you get a reward you can use to buy the widgets
   -pick the next completion option!
+
+
+
+

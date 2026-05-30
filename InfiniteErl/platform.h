@@ -52,6 +52,7 @@ extern "C" {
 		void (*push_ui_image_fn)(RenderBuffer*, RenderEntryUIImage*);
 		void (*push_ui_page_fn)(RenderBuffer*, UIPage*);
     void (*play_audio_fn)(const char* filename);
+    void (*load_home_music_fn)(const char* filename);
 
 		u32(*load_quad_buffer_fn)(f32* vertices, i32 vertexCount, u32* indices, i32 indexCount);
 		u32(*load_walls_buffer_fn)(f32* vertices, i32 vertexCount);
