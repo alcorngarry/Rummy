@@ -138,6 +138,46 @@ void move_element(UIElement* element, f32 deltaTime) {
     }
 }
 
+void set_text_value(TextElement* text, f64 value) {
+    switch(text->type) {
+        case TextType::INT_32:
+            snprintf(text->text,
+                     sizeof(text->text),
+                     "%s%d",
+                     text->prefix,
+                     (i32)value);
+            break;
+
+        case TextType::INT_64:
+            snprintf(text->text,
+                     sizeof(text->text),
+                     "%s%lld",
+                     text->prefix,
+                     (long long)value);
+            break;
+
+        case TextType::UINT_64: {
+            auto s = add_commas_uint64((u64)value);
+            snprintf(text->text,
+                     sizeof(text->text),
+                     "%s%s",
+                     text->prefix,
+                     s.c_str());
+            break;
+        }
+
+        case TextType::FLOAT_32:
+            snprintf(text->text,
+                     sizeof(text->text),
+                     "%s%.1f",
+                     text->prefix,
+                     (f32)value);
+            break;
+        default:
+            break;
+    }
+}
+
 void move_text_element(TextElement* element, f32 deltaTime) {
     for(i32 i = 0; i < element->numberOfAnimations; ++i) {
         Animation* a = &element->animations[i];
@@ -152,10 +192,16 @@ void move_text_element(TextElement* element, f32 deltaTime) {
         }
 
         f32 eased = ease(t, a->ease);
-        vec2 pos = glm::mix(a->start, a->destination, eased);
 
-        element->posx = pos.x;
-        element->posy = pos.y;
+        switch(a->animationType) {
+            case MOVE: {
+                vec2 pos = glm::mix(a->start, a->destination, eased);
+
+                element->posx = pos.x;
+                element->posy = pos.y;
+                break;    
+            }
+        }
 
         if(a->complete && element->onCompleteActionId != -1) {
             RUN_ON_COMPLETE_ACTION(element);
@@ -213,6 +259,31 @@ void reset_animation(UIElement* element) {
     element->sheetAnimation.currentFrame = 0;
 }
 
+f64 get_converted_text_type(TextType type, void *ptr) {
+    switch (type) {
+        case TextType::INT_32: {
+            return (f64)*(const i32*)ptr;
+            break;
+        }
+        case TextType::INT_64: {
+            return (f64)*(const i64*)ptr;
+            break;
+        }
+        case TextType::UINT_64: {
+            return (f64)*(const u64*)ptr;
+            break;
+        }
+        case TextType::FLOAT_32: {
+            return (f64)*(const f32*)ptr;
+            break;
+        }
+        case TextType::CHAR_TO_INT: {
+            break;
+        }
+        default: break;
+    }
+}
+
 void update(TextElement* text, UIPage *page, f32 deltaTime) {
     for(i32 i = 0; i < (i32)text->numberOfAnimations; ++i) {
         if(text->animations[i].autoAnimate) {
@@ -222,35 +293,43 @@ void update(TextElement* text, UIPage *page, f32 deltaTime) {
 
     if (!page->values[text->valueId] || text->type == TextType::NONE) return;
 
-    switch (text->type) {
-        case TextType::INT_32: {
-            i32 val = *reinterpret_cast<const int*>(page->values[text->valueId]);
-            snprintf(text->text, sizeof(text->text), "%s%d", text->prefix, val);
-            break;
+    if(text->countingActive) {
+        Animation* a = &text->countAnimation;
+
+        a->elapsed += deltaTime;
+
+        f32 t = a->elapsed / a->duration;
+
+        if(t >= 1.0f) {
+            t = 1.0f;
+            a->complete = true;
+            text->countingActive = false;
         }
-        case TextType::INT_64: {
-            i64 val = *reinterpret_cast<const i64*>(page->values[text->valueId]);
-            snprintf(text->text, sizeof(text->text), "%s%lld", text->prefix, (long long)val);
-            break;
-        }
-        case TextType::UINT_64: {
-            u64 val = *reinterpret_cast<const u64*>(page->values[text->valueId]);
-            auto s = add_commas_uint64(val);
-            snprintf(text->text, sizeof(text->text), "%s%s", text->prefix, s.c_str());
-            break;
-        }
-        case TextType::FLOAT_32: {
-            f32 val = *reinterpret_cast<const float*>(page->values[text->valueId]) * text->multiplier;
-            snprintf(text->text, sizeof(text->text), "%s%.1f", text->prefix, val);
-            break;
-        }
-        case TextType::CHAR_TO_INT: {
-            i64 val = strtoll(reinterpret_cast<const char*>(page->values[text->valueId]), nullptr, 10);
-            snprintf(text->text, sizeof(text->text), "%s%lld", text->prefix, val);
-            break;
-        }
-        default: break;
+
+        f32 eased = ease(t, a->ease);
+        f64 current = a->valueStart + (a->valueDestination - a->valueStart) * eased;
+
+        set_text_value(text, current);
     }
+
+    if (!page->values[text->valueId] || text->type == TextType::NONE) return;
+
+    f64 currValue = get_converted_text_type(text->type, page->values[text->valueId]);
+
+    if(currValue != text->prevValue) {
+        text->countingActive = true;
+
+        Animation* a = &text->countAnimation;
+
+        a->animationType = COUNT;
+        a->valueStart = text->prevValue;
+        a->valueDestination = currValue;
+        a->duration = 0.5f;
+        a->elapsed = 0.0f;
+        a->complete = false;
+
+        text->prevValue = currValue;
+    } 
 }
 
 TextElement* get_text_element_by_parent_id(UIPage* page, i16 parentId) {
@@ -462,6 +541,8 @@ i32 add_dynamic_text_element(UIPage* page, TextElement text, const char* label, 
     page->textElements[page->numberOfTextElements].valueId = valueId;
     page->textElements[page->numberOfTextElements].type = t;
     page->textElements[page->numberOfTextElements].multiplier = mult;
+    page->textElements[page->numberOfTextElements].prevValue = get_converted_text_type(t, page->values[valueId]);
+    set_text_value(&page->textElements[page->numberOfTextElements], page->textElements[page->numberOfTextElements].prevValue);
     page->numberOfTextElements++;
 
     return page->numberOfTextElements - 1;
@@ -617,7 +698,7 @@ UIPage* create_ui_page(UIMemory* mem) {
   messageBuffer = allocateMessageBuffer(128);
   
   UIPage* page = (UIPage*)ui_push_size(mem, sizeof(UIPage));
-  page->elementHovered = -1;
   memset(page, 0, sizeof(UIPage));
+  page->elementHovered = -1;
   return page;
 }

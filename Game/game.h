@@ -181,8 +181,8 @@ struct RoundSnapshot {
 struct GameData {
     i32 turnLimit;
     u64 minimumScore;
-    u64 dollaBills;
-    u64 rounds;
+    u64 dollaBills = 0;
+    u64 rounds = 1;
 };
 
 struct GameState {

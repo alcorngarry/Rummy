@@ -354,4 +354,5 @@ void load_textures() {
     load_texture(BUTTON_T, "./res/button.png", true, false, false);
     load_texture(POOL_T, "./res/pool.png", true, true, false);
     load_texture(CIRCLE_BUTTON_T, "./res/circle-button.png", true, true, false);
+    load_texture(RELICS_T, "./res/relics.png", true, false, true);
 }

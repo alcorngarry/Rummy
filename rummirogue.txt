@@ -37,7 +37,9 @@ ie player 1 (W)  + 12, player 2 (L) -5, player 3 (L) -7
 
 --(X) adding bridge to two tiles broken. 2, 3 , bridge 8 doesn't work
 
---() adding and removing tile increases the score of the set, remove
+--(X) adding and removing tile increases the score of the set, remove
+
+--() bridge tiles with joker is broken, allows tiles that it shouldn't!!
 
 
 --[GOALS]--
@@ -75,6 +77,31 @@ ie player 1 (W)  + 12, player 2 (L) -5, player 3 (L) -7
 - () screen shake effect when ui loads in
 - () rolling numbers
 - () falling effect screen
+- () HUGE bonus and animation for clearing the rack
+- () Possible reward for restructoring (hard to determine, maybe)
+- () Hitting the target score exactly give extra cash and animation
+- () single color turn bonus
+- () run only turn bonus --item
+- () group only turn bonus --item
+
+"RELICS"
+- () runs with exact number double score
+- () odd numbers gain multiplier
+- () reward long runs
+- () discard
+- () reroll
+
+- () disable run/group for round
+- () tile color = +0 points
+- () first play must be certain score.
+- () remove tile from "deck" buyable item
+- () item adds reward to large amount of tiles in rack
+
+"BOSS"
+- () no rearranges
+- () no jokers
+- () no bridges
+
 
 -background music
 - (X) continue game

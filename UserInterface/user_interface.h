@@ -57,6 +57,11 @@ enum Anchor {
 	CENTER
 };
 
+enum AnimationType {
+  MOVE,
+  COUNT
+};
+
 struct Animation {
   vec2 destination;
 	vec2 start;
@@ -66,8 +71,10 @@ struct Animation {
 	u8 loopAnimation = true;
   f32 duration = 1.0f;
   f32 elapsed = 0.0f;
-
   EaseType ease = LINEAR;
+  AnimationType animationType = MOVE;
+  f64 valueStart = 0.0;
+  f64 valueDestination = 0.0;
 };
 
 struct SheetAnimation {
@@ -132,7 +139,10 @@ struct TextElement {
   i32 imageChildId = -1;
   Animation animations[8];
   u8 numberOfAnimations = 0;
+  Animation countAnimation;
+  u8 countingActive = false;
   i32 id;
+  f64 prevValue;
 };
 
 struct UIPage {

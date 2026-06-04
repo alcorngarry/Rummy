@@ -23,6 +23,7 @@
 #define BUTTON_P_T 14
 #define POOL_T 15
 #define CIRCLE_BUTTON_T 16
+#define RELICS_T 17
 
 #ifdef BUILD_DLL
 #define GAME_DLL __declspec(dllexport)
