@@ -317,18 +317,22 @@ void update(TextElement* text, UIPage *page, f32 deltaTime) {
     f64 currValue = get_converted_text_type(text->type, page->values[text->valueId]);
 
     if(currValue != text->prevValue) {
-        text->countingActive = true;
+        if(text->haveCountAnimation) {
+            text->countingActive = true;
 
-        Animation* a = &text->countAnimation;
+            Animation* a = &text->countAnimation;
 
-        a->animationType = COUNT;
-        a->valueStart = text->prevValue;
-        a->valueDestination = currValue;
-        a->duration = 0.5f;
-        a->elapsed = 0.0f;
-        a->complete = false;
+            a->animationType = COUNT;
+            a->valueStart = text->prevValue;
+            a->valueDestination = currValue;
+            a->duration = 0.5f;
+            a->elapsed = 0.0f;
+            a->complete = false;
 
-        text->prevValue = currValue;
+            text->prevValue = currValue;
+        } else {
+            set_text_value(text, currValue);
+        }
     } 
 }
 

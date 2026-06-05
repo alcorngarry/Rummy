@@ -1721,6 +1721,7 @@ void add_in_game_ui() {
     add_ui_element(gState->uiPage, a);
 
     TextElement text = TextElement{ Anchor::CENTER, "", 0, 0, 99, true, DEFAULT_FONT_SCALE * 2.0f, vec3(1.0f)};
+    text.haveCountAnimation = false;
     text.visible = false;
     add_dynamic_text_element(gState->uiPage, text, "+", 8, TextType::UINT_64); 
 

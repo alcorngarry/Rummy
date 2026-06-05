@@ -143,6 +143,7 @@ struct TextElement {
   u8 countingActive = false;
   i32 id;
   f64 prevValue;
+  u8 haveCountAnimation = true;
 };
 
 struct UIPage {
