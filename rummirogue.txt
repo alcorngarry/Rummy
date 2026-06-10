@@ -85,9 +85,9 @@ ie player 1 (W)  + 12, player 2 (L) -5, player 3 (L) -7
 - () group only turn bonus --item
 
 "RELICS"
-- () runs with exact number double score
-- () odd numbers gain multiplier
-- () reward long runs
+- (X) runs with exact number double score
+- (X) odd numbers gain multiplier
+- (X) reward long runs
 - () discard
 - () reroll
 
@@ -114,6 +114,8 @@ ie player 1 (W)  + 12, player 2 (L) -5, player 3 (L) -7
 -(X) drop shadow for buttons that goes away on press down
 - (only when tile added) counting animation after every draw button click that adds to table total
 -maybe do +tile number animation where the 'bobble' occurs for every tile on table, maybe only do per set
+-() Window unfold for shop   
+
 
 --really need to look at this for design-- THE MCGUFFIN
 

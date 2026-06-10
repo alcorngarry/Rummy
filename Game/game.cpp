@@ -237,6 +237,19 @@ void revert_to_round_start() {
     gState->player.heldTile = nullptr;
 }
 
+Relic RELIC_TABLE[TOTAL_RELICS] = {
+    { TYPE_1, "4 Scores x2", "Every set with exactly four tiles gets double points." },
+    { TYPE_2, "Odd Man", "Every odd tile in a set gets +10 points." },
+    { TYPE_3, "Big Man", "Sets larger than 6 tiles get +50 points." },
+    { TYPE_4, "6 Scores x2", "Every set with exactly 6 tiles gets double points." },
+    { TYPE_5, "Even Man", "Every even tile in a set gets +10 points." },
+    { TYPE_6, "type 6", "this item does this thing! 6" }
+};
+
+void create_relics() {
+    memcpy(gState->relics, RELIC_TABLE, sizeof(RELIC_TABLE));
+}
+
 void create_tiles() {
     GameObject obj = GameObject{};
 
@@ -517,13 +530,6 @@ void add_set_amount(void *ptr) {
 
     started = true;
 
-    if(!progressScoreComplete && gState->uiPage->textElements[stupidSetId].animations[0].complete) {
-        delete_text_element(gState->uiPage, stupidSetId);
-        progressScore += set->value;
-        progressScoreComplete = true;
-        stupidSetId = -1;
-    } 
-
     if(progressScoreComplete && gState->uiPage->textElements[1].countAnimation.complete) {
         moveMadeForSet = false;
         progressScoreComplete = false;
@@ -535,6 +541,13 @@ void add_set_amount(void *ptr) {
             add_shop_purchase_menu();
         }
     }
+
+    if(!progressScoreComplete && gState->uiPage->textElements[stupidSetId].animations[0].complete) {
+        delete_text_element(gState->uiPage, stupidSetId);
+        progressScore += set->value;
+        progressScoreComplete = true;
+        stupidSetId = -1;
+    } 
 }
 
 void add_tile_to_rack(Tile *tile) {
@@ -718,7 +731,7 @@ void draw_background() {
       glm::scale(glm::translate(mat4(1.0f), vec3(0.5f * gMemory->aspect, 0.5f, 1.0f)), vec3(1.0f * gMemory->aspect, 1.0f, 1.0f)),
         gState->quadMesh,
         BG_PATTERN_T,
-        R_DARK_GREEN,
+        R_GREEN,
         //vec4(0.95, 0.388, 0.388, 1.0f),
         false,
         0,
@@ -932,8 +945,9 @@ void drag_tile(f64 xpos, f64 ypos) {
 
     vec2 pos = vec2(xpos, ypos) + gState->player.heldTile->grabOffset;
 
-    static vec2 lastPos = pos;
-    static bool initialized = false;
+    vec2 lastPos = pos;
+
+    u8 initialized = false;
 
     if (!initialized) {
         lastPos = pos;
@@ -1708,14 +1722,17 @@ u8 is_table_valid() {
     return true;
 }
 
+
 void add_in_game_ui() {
 //    read_page(gState->uiPage, "in_game.eui");
-    UIElement a = UIElement{ Anchor::CENTER, 99, UI_BG_T, 0, 0, 0.075f, 0.1f};
+  
+    gState->pageState = IN_GAME;
+    UIElement a = UIElement{ Anchor::CENTER, 99, -1, 0, 0, 0.075f, 0.1f};
 
-    SheetAnimation panelSheet = SheetAnimation {3, 3};
-    a.sheetAnimation = panelSheet;
+    //SheetAnimation panelSheet = SheetAnimation {3, 3};
+    //a.sheetAnimation = panelSheet;
 
-    a.isPanel = true;
+    //a.isPanel = true;
     a.color = R_DARK_GRAY;
     a.visible = false;
     add_ui_element(gState->uiPage, a);
@@ -1734,59 +1751,111 @@ void add_in_game_ui() {
     // change the button image for this!
     add_button(gState->uiPage, BUTTON_T, "X", vec2(0.035f, 0.05f), vec2(0.06f, 0.03f), R_DARK_GRAY, 2);
 
-    i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::TOP_LEFT, vec2(0.104f, 0.6f), vec2(0.075f, -0.2f), vec2(0.075f, 0.01f)); 
+    i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::TOP_LEFT, vec2(0.12f, 0.6f), vec2(0.075f, -0.2f), vec2(0.075f, 0.01f), R_SILVER, R_DARK_BLUE); 
 
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Score", gMemory->aspect * 0.15f, 0.0275f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}));
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", gMemory->aspect * 0.15f, 0.075f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f)}, 
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Score", gMemory->aspect * 0.2f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}));
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", gMemory->aspect * 0.2f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f)}, 
         "", 0, TextType::UINT_64));
 
     // why is this weird??
     printf("Turn limit %i\n", gState->gameData.turnLimit);
-    add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.88f * gMemory->aspect, 0.135f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}, "", 1, TextType::INT_32);
+    TextElement drawsRemaining = TextElement{ Anchor::CENTER, "", 0.88f * gMemory->aspect, 0.135f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+    drawsRemaining.haveCountAnimation = false;
+    add_dynamic_text_element(gState->uiPage, drawsRemaining, "", 1, TextType::INT_32);
 
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Score Minimum", gMemory->aspect * 0.25f, 0.0275f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}));
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", gMemory->aspect * 0.25f, 0.075f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f)}, 
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Score Minimum", gMemory->aspect * 0.35f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}));
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", gMemory->aspect * 0.35f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f)}, 
         "", 2, TextType::UINT_64));
 
 //    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.16f, 0.07f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}, 
 //        "Round: ", &gState->gameData.rounds, TextType::UINT_64));
 //
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Cash", gMemory->aspect * 0.35f, 0.0275f, -1, true, DEFAULT_FONT_SCALE, vec3(R_GOLDEN)}));
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", gMemory->aspect * 0.35f, 0.075f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_GOLDEN)}, 
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Cash", gMemory->aspect * 0.5f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(R_GOLDEN)}));
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", gMemory->aspect * 0.5f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_GOLDEN)}, 
         "$", 3, TextType::UINT_64));
 
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Round", gMemory->aspect * 0.45f, 0.0275f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}));
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", gMemory->aspect * 0.45f, 0.075f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f)}, 
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Round", gMemory->aspect * 0.6f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}));
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", gMemory->aspect * 0.6f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f)}, 
         "", 6, TextType::UINT_64));
 
-    f32 slotDist = 0.0525f;
-    UIElement BB = UIElement{ Anchor::CENTER, -1, TILE_SLOT_T, 0.1225f, 0.925f, 0.05f * gMemory->aspect, 0.05f};
-    i32 slot1 = add_ui_element(gState->uiPage, BB, false);
-    BB.posx += slotDist;
-    i32 slot2 = add_ui_element(gState->uiPage, BB, false);
-    BB.posx += slotDist; 
-    i32 slot3 = add_ui_element(gState->uiPage, BB, false);
-    BB.posy -= 0.09f; 
-    i32 slot4 = add_ui_element(gState->uiPage, BB, false);
-    BB.posx -= slotDist; 
-    i32 slot5 = add_ui_element(gState->uiPage, BB, false);
-    BB.posx -= slotDist; 
-    i32 slot6 = add_ui_element(gState->uiPage, BB, false);
+    i32 relicIds[MAX_RELICS];
+    i32 slotIds[MAX_RELICS];
 
-    i32 multWindowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::TOP_LEFT, vec2(0.2, 0.2f), vec2(0.075f, 1.2f), vec2(0.075f, 0.78f)); 
+    for(i32 i = 0; i < MAX_RELICS; ++i) {
+        relicIds[i] = -1;
+        slotIds[i] = -1;
+    }
 
-    add_image_to_window(gState->uiPage, multWindowIndex, slot1);
-    add_image_to_window(gState->uiPage, multWindowIndex, slot2);
-    add_image_to_window(gState->uiPage, multWindowIndex, slot3);
-    add_image_to_window(gState->uiPage, multWindowIndex, slot4);
-    add_image_to_window(gState->uiPage, multWindowIndex, slot5);
-    add_image_to_window(gState->uiPage, multWindowIndex, slot6);
+    vec2 relicSlotPositions[MAX_RELICS] = {
+        {0.115f, 0.835f},
+        {0.1750f, 0.835f},
+        {0.235f, 0.835f},
+        {0.115f, 0.925f},
+        {0.175f, 0.925f},
+        {0.235f, 0.925f}
+    };
+
+
+    for(i32 i = 0; i < MAX_RELICS; ++i) {
+        if(gState->player.relics[i] <= 0)
+            continue;
+
+        UIElement relic = {
+            Anchor::CENTER,
+            -1,
+            RELICS_T,
+            relicSlotPositions[i].x,
+            relicSlotPositions[i].y,
+            0.045f * gMemory->aspect,
+            0.045f
+        };
+
+        relic.sheetAnimation = {3, 2};
+        relic.sheetAnimation.currentFrame = gState->player.relics[i] - 1;
+
+        relicIds[i] = add_ui_element(gState->uiPage, relic);
+    }
+
+    for(i32 i = 0; i < MAX_RELICS; ++i) {
+        UIElement slot = {
+            Anchor::CENTER,
+            -1,
+            TILE_SLOT_T,
+            relicSlotPositions[i].x,
+            relicSlotPositions[i].y,
+            0.045f * gMemory->aspect,
+            0.045f
+        };
+
+        slotIds[i] = add_ui_element(gState->uiPage, slot, false);
+    }
+
+    i32 multWindowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::TOP_LEFT, vec2(0.2, 0.2f), vec2(0.075f, 1.2f), vec2(0.075f, 0.78f), R_SILVER, R_DARK_BLUE); 
+
+    for(i32 i = 0; i < MAX_RELICS; ++i) {
+        add_image_to_window(
+            gState->uiPage,
+            multWindowIndex,
+            slotIds[i]
+        );
+
+        if(relicIds[i] != -1) {
+            add_image_to_window(
+                gState->uiPage,
+                multWindowIndex,
+                relicIds[i]
+            );
+        }
+    }
+
 //    add_text_to_window(gState->uiPage, multWindowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.1f * gMemory->aspect, 0.8f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f, 1.0f, 1.0f)}, 
 //        "Run x", &gState->player.playerData.runMultipliers, TextType::INT_32));
 //    add_text_to_window(gState->uiPage, multWindowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.1f * gMemory->aspect, 0.9f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f, 1.0f, 1.0f)}, 
 //        "Group x", &gState->player.playerData.groupMultipliers, TextType::INT_32));
 //
-    add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.8f * gMemory->aspect, 0.98f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}, "", 4, TextType::INT_32);
+    TextElement poolTiles = TextElement{ Anchor::CENTER, "", 0.8f * gMemory->aspect, 0.98f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+    poolTiles.haveCountAnimation = false;
+    add_dynamic_text_element(gState->uiPage, poolTiles, "", 4, TextType::INT_32);
 
     //add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.63f, 0.03f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}, 
     //    "Table Status: ", &(i32)gState->table.isValid, TextType::INT_32);
@@ -1798,6 +1867,7 @@ void add_in_game_ui() {
 }
 
 void add_end_game_ui() {
+    gState->pageState = END_GAME;
     TextElement gameOver = TextElement{ Anchor::CENTER, "Game Over!", 0.5f * gMemory->aspect, 0.06f, -1, true, DEFAULT_FONT_SCALE * 5.0 };
     gameOver.color = vec3(1.0f, 0.0f, 0.0f);
 
@@ -1806,8 +1876,7 @@ void add_end_game_ui() {
     i32 newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.4f, 0.75f), vec2(0.1f), vec4(0.6f, 0.6f, 0.6f, 6.0f), 0);
     i32 mainMenu = add_button(gState->uiPage, BUTTON_T, "Main menu", vec2(0.6f, 0.75f), vec2(0.1f), vec4(0.6f, 0.6f, 0.6f, 6.0f), 2);
 
-    i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::CENTER, vec2(0.75f, 0.5f), vec2(0.5f, 2.0f), vec2(0.5f, 0.5f));
-    gState->uiPage->uiElements[windowIndex].animations[0].ease = BOUNCE;
+    i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::CENTER, vec2(0.75f, 0.5f), vec2(0.5f, 2.0f), vec2(0.5f, 0.5f), R_YELLOW, R_BLUE);
     add_text_to_window(gState->uiPage, windowIndex, gameOverText);
     add_button_to_window(gState->uiPage, windowIndex, newGame);
     add_button_to_window(gState->uiPage, windowIndex, mainMenu);
@@ -1838,69 +1907,162 @@ void add_run_multiplier() {
     }
 }
 
+void add_relic() {
+    // gross, there has to be a way to make is better for yourself to transfer info between
+    i32 frame = gState->uiPage->uiElements[gState->uiPage->uiElements[gState->uiPage->elementHovered].imageChildId].sheetAnimation.currentFrame;
+    if(gState->player.numberOfRelics > 5) {
+        printf("number of relics %i\n", gState->player.numberOfRelics);
+        return;
+    } // quick fix for now, will fix in the shop ui
+
+    gState->player.relics[gState->player.numberOfRelics] = (RelicType)(frame + 1);
+    if(gState->player.numberOfRelics <= 4) gState->player.numberOfRelics++;
+}
+
+void populate_relics_in_shop(i32 *arr) {
+    for(i32 i = 0; i < 3; ++i) {
+        u8 unique = false;
+
+        while(!unique) {
+            i32 value = rng_range(0, 5);
+            unique = true;
+
+            for(i32 j = 0; j < i; ++j) {
+                if(arr[j] == value) {
+                    unique = false;
+                    break;
+                }
+            }
+
+            if(unique) {
+                arr[i] = value;
+            }
+        }
+    }
+}
+
 void add_shop_purchase_menu() {
+    gState->pageState = SHOP_PURCHASE;
     clear_game_ui();
-    UIElement a = UIElement{ Anchor::CENTER, -1, RELICS_T, 0.5f, 0.5f, 0.075f, 0.1f};
+    UIElement relic = UIElement{ Anchor::CENTER, -1, RELICS_T, 0.26f, 0.4f, 0.1f, 0.1f};
 
-    SheetAnimation panelSheet = SheetAnimation {3, 2};
-    a.sheetAnimation = panelSheet;
-    a.sheetAnimation.currentFrame = rng_range(0, 5);
-    add_ui_element(gState->uiPage, a);
+    i32 relicIds[3];
+    populate_relics_in_shop(relicIds);
 
-    i32 nextRoundId = add_button(gState->uiPage, BUTTON_T, "X", vec2(0.35f, 0.25f), vec2(0.03f), R_GRAY, 0);
-    i32 groupId = add_button(gState->uiPage, BUTTON_T, "Group X", vec2(0.4f, 0.48f), vec2(0.1f), R_GRAY, 8);
-    i32 runId = add_button(gState->uiPage, BUTTON_T, "Run X", vec2(0.4f, 0.60f), vec2(0.1f), R_GRAY, 9);
+    SheetAnimation relicSheet = SheetAnimation {3, 2};
+    relic.sheetAnimation = relicSheet;
+    relic.sheetAnimation.currentFrame = relicIds[0];
 
-    i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::CENTER, vec2(0.6f, 0.4f), vec2(0.5f, 2.0f), vec2(0.5f, 0.5f)); 
+    i32 relic1 = add_ui_element(gState->uiPage, relic);
+    relic.sheetAnimation.currentFrame = relicIds[1];
+    relic.posx += 0.24f;
+
+    i32 relic2 = add_ui_element(gState->uiPage, relic);
+    relic.sheetAnimation.currentFrame = relicIds[2];
+    relic.posx += 0.24f;
+    i32 relic3 = add_ui_element(gState->uiPage, relic);
+
+    SheetAnimation panelSheet = SheetAnimation{3, 3};
+    
+    UIElement relicBg = UIElement{ Anchor::CENTER, -1, UI_BG_T, 0.26f, 0.55f, 0.3f * gMemory->aspect, 0.225f};
+    relicBg.sheetAnimation = panelSheet;
+    relicBg.actionId = 11;
+
+    relicBg.isPanel = true;
+    relicBg.color = R_PURPLE;
+    relicBg.hovered = true;
+    relicBg.imageChildId = relic1;
+
+    i32 relicBg1 = add_ui_element(gState->uiPage, relicBg);
+    relicBg.posx += 0.24f;
+    relicBg.imageChildId = relic2;
+    i32 relicBg2 = add_ui_element(gState->uiPage, relicBg);
+    relicBg.posx += 0.24f;
+    relicBg.imageChildId = relic3;
+    i32 relicBg3 = add_ui_element(gState->uiPage, relicBg);
+
+    i32 nextRoundId = add_button(gState->uiPage, BUTTON_T, "X", vec2(0.15f, 0.16f), vec2(0.03f), R_GRAY, 0);
+//    i32 groupId = add_button(gState->uiPage, BUTTON_T, "Group X", vec2(0.4f, 0.48f), vec2(0.1f), R_GRAY, 8);
+//    i32 runId = add_button(gState->uiPage, BUTTON_T, "Run X", vec2(0.4f, 0.60f), vec2(0.1f), R_GRAY, 9);
+
+    i32 windowIndex = add_window(gState->uiPage, UI_BG_2_T, Anchor::CENTER, vec2(0.75f, 0.75f), vec2(0.5f, 2.0f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE); 
+
+    TextElement relicName = TextElement{ Anchor::CENTER, "", 0.26f * gMemory->aspect, 0.325f, -1, true, DEFAULT_FONT_SCALE, vec3(R_DARK_GRAY)}; 
+    snprintf(relicName.text, sizeof(relicName.text), "%s", gState->relics[relicIds[0]].name);
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicName));
+    relicName.posx += 0.24f * gMemory->aspect;
+    snprintf(relicName.text, sizeof(relicName.text), "%s", gState->relics[relicIds[1]].name);
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicName));
+    relicName.posx += 0.24f * gMemory->aspect;
+    snprintf(relicName.text, sizeof(relicName.text), "%s", gState->relics[relicIds[2]].name);
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicName));
+
+    TextElement relicDesc = TextElement{ Anchor::CENTER, "", 0.26f * gMemory->aspect, 0.6f, -1, true, DEFAULT_FONT_SCALE, vec3(R_DARK_GRAY)}; 
+    relicDesc.maxWidth = 0.3f;
+    snprintf(relicDesc.text, sizeof(relicDesc.text), "%s", gState->relics[relicIds[0]].description);
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicDesc));
+    relicDesc.posx += 0.24f * gMemory->aspect;
+    snprintf(relicDesc.text, sizeof(relicDesc.text), "%s", gState->relics[relicIds[1]].description);
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicDesc));
+    relicDesc.posx += 0.24f * gMemory->aspect;
+    snprintf(relicDesc.text, sizeof(relicDesc.text), "%s", gState->relics[relicIds[2]].description);
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicDesc));
+
+    add_image_to_window(gState->uiPage, windowIndex, relic1);
+    add_image_to_window(gState->uiPage, windowIndex, relic2);
+    add_image_to_window(gState->uiPage, windowIndex, relic3);
+
+    add_image_to_window(gState->uiPage, windowIndex, relicBg1);
+    add_image_to_window(gState->uiPage, windowIndex, relicBg2);
+    add_image_to_window(gState->uiPage, windowIndex, relicBg3);
 
     add_button_to_window(gState->uiPage, windowIndex, nextRoundId);
-    add_button_to_window(gState->uiPage, windowIndex, groupId);
-    add_button_to_window(gState->uiPage, windowIndex, runId);
+//    add_button_to_window(gState->uiPage, windowIndex, groupId);
+//    add_button_to_window(gState->uiPage, windowIndex, runId);
 
-    TextElement dollarSign = TextElement{ Anchor::CENTER, "$1", 0.6f * gMemory->aspect, 0.48f, -1, true, DEFAULT_FONT_SCALE * 4.0, vec3(1.0f, 0.0f, 0.0f)};
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, dollarSign));
+    //TextElement dollarSign = TextElement{ Anchor::CENTER, "$1", 0.6f * gMemory->aspect, 0.48f, -1, true, DEFAULT_FONT_SCALE * 4.0, vec3(1.0f, 0.0f, 0.0f)};
+    //add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, dollarSign));
 
-    dollarSign.posy += 0.12f;
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, dollarSign));
+    //dollarSign.posy += 0.12f;
+    //add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, dollarSign));
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Round Score", 0.3f * gMemory->aspect, 0.175f, -1, true, DEFAULT_FONT_SCALE }));
 
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * gMemory->aspect, 0.33f, -1, true, DEFAULT_FONT_SCALE }, 
-        "COMPLETED ROUND WITH SCORE: ", 0, TextType::UINT_64));
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.3f * gMemory->aspect, 0.225f, -1, true, DEFAULT_FONT_SCALE * 3.0f }, 
+        "", 0, UINT_64));
 
     for(i32 i = 0; i < gState->table.numberOfSets; i++) {
         numTableTiles += gState->table.sets[i].numberOfTiles;
     }
 
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * gMemory->aspect, 0.36f, -1, true, DEFAULT_FONT_SCALE }, 
-        "TILES USED: ", 5, TextType::UINT_64));
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Tiles Used", 0.7f * gMemory->aspect, 0.175f, -1, true, DEFAULT_FONT_SCALE }));
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.7f * gMemory->aspect, 0.225f, -1, true, DEFAULT_FONT_SCALE * 3.0f}, 
+        "", 5, UINT_64));
 
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * gMemory->aspect, 0.25f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_GOLDEN)}, 
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Cash", 0.5f * gMemory->aspect, 0.175f, -1, true, DEFAULT_FONT_SCALE, vec3(R_GOLDEN) }));
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * gMemory->aspect, 0.225f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_GOLDEN)}, 
         "$", 3, TextType::UINT_64));
 }
 
 void add_shop_ui() {
-    i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::CENTER, vec2(0.12f, 0.85f), vec2(0.5f, 0.0f), vec2(0.5f, 0.07f)); 
+    gState->pageState = SHOP;
+    i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::CENTER, vec2(0.12f, 0.85f), vec2(0.5f, 0.0f), vec2(0.5f, 0.07f), R_SILVER, R_DARK_BLUE); 
 
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Round Score", gMemory->aspect * 0.5f, 0.0275f, -1, true, DEFAULT_FONT_SCALE, vec3(R_GOLDEN)}));
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", gMemory->aspect * 0.5f, 0.075f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_GOLDEN)}, 
-        "", 7, INT_32));
-
-
-   // i32 shopId = add_button(gState->uiPage, BUTTON_T, "$$$", vec2(0.175f, 0.91f), vec2(0.09f), R_GOLDEN, 10);
-   // i32 multWindowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::CENTER, vec2(0.2, 0.2f), vec2(0.175f, 2.0f), vec2(0.175f, 0.875f)); 
-
-   // add_button_to_window(gState->uiPage, multWindowIndex, shopId);
-   // add_text_to_window(gState->uiPage, multWindowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "SHOP", 0.18f * gMemory->aspect, 0.825f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f, 1.0f, 1.0f)}));
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Round Score", gMemory->aspect * 0.5f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(R_GOLDEN)}));
+    i32 progressIndex = add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", gMemory->aspect * 0.5f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_GOLDEN)}, 
+        "", 7, INT_32);
+    add_text_to_window(gState->uiPage, windowIndex, progressIndex);
 }
 
 void add_main_menu_ui() {
 //    read_page(gState->uiPage, "main_menu.eui");
-    
-    i32 newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.35f, 0.9f), vec2(0.1f), R_GREEN, 0);
-    i32 options = add_button(gState->uiPage, BUTTON_T, "Options", vec2(0.5f, 0.9f), vec2(0.1f), R_BLUE, 1);
-    i32 profile = add_button(gState->uiPage, BUTTON_T, "Profile", vec2(0.65f, 0.9f), vec2(0.1f), R_PURPLE, 2);
+    gState->pageState = MAIN_MENU;
+
+    i32 newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.35f, 0.9f), vec2(0.08f), R_GREEN, 0);
+    i32 options = add_button(gState->uiPage, BUTTON_T, "Options", vec2(0.5f, 0.9f), vec2(0.08f), R_BLUE, 1);
+    i32 profile = add_button(gState->uiPage, BUTTON_T, "Profile", vec2(0.65f, 0.9f), vec2(0.08f), R_PURPLE, 2);
     add_button(gState->uiPage, BUTTON_T, "Quit", vec2(0.9f, 0.9f), vec2(0.1f), R_RED, 3);
 
-    i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::CENTER, vec2(0.15f, 0.5f), vec2(0.5f, 1.15f), vec2(0.5f, 0.9f)); 
+    i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::CENTER, vec2(0.15f, 0.5f), vec2(0.5f, 1.15f), vec2(0.5f, 0.9f), R_SILVER, R_DARK_BLUE); 
     add_button_to_window(gState->uiPage, windowIndex, newGame);
     add_button_to_window(gState->uiPage, windowIndex, options);
     add_button_to_window(gState->uiPage, windowIndex, profile);
@@ -1912,26 +2074,63 @@ void add_main_menu_ui() {
 }
 
 void add_profile_ui() {
+    gState->pageState = PROFILE;
     add_button(gState->uiPage, BUTTON_T, "TEST", vec2(0,0), vec2(0.1f), vec4(1.0f), 3);
 }
 
 void add_options_ui() {
+    gState->pageState = OPTIONS;
     clear_game_ui();
 
-    i32 general = add_button(gState->uiPage, BUTTON_T, "General", vec2(0.38f, 0.15f), vec2(0.1f), vec4(1.0f, 0.0f, 0.0f, 1.0f), 0);
-    i32 video = add_button(gState->uiPage, BUTTON_T, "Video", vec2(0.5f, 0.15f), vec2(0.1f), vec4(1.0f, 0.0f, 0.0f, 1.0f), 0);
-    i32 audio = add_button(gState->uiPage, BUTTON_T, "Audio", vec2(0.62f, 0.15f), vec2(0.1f), vec4(1.0f, 0.0f, 0.0f, 1.0f), 0);
-    i32 back = add_button(gState->uiPage, CIRCLE_BUTTON_T, "X", vec2(0.28f, 0.08f), vec2(0.04f), vec4(0.0f, 0.0f, 0.0f, 1.0f), 2);
+    //should be auto added when adding tabs, but color
+    add_cursor(gState->uiPage, BUTTON_SELECT_T, R_YELLOW, TAB);
 
-    i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::CENTER, vec2(0.9f, 0.5f), vec2(0.5f, 2.0f), vec2(0.5f, 0.5f)); 
-    add_button_to_window(gState->uiPage, windowIndex, general);
-    add_button_to_window(gState->uiPage, windowIndex, video);
-    add_button_to_window(gState->uiPage, windowIndex, audio);
+    i32 back = add_button(gState->uiPage, BUTTON_T, "X", vec2(0.225f, 0.075f), vec2(0.04f, 0.035f), vec4(0.0f, 0.0f, 0.0f, 1.0f), 2);
+    i32 general = add_tab(gState->uiPage, BUTTON_T, "General", R_SILVER);
+    i32 video = add_tab(gState->uiPage, BUTTON_T, "Video", R_SILVER);
+    //stupid
+    gState->uiPage->uiElements[general].imageChildId = video;
+    i32 audio = add_tab(gState->uiPage, BUTTON_T, "Audio", R_SILVER);
+    //stupid
+    gState->uiPage->uiElements[video].imageChildId = audio;
+    gState->uiPage->uiElements[audio].imageChildId = general;
+
+    i32 tabs[3] = {general, video, audio};
+
+    i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::CENTER, vec2(0.95f, 0.6f), vec2(0.5f, 2.0f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE); 
     add_button_to_window(gState->uiPage, windowIndex, back);
+    add_tabs_to_window(gState->uiPage, windowIndex, tabs, 3);
+    
+    TextElement resolution = TextElement{ Anchor::CENTER, "Resolution", gMemory->aspect * 0.5f, 0.25f, -1, false, DEFAULT_FONT_SCALE * 3, vec3(1.0f)};
+    TextElement resolution2 = TextElement{ Anchor::CENTER, "1280x720", gMemory->aspect * 0.5f, 0.35f, -1, false, DEFAULT_FONT_SCALE * 2, vec3(1.0f)};
+    TextElement mode = TextElement{ Anchor::CENTER, "Video mode", gMemory->aspect * 0.5f, 0.5f, -1, false, DEFAULT_FONT_SCALE * 3, vec3(1.0f)};
+    TextElement mode2 = TextElement{ Anchor::CENTER, "Windowed", gMemory->aspect * 0.5f, 0.6f, -1, false, DEFAULT_FONT_SCALE * 2, vec3(1.0f)};
+    TextElement vsync = TextElement{ Anchor::CENTER, "Vsync", gMemory->aspect * 0.5f, 0.75f, -1, false, DEFAULT_FONT_SCALE * 3, vec3(1.0f)};
+    TextElement vsync2 = TextElement{ Anchor::CENTER, "X", gMemory->aspect * 0.5f, 0.85f, -1, false, DEFAULT_FONT_SCALE * 2, vec3(1.0f)};
+    
+    i32 options[3]; 
+
+    add_element_to_tab(gState->uiPage, windowIndex, video, resolution);
+
+    options[0] = add_element_to_tab(gState->uiPage, windowIndex, video, resolution2);
+    snprintf(resolution2.text, sizeof(resolution2.text), "%s", "1920x1080");
+    resolution2.visible = false;
+    options[1] = add_element_to_tab(gState->uiPage, windowIndex, video, resolution2);
+    snprintf(resolution2.text, sizeof(resolution2.text), "%s", "640x480");
+    options[2] = add_element_to_tab(gState->uiPage, windowIndex, video, resolution2);
+
+    add_element_to_tab(gState->uiPage, windowIndex, video, mode);
+    add_element_to_tab(gState->uiPage, windowIndex, video, mode2);
+    add_element_to_tab(gState->uiPage, windowIndex, video, vsync);
+    add_element_to_tab(gState->uiPage, windowIndex, video, vsync2);
+
+
+    add_options_element(gState->uiPage, options, 3, BUTTON_T);
 }
 
 void init_game() {
     create_tiles();
+    create_relics();
     init_pool();
     init_player_rack();
     init_table();
@@ -2211,6 +2410,10 @@ void debug_state_memory(GameMemory* memory, u8* cursor) {
         used, total, (used / (float)total) * 100.0f);
 }
 
+void nothing() {
+
+}
+
 void add_game_ui_data(UIPage *uiPage) {
     uiPage->actions[uiPage->numberOfActions++] = &init_game;
     uiPage->actions[uiPage->numberOfActions++] = &add_options_ui;
@@ -2223,6 +2426,9 @@ void add_game_ui_data(UIPage *uiPage) {
     uiPage->actions[uiPage->numberOfActions++] = &add_group_multiplier;
     uiPage->actions[uiPage->numberOfActions++] = &add_run_multiplier;
     uiPage->actions[uiPage->numberOfActions++] = &add_shop_purchase_menu;
+    uiPage->actions[uiPage->numberOfActions++] = &add_relic;
+    uiPage->actions[uiPage->numberOfActions++] = &nothing;
+
     
     uiPage->values[uiPage->numberOfValues++] = &gState->player.playerData.score;
     uiPage->values[uiPage->numberOfValues++] = &gState->gameData.turnLimit;
@@ -2233,6 +2439,42 @@ void add_game_ui_data(UIPage *uiPage) {
     uiPage->values[uiPage->numberOfValues++] = &gState->gameData.rounds;
     uiPage->values[uiPage->numberOfValues++] = &progressScore;
     uiPage->values[uiPage->numberOfValues++] = &hoveredSetValue;
+}
+
+void reinit_page_state() {
+    clear_game_ui();
+
+    switch(gState->pageState) {
+        case IN_GAME: {
+            add_in_game_ui();
+            break;
+        }
+        case END_GAME: {
+            add_end_game_ui();
+            break;
+        }
+        case SHOP: {
+            add_shop_ui();
+            break;
+        }
+        case SHOP_PURCHASE: {
+            add_shop_purchase_menu();
+            break;
+        }
+        case MAIN_MENU: {
+            add_main_menu_ui();
+            break;
+        }
+        case PROFILE: {
+            add_profile_ui();
+            break;
+        }
+        case OPTIONS: {
+            add_options_ui();
+            break;
+        }
+        default: printf("Error rebuilding ui\n");
+    }
 }
 
 extern "C" GAME_DLL void game_init(GameMemory* memory, i32 preserveState) {
@@ -2257,16 +2499,13 @@ extern "C" GAME_DLL void game_init(GameMemory* memory, i32 preserveState) {
     if(!preserveState) {
         init_player();
         init_main_menu();
+        //gMemory->load_home_music_fn("./audio/placeholder_music.wav");
     } else {
-        if(gState->mode == GM_PLAYING) {
-            clear_game_ui();
-            add_in_game_ui();
-        }
+        reinit_page_state();
     }
 
     init_table();
     snapshot_round_start();
-    gMemory->load_home_music_fn("./audio/placeholder_music.wav");
 }
 
 extern "C" GAME_DLL void game_update_and_render() {
@@ -2315,8 +2554,6 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
     }
 
     if (key == 299 && action == 1) {
-        //__debugbreak();
-        //add_shop_ui();
         clear_game_ui();
         add_end_game_ui();
     }
@@ -2342,6 +2579,11 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
 
     if (key == 294 && action == 1) {
         __debugbreak();
+    }
+
+    if(key == 258 && action == 1) {
+        //tabs
+        switch_tab(gState->uiPage);
     }
 
     if(key == 0) {

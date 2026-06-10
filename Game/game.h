@@ -6,6 +6,8 @@
 #include "rummy_colors.h"
 
 #define TOTAL_TILES 60
+#define TOTAL_RELICS 6
+#define MAX_RELICS 6
 
 const i32 TABLE_ROWS = 6;
 const i32 TABLE_COLUMNS = 16;
@@ -55,6 +57,16 @@ enum GAME_MODE {
     GM_OPTIONS,
     GM_PROFILE,
     GM_ROUND_COMPLETE
+};
+
+enum PAGE_STATE {
+    IN_GAME,
+    END_GAME,
+    SHOP_PURCHASE,
+    SHOP,
+    MAIN_MENU,
+    PROFILE,
+    OPTIONS
 };
 
 enum SET_TYPE {
@@ -166,9 +178,26 @@ struct PlayerData {
     i32 groupMultipliers = 1;
 };
 
+enum RelicType {
+    TYPE_1 = 1,
+    TYPE_2 = 2,
+    TYPE_3 = 3,
+    TYPE_4 = 4,
+    TYPE_5 = 5,
+    TYPE_6 = 6
+};
+
+struct Relic {
+    RelicType type;
+    const char* name;
+    const char* description;
+};
+
 struct Player {
     PlayerData playerData;
     Tile* heldTile;
+    RelicType relics[6];
+    u8 numberOfRelics = 0;
 };
 
 struct RoundSnapshot {
@@ -193,9 +222,12 @@ struct GameState {
     UIPage *uiPage;
 
     Tile tiles[TOTAL_TILES];
+    Relic relics[TOTAL_RELICS];
+
     RoundSnapshot roundStart;
 
     GAME_MODE mode;
+    PAGE_STATE pageState;
 
     Player player;
     GameData gameData;

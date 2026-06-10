@@ -133,6 +133,8 @@ GameMemory allocate_game_memory(RenderBuffer* buffer) {
     memory.uiMem.base = (u8*)memory.stateMemory + (memory.stateMemorySize - memory.uiMem.size);
     memory.uiMem.used = 0;
     memory.uiMem.load_ui_quad_buffer_fn = load_ui_quad_buffer;
+    memory.uiMem.play_audio_fn = play_audio;
+    memory.uiMem.play_audio_pitch_fn = play_audio_pitch;
     memory.shouldWindowClose = false;
     memory.toggleFullScreen = false;
   
@@ -192,6 +194,7 @@ i32 APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, i32 cmd
         buffer->deltaTime = deltaTime;
         buffer->bufferSize = 0;
         buffer->aspect = aspect;
+        buffer->windowSize = vec2(memory.windowWidth, memory.windowHeight);
         
         glfwPollEvents();
 
@@ -350,9 +353,11 @@ void load_textures() {
     load_texture(BRIDGE_T, "./res/bridge.png", true, true, true);
     load_texture(TILE_SLOT_T, "./res/tile-slot.png", true, true, false);
     load_texture(BG_PATTERN_T, "./res/bg-pattern.png", true, true, true);
-    load_texture(UI_BG_T, "./res/ui-bg1.png", true, false, false);
-    load_texture(BUTTON_T, "./res/button.png", true, false, false);
+    load_texture(UI_BG_T, "./res/ui-bg3.png", true, true, false);
+    load_texture(BUTTON_T, "./res/button2.png", true, false, false);
     load_texture(POOL_T, "./res/pool.png", true, true, false);
     load_texture(CIRCLE_BUTTON_T, "./res/circle-button.png", true, true, false);
     load_texture(RELICS_T, "./res/relics.png", true, false, true);
+    load_texture(UI_BG_2_T, "./res/ui-bg2.png", true, true, false);
+    load_texture(BUTTON_SELECT_T, "./res/button-select.png", true, true, false);
 }

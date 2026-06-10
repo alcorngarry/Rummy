@@ -11,17 +11,26 @@ uniform bool isPanel;
 uniform bool flipped;
 uniform vec2 size;
 uniform vec4 color;
+uniform bool useColorOnly;
+uniform vec2 resolution; // current framebuffer size
 
-void main()
-{
+void main() {
     vec2 uv = TexCoords;
 
-    if(isPanel)
-    {
-        float borderPx = 32.0;
+    if(isPanel) {
+        float referenceHeight = 1080.0;
+        float resolutionScale = resolution.y / referenceHeight;
+
+        float borderPx = 32.0 * resolutionScale;
 
         vec2 uvPerPixel = fwidth(localUV);
         vec2 bVec = uvPerPixel * borderPx;
+        //was 32
+        //float borderPx = min(size.x, size.y) * 24.0;
+        //float borderPx = 24.0;
+
+//        vec2 uvPerPixel = fwidth(localUV);
+  //      vec2 bVec = uvPerPixel * borderPx;
 
         float b  = bVec.x;
         float bY = bVec.y; 
@@ -63,7 +72,11 @@ void main()
     }
 
     if(color.x != -1.0f) {
-        FragColor = texture(Texture, uv) * color;
+        if(useColorOnly) {
+          FragColor = color;
+        } else {
+          FragColor = texture(Texture, uv) * color;
+        }
     } else {
         FragColor = texture(Texture, uv);
     }

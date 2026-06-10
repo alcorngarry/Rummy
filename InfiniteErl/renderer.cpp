@@ -152,11 +152,14 @@ void push_ui_page(RenderBuffer* buffer, UIPage* uiPage) {
                 element.posx,
                 element.posy,
                 element.scale,
+                element.maxWidth,
                 element.color
             };
             //ugly
             strcpy_s(text.text, element.text);
             push_ui_text(buffer, &text);
+        } else {
+            printf("INVISIBLE \n");
         }
     }
 }
@@ -265,6 +268,7 @@ void render_buffer(RenderBuffer* buffer) {
                 entry->posx,
                 entry->posy,
                 entry->scale,
+                entry->maxWidth,
                 entry->color,
                 buffer->projection
               );
@@ -288,7 +292,8 @@ void render_buffer(RenderBuffer* buffer) {
                 gMeshes[entry->meshHandle].vao,
                 entry->isPanel,
                 entry->color,
-                entry->isHovered
+                entry->isHovered,
+                buffer->windowSize
               );
               break;
           }
@@ -343,67 +348,140 @@ void draw_entity(mat4 model, mat4 view, mat4 projection, u32 vao, i32 textureId,
     glDepthMask(GL_TRUE);
 }
 
-void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, vec3 color, mat4 projection) {
+void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 maxWidth, vec3 color, mat4 projection) {
     if (!text) return;
+
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     textShader->use();
-    //TODO(garry) fix this garbage
     textShader->setMat4("projection", projection);
-    //textShader->setMat4("projection", glm::ortho(0.0f, 1.0f, 1.0f, 0.0f, -1.0f, 1.0f));
     textShader->setVec3("textColor", color);
 
     glActiveTexture(GL_TEXTURE0);
     glBindVertexArray(textVAO);
 
-    f32 originX = posx;
     f32 pixelScale = scale;
-    f32 originY = posy + fontAscent * pixelScale;
+    f32 lineHeight = characters['T']->Size.y * pixelScale * 1.25f;
+
+    f32 startX = posx;
+    f32 y = posy + fontAscent * pixelScale;
 
     if (anchor == Anchor::CENTER) {
-        f32 totalWidth = 0;
-        for (const char* c = text; *c != '\0'; c++) {
-            Character* ch = characters[*c];
-            totalWidth += (ch->Advance >> 6) * pixelScale;
+        f32 lineWidth = 0.0f;
+
+        const char* c = text;
+        while (*c) {
+            const char* wordEnd = c;
+            while (*wordEnd && *wordEnd != ' ')
+                wordEnd++;
+
+            f32 wordWidth = 0.0f;
+            for (const char* w = c; w < wordEnd; ++w) {
+                Character* ch = characters[*w];
+                wordWidth += (ch->Advance >> 6) * pixelScale;
+            }
+
+            if (lineWidth > 0.0f && lineWidth + wordWidth > maxWidth)
+                break;
+
+            lineWidth += wordWidth;
+
+            if (*wordEnd == ' ') {
+                lineWidth += (characters[' ']->Advance >> 6) * pixelScale;
+                wordEnd++;
+            }
+
+            c = wordEnd;
         }
-        originX -= totalWidth * 0.5f;
-        originY -= (characters['T']->Size.y * pixelScale) * 0.5f;
+
+        startX -= lineWidth * 0.5f;
+        y -= (characters['T']->Size.y * pixelScale) * 0.5f;
     }
     else if (anchor == Anchor::TOP_RIGHT) {
-        f32 totalWidth = 0;
-        for (const char* c = text; *c != '\0'; c++) {
-            Character* ch = characters[*c];
-            totalWidth += (ch->Advance >> 6) * pixelScale;
+        f32 lineWidth = 0.0f;
+
+        const char* c = text;
+        while (*c) {
+            const char* wordEnd = c;
+            while (*wordEnd && *wordEnd != ' ')
+                wordEnd++;
+
+            f32 wordWidth = 0.0f;
+            for (const char* w = c; w < wordEnd; ++w) {
+                Character* ch = characters[*w];
+                wordWidth += (ch->Advance >> 6) * pixelScale;
+            }
+
+            if (lineWidth > 0.0f && lineWidth + wordWidth > maxWidth)
+                break;
+
+            lineWidth += wordWidth;
+
+            if (*wordEnd == ' ') {
+                lineWidth += (characters[' ']->Advance >> 6) * pixelScale;
+                wordEnd++;
+            }
+
+            c = wordEnd;
         }
-        originX -= totalWidth;
+
+        startX -= lineWidth;
     }
 
-    for (const char* c = text; *c != '\0'; c++) {
-        Character* ch = characters[*c];
+    f32 x = startX;    
+    const char* wordStart = text;
+    
+    while (*wordStart) {
+        const char* wordEnd = wordStart;
+        while (*wordEnd && *wordEnd != ' ')
+            wordEnd++;
 
-        f32 xpos = originX + ch->Bearing.x * pixelScale;
-        f32 ypos = originY - ch->Bearing.y * pixelScale;
+        f32 wordWidth = 0.0f;
+        for (const char* c = wordStart; c < wordEnd; c++) {
+            Character* ch = characters[*c];
+            wordWidth += (ch->Advance >> 6) * pixelScale;
+        }
 
-        f32 w = ch->Size.x * pixelScale;
-        f32 h = ch->Size.y * pixelScale;
+        if (x > startX && (x - startX + wordWidth) > maxWidth) {
+            x = startX;
+            y += lineHeight;
+        }
 
-        f32 vertices[6][4] = {
-            { xpos,     ypos + h,   0.0f, 0.0f },
-            { xpos,     ypos,       0.0f, 1.0f },
-            { xpos + w, ypos,       1.0f, 1.0f },
+        for (const char* c = wordStart; c < wordEnd; c++) {
+            Character* ch = characters[*c];
 
-            { xpos,     ypos + h,   0.0f, 0.0f },
-            { xpos + w, ypos,       1.0f, 1.0f },
-            { xpos + w, ypos + h,   1.0f, 0.0f }
-        };
+            f32 xpos = x + ch->Bearing.x * pixelScale;
+            f32 ypos = y - ch->Bearing.y * pixelScale;
 
-        glBindTexture(GL_TEXTURE_2D, ch->TextureID);
-        glBindBuffer(GL_ARRAY_BUFFER, textVBO);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+            f32 w = ch->Size.x * pixelScale;
+            f32 h = ch->Size.y * pixelScale;
 
-        originX += (ch->Advance >> 6) * pixelScale;
+            f32 vertices[6][4] = {
+                { xpos,     ypos + h,   0.0f, 0.0f },
+                { xpos,     ypos,       0.0f, 1.0f },
+                { xpos + w, ypos,       1.0f, 1.0f },
+
+                { xpos,     ypos + h,   0.0f, 0.0f },
+                { xpos + w, ypos,       1.0f, 1.0f },
+                { xpos + w, ypos + h,   1.0f, 0.0f }
+            };
+
+            glBindTexture(GL_TEXTURE_2D, ch->TextureID);
+            glBindBuffer(GL_ARRAY_BUFFER, textVBO);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+
+            x += (ch->Advance >> 6) * pixelScale;
+        }
+
+        if (*wordEnd == ' ') {
+            Character* space = characters[' '];
+            x += (space->Advance >> 6) * pixelScale;
+            wordEnd++;
+        }
+
+        wordStart = wordEnd;
     }
 
     glBindVertexArray(0);
@@ -411,7 +489,7 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, vec3 co
     glDisable(GL_BLEND);
 }
 
-void draw_image_ui(Anchor anchor, i32 textureId, f32 posx, f32 posy, f32 width, f32 height, i32 cols, i32 rows, i32 currentFrame, bool isAnimated, u32 vao, u8 isPanel, vec4 color, u8 isHovered) {
+void draw_image_ui(Anchor anchor, i32 textureId, f32 posx, f32 posy, f32 width, f32 height, i32 cols, i32 rows, i32 currentFrame, bool isAnimated, u32 vao, u8 isPanel, vec4 color, u8 isHovered, vec2 windowSize) {
     glDepthMask(GL_FALSE);
     glEnable(GL_BLEND);
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
@@ -427,6 +505,8 @@ void draw_image_ui(Anchor anchor, i32 textureId, f32 posx, f32 posy, f32 width, 
     uiShader->setBool("isPanel", isPanel);
     uiShader->setVec4("color", color);
     uiShader->setBool("flipped", isHovered);
+    uiShader->setBool("useColorOnly", textureId == -1 ? true : false);
+    uiShader->setVec2("resolution", windowSize);
 
     //TODO(garry) fix this garbage
     f32 w = width;

@@ -3,6 +3,8 @@
 
 u32 imageMeshHandle;
 MessageBuffer* messageBuffer = nullptr;
+void (*play_audio)(const char* filename);
+void (*play_audio_pitch)(const char* filename, f32 pitch);
 
 //note these are used for prebaked actions
 SelfActionFuncPtr selfActions[20];
@@ -105,6 +107,20 @@ void check_elements_hovered(UIPage* page, f64 xpos, f64 ypos) {
             break;
         } else {
             page->uiElements[i].hovered = false;
+        }
+    }
+
+    if(page->elementCursorId != -1) {
+        UIElement *cursor = &page->uiElements[page->elementCursorId];
+        if(page->elementHovered == -1) {
+            cursor->visible = false;
+        } else {
+            UIElement hoveredElement = page->uiElements[page->elementHovered];
+            cursor->visible = true;
+            cursor->posx = hoveredElement.posx;
+            cursor->posy = hoveredElement.posy;
+            cursor->width = hoveredElement.width;
+            cursor->height = hoveredElement.height;
         }
     }
 }
@@ -310,6 +326,12 @@ void update(TextElement* text, UIPage *page, f32 deltaTime) {
         f64 current = a->valueStart + (a->valueDestination - a->valueStart) * eased;
 
         set_text_value(text, current);
+
+        play_audio("./audio/place_tile.wav");
+
+//        if(((i32)(a->elapsed * 20.0f)) != ((i32)((a->elapsed - deltaTime) * 20.0f))) {
+//            f32 pitch = 0.8f + (a->elapsed / a->duration) * 0.7f;
+//        } 
     }
 
     if (!page->values[text->valueId] || text->type == TextType::NONE) return;
@@ -363,6 +385,116 @@ i32 add_ui_element(UIPage* page, UIElement element, bool actionable) {
     return index;
 }
 
+void next_option(void *ptr) {
+    UIElement* self = (UIElement*)ptr;
+    i32 currentChildId = self->textChild->id;
+    self->textChild->visible = false;
+
+    if(currentChildId == self->numberOfDependentTextElements - 1) {
+        self->textChild = self->dependentTextElements[0];
+        self->textChild->visible = true;
+    } else {
+        self->textChild = self->dependentTextElements[self->textChild->id + 1];
+        self->textChild->visible = true;
+    }
+}
+
+void add_options_element(UIPage *page, i32 *textIds, i32 numberOfTextIds, i32 optionsHandle) {
+    TextElement *option1 = &page->textElements[textIds[0]];
+
+    //dumb actionId
+    UIElement rightArrow = UIElement{ option1->anchor, -1, optionsHandle, option1->posx, option1->posy, 0.1f, 0.1f, true, 12};
+    rightArrow.onCompleteActionId = 1;
+    for(i32 i = 0; i < numberOfTextIds; ++i) {
+        rightArrow.dependentTextElements[rightArrow.numberOfDependentTextElements++] = &page->textElements[textIds[i]];
+    }
+
+    //figure out scale
+    //i32 leftArrow = add_ui_element(page, UIElement{ option1->anchor, -1, optionsHandle, option1->posx - 0.15f, option1->posy, 0.1f, 0.1f});
+    add_ui_element(page, rightArrow);
+}
+
+void add_cursor(UIPage *page, i32 cursorHandle, vec4 color, CursorType type) {
+    UIElement cursor = UIElement{ Anchor::CENTER, -1, cursorHandle, 0.0f, 0.0f, 0.09f, 0.09f};
+    cursor.color = color;
+    cursor.visible = false;
+
+    if(type == ELEMENT) {
+        page->elementCursorId = add_ui_element(page, cursor); 
+    } else {
+        page->tabCursorId = add_ui_element(page, cursor); 
+    }
+}
+
+i32 add_element_to_tab(UIPage *page, i32 windowId, i32 tabId, TextElement element) {
+    i32 elementId = add_text_element(page, element);
+
+    UIElement *tab = &page->uiElements[tabId];
+    tab->dependentTextElements[tab->numberOfDependentTextElements++] = &page->textElements[elementId];
+
+    add_text_to_window(page, windowId, elementId);
+    return elementId;
+}
+
+i32 add_tab(UIPage *page, i32 tabHandle, const char* text, vec4 color) {
+    //scale defaulted
+    UIElement tab = UIElement{ Anchor::CENTER, -1, tabHandle, 0.5f, 0.5f, 0.08f, 0.1f, true};
+    tab.color = color;
+
+    TextElement tText = TextElement{ Anchor::CENTER, "", 0.5f, 0.5f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+    strcpy(tText.text, text);
+    
+    i32 tabId = add_ui_element(page, tab);
+    i32 tabTextId = add_text_element(page, tText);
+    page->uiElements[tabId].textChild = &page->textElements[tabTextId];
+    return tabId;
+}
+
+void switch_tab(UIPage *page) {
+    UIElement *currTab = &page->uiElements[page->tabSelected];
+
+    for(i32 i = 0; i < currTab->numberOfDependentTextElements; ++i) {
+        currTab->dependentTextElements[i]->visible = false;
+    }
+
+    page->tabSelected = currTab->imageChildId;
+    UIElement *newTab = &page->uiElements[page->tabSelected];
+
+    for(i32 i = 0; i < newTab->numberOfDependentTextElements; ++i) {
+        newTab->dependentTextElements[i]->visible = true;
+    }
+}
+
+void add_tabs_to_window(UIPage *page, i32 windowId, i32 *tabIds, i32 numberOfTabs) {
+    UIElement *window = &page->uiElements[windowId];
+    page->tabSelected = tabIds[0];
+
+    for (i32 i = 0; i < numberOfTabs; ++i) {
+        UIElement *tab = &page->uiElements[tabIds[i]];
+
+        if(i == 0) {
+            UIElement *cursor = &page->uiElements[page->tabCursorId];
+            cursor->posx = tab->posx;
+            cursor->posy = tab->posy;
+            cursor->width = tab->width;
+            cursor->height = tab->height;
+            cursor->visible = true;
+        }
+
+        f32 spacing = tab->width * 1.5f;
+        f32 offset = (i - (numberOfTabs - 1) * 0.5f) * spacing;
+        tab->posx = window->animations[0].destination.x + offset;
+        tab->posy = window->animations[0].destination.y - (window->height * 0.5f) + (tab->height);
+
+        tab->textChild->posx = page->aspect * (window->animations[0].destination.x + offset);
+        tab->textChild->posy = window->animations[0].destination.y - (window->height * 0.5f) + (tab->height);
+
+
+        add_image_to_window(page, windowId, tabIds[i]);
+        add_text_to_window(page, windowId, tab->textChild->id);
+    }
+}
+
 i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 scale, vec4 color, i32 actionId) {
     i32 buttonId = page->numberOfImageElements;
     i32 shadowId = page->numberOfImageElements + 1;
@@ -396,8 +528,8 @@ i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 
 }
 
 void add_shadow(UIPage *page, UIElement element) {
-    element.animations[0].start = vec2(element.animations[0].start.x - 0.005f, element.animations[0].start.y + 0.01f);
-    element.animations[0].destination = vec2(element.animations[0].destination.x - 0.005f, element.animations[0].destination.y + 0.01f);
+    element.animations[0].start = vec2(element.animations[0].start.x - 0.0025f, element.animations[0].start.y + 0.005f);
+    element.animations[0].destination = vec2(element.animations[0].destination.x - 0.0025f, element.animations[0].destination.y + 0.005f);
 
     element.color = vec4(0.0f, 0.0f, 0.0f, 0.5f);
     add_ui_element(page, element);
@@ -422,14 +554,22 @@ void add_move_text_animation(UIPage *page, i32 elementId, vec2 destination, f32 
     e->onCompleteActionId = 0;
 }
 
-i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 start, vec2 destination) {
+vec2 get_center(Anchor anchor, vec2 size, vec2 pos) {
+    if(anchor == TOP_LEFT) {
+        return vec2(pos.x + (size.x * 0.5f), pos.y + (size.y * 0.5f));
+    } else {
+        return pos;
+    }
+}
+
+i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 start, vec2 destination, vec4 color1, vec4 color2) {
     UIElement e = UIElement{ anchor, -1, windowHandle, start.x, start.y, scale.x, scale.y, true};
 
     SheetAnimation panelSheet = SheetAnimation{3, 3};
     e.sheetAnimation = panelSheet;
 
     e.isPanel = true;
-    e.color = vec4(0.2f, 0.2f, 0.2f, 1.0f);
+    e.color = color1;
     e.hovered = true;
 
     Animation moveWindow = Animation{destination, start};
@@ -438,6 +578,24 @@ i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 s
     e.animations[e.numberOfAnimations++] = moveWindow; 
 
     i32 index = add_ui_element(page, e);
+    UIElement bg = e;
+    //does not handle no image yet
+    bg.anchor = CENTER;
+    vec2 bgStart = get_center(anchor, vec2(e.width, e.height), start);
+    vec2 bgDest = get_center(anchor, vec2(e.width, e.height), destination);
+    bg.posx = bgStart.x;
+    bg.posy = bgStart.y;
+
+    bg.animations[0].destination = bgDest;
+    bg.animations[0].start = bgStart;
+
+    bg.textureName = -1;
+    bg.width -= 0.005;
+    bg.height -= 0.005;
+    bg.isPanel = false;
+    bg.color = color2;
+    add_ui_element(page, bg);
+
     add_shadow(page, e);
     return index;
 }
@@ -481,11 +639,9 @@ void add_button_to_window(UIPage *page, i32 windowId, i32 elementId) {
     UIElement *button = &page->uiElements[elementId];
     UIElement *shadow = &page->uiElements[elementId + 1];
 
-    printf("number of window animations %i\n", (i32)window->numberOfAnimations);
     f32 speed = window->animations[window->numberOfAnimations - 1].duration;
     vec2 motionDifference = window->animations[window->numberOfAnimations - 1].start - window->animations[window->numberOfAnimations - 1].destination;
 
-    printf("number of button animations %i\n", (i32)button->numberOfAnimations);
     button->animations[button->numberOfAnimations].start = vec2(button->posx + motionDifference.x, button->posy + motionDifference.y);
     button->animations[button->numberOfAnimations].destination = vec2(button->posx, button->posy);
     button->animations[button->numberOfAnimations].duration = speed;
@@ -519,16 +675,34 @@ void add_button_to_window(UIPage *page, i32 windowId, i32 elementId) {
 
 void button_press(void* ptr) {
     UIElement* el = (UIElement*)ptr;
-    vec2 destination = el->animations[0].destination;
-    el->posy = destination.y;
-    el->textChild->posy = destination.y;
+
+    // for options will likely use an imageChild
+    if(el->onCompleteActionId != -1) {
+        RUN_ON_COMPLETE_ACTION(el);
+    } else {
+        vec2 destination = el->animations[0].destination;
+        el->posy = destination.y;
+        // only for actual buttons
+        if(el->textChild) {
+            el->textChild->posy = destination.y;
+        }
+    }
 }
 
 void button_release(void* ptr) {
     UIElement* el = (UIElement*)ptr;
-    vec2 start = el->animations[0].start;
-    el->posy = start.y;
-    el->textChild->posy = start.y;
+    // for options will likely use an imageChild
+    if(el->onCompleteActionId != -1) {
+        RUN_ON_COMPLETE_ACTION(el);
+    } else {
+        vec2 start = el->animations[0].start;
+        el->posy = start.y;
+
+        // only for actual buttons
+        if(el->textChild) {
+            el->textChild->posy = start.y;
+        }
+    }
 }
 
 i32 add_text_element(UIPage* page, TextElement text) {
@@ -626,6 +800,7 @@ void draw_messages(f32 deltaTime) {
                 0.5f, //* gMemory->aspect,
                 msg->messageCode == 0 ? 0.95f : 0.9f,
                 DEFAULT_FONT_SCALE,
+                -1.0f,
                 vec3(1.0f)
             };
             strcpy_s(text.text, msg->messageText);
@@ -663,6 +838,18 @@ void update(UIPage* page, f32 deltaTime) {
         //}
     }
 
+    if(page->tabCursorId != -1) {
+        UIElement *cursor = &page->uiElements[page->tabCursorId];
+        UIElement *tab = &page->uiElements[page->tabSelected];
+        cursor->posx = tab->posx;
+        cursor->posy = tab->posy;
+
+        for(i32 i = 0; i < tab->numberOfDependentTextElements; ++i) {
+            //this is why options isn't working at the moment!
+            tab->dependentTextElements[i]->visible = true;
+        }
+    }
+
     draw_messages(deltaTime);
 }
 
@@ -694,15 +881,21 @@ void create_image_quad(UIMemory* mem) {
 
 void load_self_actions() {
   selfActions[numberOfSelfActions++] = &toggle_visibility;
+  selfActions[numberOfSelfActions++] = &next_option;
 }
 
 UIPage* create_ui_page(UIMemory* mem) {
   create_image_quad(mem);
+  play_audio = mem->play_audio_fn;
+  play_audio_pitch = mem->play_audio_pitch_fn;
   load_self_actions();
   messageBuffer = allocateMessageBuffer(128);
   
   UIPage* page = (UIPage*)ui_push_size(mem, sizeof(UIPage));
   memset(page, 0, sizeof(UIPage));
   page->elementHovered = -1;
+  page->tabCursorId = -1;
+  page->elementCursorId = -1;
+  page->tabSelected = -1;
   return page;
 }

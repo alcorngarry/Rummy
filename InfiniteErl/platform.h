@@ -3,7 +3,6 @@
 #include "data_types.h"
 #include "renderer.h"
 #include "../UserInterface/user_interface.h"
-// This likely will not be used in the ui library
 #include "audio.h"
 
 #define TILE_ATLAS_T 0  
@@ -24,6 +23,8 @@
 #define POOL_T 15
 #define CIRCLE_BUTTON_T 16
 #define RELICS_T 17
+#define UI_BG_2_T 18
+#define BUTTON_SELECT_T 19
 
 #ifdef BUILD_DLL
 #define GAME_DLL __declspec(dllexport)

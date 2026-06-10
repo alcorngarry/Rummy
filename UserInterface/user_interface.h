@@ -62,6 +62,11 @@ enum AnimationType {
   COUNT
 };
 
+enum CursorType {
+  ELEMENT,
+  TAB
+};
+
 struct Animation {
   vec2 destination;
 	vec2 start;
@@ -110,6 +115,7 @@ struct UIElement {
   Animation animations[8];
   u8 numberOfAnimations = 0;
   i32 id;
+  i32 onCompleteActionId = -1;
 };
 
 enum TextType {
@@ -144,17 +150,21 @@ struct TextElement {
   i32 id;
   f64 prevValue;
   u8 haveCountAnimation = true;
+  f32 maxWidth = 16777216.0f; //max f32
 };
 
 struct UIPage {
 	UIElement uiElements[MAX_ELEMENTS];
 	TextElement textElements[MAX_ELEMENTS];
-	i8 elementHovered = -1;
+	i8 elementHovered;
 	u8 actionableElementCount = 0;
 	i32 numberOfImageElements = 0;
 	i32 numberOfTextElements = 0;
 	u8 mouseHoverDisabled = false;
   f32 aspect;
+  i32 tabCursorId;
+  i32 elementCursorId;
+  i32 tabSelected;
 
   //maybe use buffers instead of arrays??
   void* values[20];
@@ -170,7 +180,8 @@ struct UIMemory {
   u32 used;
 
   u32(*load_ui_quad_buffer_fn)(f32* vertices, i32 vertexCount, u32* indices, i32 indexCount);
-  const void*(*get_ui_value_fn)(i32 valueId);
+  void (*play_audio_fn)(const char* filename);
+  void (*play_audio_pitch_fn)(const char* filename, f32 pitch);
 };
 
 void ui_reset(UIMemory* mem);
@@ -193,12 +204,18 @@ void add_button_to_window(UIPage *page, i32 windowId, i32 elementId);
 void add_image_to_window(UIPage *page, i32 windowId, i32 elementId);
 void add_move_animation(UIPage *page, i32 elementId, vec2 destination);
 void add_move_text_animation(UIPage *page, i32 elementId, vec2 destination, f32 speed = 10.0f);
-
+void add_cursor(UIPage *page, i32 cursorHandle, vec4 color, CursorType type);
+i32 add_tab(UIPage *page, i32 tabHandle, const char* text, vec4 color);
+void add_tabs_to_window(UIPage *page, i32 windowId, i32 *tabIds, i32 numberOfTabs);
+void switch_tab(UIPage *page);
+i32 add_element_to_tab(UIPage *page, i32 windowId, i32 tabId, TextElement element);
+void add_options_element(UIPage *page, i32 *textIds, i32 numberOfTextIds, i32 optionsHandle);
+  
 i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 scale, vec4 color, i32 actionId);
 
 void button_press(void* ptr);
 void button_release(void* ptr);
-i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 start, vec2 destination);
+i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 start, vec2 destination, vec4 color1, vec4 color2);
 
 TextElement* get_element_by_text(UIPage* page, const char* text);
 UIElement* get_element_by_id(UIPage* page, const char* id);

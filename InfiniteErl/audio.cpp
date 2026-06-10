@@ -23,6 +23,21 @@ void play_audio(const char* fileName) {
     if(result != MA_SUCCESS) printf("Playing audio failed %d\n", result);
 }
 
+void play_audio_pitch(const char* fileName, f32 pitch) {
+    if(!isInitialized) {
+      printf("not initialized!\n");
+      init_audio();
+    }
+
+    ma_sound sound;
+
+    if (ma_sound_init_from_file(&engine, fileName, 0, NULL, NULL, &sound) != MA_SUCCESS)
+        return;
+
+    ma_sound_set_pitch(&sound, pitch);
+    ma_sound_start(&sound);
+}
+
 void load_home_music(const char* fileName) {
     if (!isInitialized) {
         printf("Audio not initialized. Initializing now...\n");
