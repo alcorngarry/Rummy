@@ -40,4 +40,11 @@ typedef void (*ActionFuncPtr)();
 typedef void (*I64ActionFuncPtr)(i64 val);
 typedef void (*SelfActionFuncPtr)(void* self);
 
+struct Resolution {
+    i32 width;
+    i32 height;
+    i32 refreshRate;
+    f32 aspect;
+};
+
 #endif

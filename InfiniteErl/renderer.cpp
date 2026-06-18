@@ -158,8 +158,6 @@ void push_ui_page(RenderBuffer* buffer, UIPage* uiPage) {
             //ugly
             strcpy_s(text.text, element.text);
             push_ui_text(buffer, &text);
-        } else {
-            printf("INVISIBLE \n");
         }
     }
 }

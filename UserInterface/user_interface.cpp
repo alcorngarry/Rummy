@@ -6,8 +6,8 @@ MessageBuffer* messageBuffer = nullptr;
 void (*play_audio)(const char* filename);
 void (*play_audio_pitch)(const char* filename, f32 pitch);
 
-//note these are used for prebaked actions
-SelfActionFuncPtr selfActions[20];
+//note these are used for prebaked actions only for UI.
+UISelfActionFuncPtr selfActions[20];
 u8 numberOfSelfActions;
 
 f32 ease(f32 t, EaseType type) {
@@ -194,7 +194,7 @@ void set_text_value(TextElement* text, f64 value) {
     }
 }
 
-void move_text_element(TextElement* element, f32 deltaTime) {
+void move_text_element(UIPage *page, TextElement* element, f32 deltaTime) {
     for(i32 i = 0; i < element->numberOfAnimations; ++i) {
         Animation* a = &element->animations[i];
         if(a->complete) continue;
@@ -220,7 +220,7 @@ void move_text_element(TextElement* element, f32 deltaTime) {
         }
 
         if(a->complete && element->onCompleteActionId != -1) {
-            RUN_ON_COMPLETE_ACTION(element);
+            RUN_ON_COMPLETE_ACTION(page, element);
         }
     }
 }
@@ -303,7 +303,7 @@ f64 get_converted_text_type(TextType type, void *ptr) {
 void update(TextElement* text, UIPage *page, f32 deltaTime) {
     for(i32 i = 0; i < (i32)text->numberOfAnimations; ++i) {
         if(text->animations[i].autoAnimate) {
-            move_text_element(text, deltaTime);
+            move_text_element(page, text, deltaTime);
         }
     }
 
@@ -327,7 +327,7 @@ void update(TextElement* text, UIPage *page, f32 deltaTime) {
 
         set_text_value(text, current);
 
-        play_audio("./audio/place_tile.wav");
+        //play_audio("./audio/place_tile.wav");
 
 //        if(((i32)(a->elapsed * 20.0f)) != ((i32)((a->elapsed - deltaTime) * 20.0f))) {
 //            f32 pitch = 0.8f + (a->elapsed / a->duration) * 0.7f;
@@ -385,33 +385,54 @@ i32 add_ui_element(UIPage* page, UIElement element, bool actionable) {
     return index;
 }
 
-void next_option(void *ptr) {
-    UIElement* self = (UIElement*)ptr;
-    i32 currentChildId = self->textChild->id;
-    self->textChild->visible = false;
+void next_option(UIPage *page, void *ptr) {
+    UIElement *self = (UIElement *)ptr;
+    TextElement *optionsText = self->textChild;
 
-    if(currentChildId == self->numberOfDependentTextElements - 1) {
-        self->textChild = self->dependentTextElements[0];
-        self->textChild->visible = true;
-    } else {
-        self->textChild = self->dependentTextElements[self->textChild->id + 1];
-        self->textChild->visible = true;
-    }
+    Resolution *values = (Resolution*)page->values[optionsText->valueId];
+    
+    optionsText->activeValueId = optionsText->activeValueId == optionsText->numberOfValues - 1 ? 0 : optionsText->activeValueId + 1;
+
+    snprintf(optionsText->text, sizeof(optionsText->text), "%4d x %-4d @ %dHz", 
+        values[optionsText->activeValueId].width, 
+        values[optionsText->activeValueId].height, 
+        values[optionsText->activeValueId].refreshRate
+    );
+
+    printf("text = '%s'\n", optionsText->text);
 }
 
-void add_options_element(UIPage *page, i32 *textIds, i32 numberOfTextIds, i32 optionsHandle) {
-    TextElement *option1 = &page->textElements[textIds[0]];
+void previous_option(UIPage *page, void *ptr) {
+    UIElement *self = (UIElement *)ptr;
+    TextElement *optionsText = self->textChild;
 
-    //dumb actionId
-    UIElement rightArrow = UIElement{ option1->anchor, -1, optionsHandle, option1->posx, option1->posy, 0.1f, 0.1f, true, 12};
+    Resolution *values = (Resolution*)page->values[optionsText->valueId];
+    
+    optionsText->activeValueId = optionsText->activeValueId == 0 ? optionsText->numberOfValues - 1 : optionsText->activeValueId - 1;
+
+    snprintf(optionsText->text, sizeof(optionsText->text), "%4d x %-4d @ %dHz", 
+        values[optionsText->activeValueId].width, 
+        values[optionsText->activeValueId].height, 
+        values[optionsText->activeValueId].refreshRate
+    );
+
+    printf("text = '%s'\n", optionsText->text);
+}
+
+i32 add_options_element(UIPage *page, i32 optionId, i32 optionActionId, i32 optionsHandle) {
+    TextElement *option = &page->textElements[optionId];
+
+    UIElement rightArrow = UIElement{ option->anchor, -1, optionsHandle, (option->posx / page->aspect) + 0.2f, option->posy, 0.05f, 0.05f, false, 12};
+    //pass this in
+    rightArrow.actionId = optionActionId;
     rightArrow.onCompleteActionId = 1;
-    for(i32 i = 0; i < numberOfTextIds; ++i) {
-        rightArrow.dependentTextElements[rightArrow.numberOfDependentTextElements++] = &page->textElements[textIds[i]];
-    }
+    rightArrow.textChild = option;
 
-    //figure out scale
-    //i32 leftArrow = add_ui_element(page, UIElement{ option1->anchor, -1, optionsHandle, option1->posx - 0.15f, option1->posy, 0.1f, 0.1f});
     add_ui_element(page, rightArrow);
+    rightArrow.posx -= 0.4f;
+    rightArrow.onCompleteActionId = 2;
+
+    return add_ui_element(page, rightArrow);
 }
 
 void add_cursor(UIPage *page, i32 cursorHandle, vec4 color, CursorType type) {
@@ -426,7 +447,7 @@ void add_cursor(UIPage *page, i32 cursorHandle, vec4 color, CursorType type) {
     }
 }
 
-i32 add_element_to_tab(UIPage *page, i32 windowId, i32 tabId, TextElement element) {
+i32 add_text_element_to_tab(UIPage *page, i32 windowId, i32 tabId, TextElement element) {
     i32 elementId = add_text_element(page, element);
 
     UIElement *tab = &page->uiElements[tabId];
@@ -434,6 +455,14 @@ i32 add_element_to_tab(UIPage *page, i32 windowId, i32 tabId, TextElement elemen
 
     add_text_to_window(page, windowId, elementId);
     return elementId;
+}
+
+i32 add_element_to_tab(UIPage *page, i32 windowId, i32 tabId, i32 element) {
+    UIElement *tab = &page->uiElements[tabId];
+    tab->dependentElements[tab->numberOfDependentElements++] = &page->uiElements[element];
+
+    add_image_to_window(page, windowId, element);
+    return element;
 }
 
 i32 add_tab(UIPage *page, i32 tabHandle, const char* text, vec4 color) {
@@ -456,12 +485,19 @@ void switch_tab(UIPage *page) {
     for(i32 i = 0; i < currTab->numberOfDependentTextElements; ++i) {
         currTab->dependentTextElements[i]->visible = false;
     }
+    for(i32 i = 0; i < currTab->numberOfDependentElements; ++i) {
+        currTab->dependentElements[i]->visible = false;
+        if(currTab->dependentElements[i]->textChild) currTab->dependentElements[i]->textChild->visible = false;
+    }
 
     page->tabSelected = currTab->imageChildId;
     UIElement *newTab = &page->uiElements[page->tabSelected];
 
     for(i32 i = 0; i < newTab->numberOfDependentTextElements; ++i) {
         newTab->dependentTextElements[i]->visible = true;
+    }
+    for(i32 i = 0; i < newTab->numberOfDependentElements; ++i) {
+        newTab->dependentElements[i]->visible = true;
     }
 }
 
@@ -535,7 +571,7 @@ void add_shadow(UIPage *page, UIElement element) {
     add_ui_element(page, element);
 }
 
-void toggle_visibility(void *ptr) {
+void toggle_visibility(UIPage *page, void *ptr) {
     TextElement* self = (TextElement*)ptr;
     self->visible = !self->visible;
 }
@@ -673,12 +709,11 @@ void add_button_to_window(UIPage *page, i32 windowId, i32 elementId) {
     page->uiElements[windowId].numberOfDependentTextElements++;
 }
 
-void button_press(void* ptr) {
+void button_press(UIPage *page, void* ptr) {
     UIElement* el = (UIElement*)ptr;
 
     // for options will likely use an imageChild
     if(el->onCompleteActionId != -1) {
-        RUN_ON_COMPLETE_ACTION(el);
     } else {
         vec2 destination = el->animations[0].destination;
         el->posy = destination.y;
@@ -689,11 +724,11 @@ void button_press(void* ptr) {
     }
 }
 
-void button_release(void* ptr) {
+void button_release(UIPage *page, void* ptr) {
     UIElement* el = (UIElement*)ptr;
     // for options will likely use an imageChild
     if(el->onCompleteActionId != -1) {
-        RUN_ON_COMPLETE_ACTION(el);
+        RUN_ON_COMPLETE_ACTION(page, el);
     } else {
         vec2 start = el->animations[0].start;
         el->posy = start.y;
@@ -718,7 +753,6 @@ i32 add_dynamic_text_element(UIPage* page, TextElement text, const char* label, 
     page->textElements[page->numberOfTextElements].prefix = label;
     page->textElements[page->numberOfTextElements].valueId = valueId;
     page->textElements[page->numberOfTextElements].type = t;
-    page->textElements[page->numberOfTextElements].multiplier = mult;
     page->textElements[page->numberOfTextElements].prevValue = get_converted_text_type(t, page->values[valueId]);
     set_text_value(&page->textElements[page->numberOfTextElements], page->textElements[page->numberOfTextElements].prevValue);
     page->numberOfTextElements++;
@@ -844,9 +878,13 @@ void update(UIPage* page, f32 deltaTime) {
         cursor->posx = tab->posx;
         cursor->posy = tab->posy;
 
+        //this should only happen on start
         for(i32 i = 0; i < tab->numberOfDependentTextElements; ++i) {
-            //this is why options isn't working at the moment!
             tab->dependentTextElements[i]->visible = true;
+        }
+        for(i32 i = 0; i < tab->numberOfDependentElements; ++i) {
+            tab->dependentElements[i]->visible = true;
+            if(tab->dependentElements[i]->textChild) tab->dependentElements[i]->textChild->visible = true;
         }
     }
 
@@ -882,6 +920,7 @@ void create_image_quad(UIMemory* mem) {
 void load_self_actions() {
   selfActions[numberOfSelfActions++] = &toggle_visibility;
   selfActions[numberOfSelfActions++] = &next_option;
+  selfActions[numberOfSelfActions++] = &previous_option;
 }
 
 UIPage* create_ui_page(UIMemory* mem) {

@@ -6,22 +6,25 @@
 #define MAX_MESSAGE_SIZE 512
 #define DEFAULT_FONT_SCALE 0.0006f
 
+struct UIPage;
+typedef void (*UISelfActionFuncPtr)(UIPage *page, void* self);
+
 #define BUTTON_PRESS(el) \
     do { \
         if ((el).actionId != -1) { \
-            button_press((void*)&(el)); \
+            button_press(gState->uiPage, (void*)&(el)); \
         } \
     } while(0)
 
 #define BUTTON_RELEASE(el) \
     do { \
         if ((el).actionId != -1) { \
-            button_release((void*)&(el)); \
+            button_release(gState->uiPage, (void*)&(el)); \
             gState->uiPage->actions[(el).actionId](); \
         } \
     } while(0)
 
-#define RUN_ON_COMPLETE_ACTION(obj) selfActions[(obj)->onCompleteActionId](obj)
+#define RUN_ON_COMPLETE_ACTION(page, obj) selfActions[(obj)->onCompleteActionId](page, obj)
 
 struct MessageBuffer {
     u32 maxBufferSize;
@@ -139,7 +142,8 @@ struct TextElement {
   i32 valueId = -1;
 	TextType type = TextType::NONE;
 	const char* prefix = "";
-	f32 multiplier = 1.0f;
+	i32 numberOfValues = 0;
+  i32 activeValueId = 0;
 	i32 onCompleteActionId = -1;
   i32 textChildId = -1;
   i32 imageChildId = -1;
@@ -208,13 +212,14 @@ void add_cursor(UIPage *page, i32 cursorHandle, vec4 color, CursorType type);
 i32 add_tab(UIPage *page, i32 tabHandle, const char* text, vec4 color);
 void add_tabs_to_window(UIPage *page, i32 windowId, i32 *tabIds, i32 numberOfTabs);
 void switch_tab(UIPage *page);
-i32 add_element_to_tab(UIPage *page, i32 windowId, i32 tabId, TextElement element);
-void add_options_element(UIPage *page, i32 *textIds, i32 numberOfTextIds, i32 optionsHandle);
+i32 add_element_to_tab(UIPage *page, i32 windowId, i32 tabId, i32 element);
+i32 add_text_element_to_tab(UIPage *page, i32 windowId, i32 tabId, TextElement element);
+i32 add_options_element(UIPage *page, i32 optionId, i32 optionActionId, i32 optionsHandle);
   
 i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 scale, vec4 color, i32 actionId);
 
-void button_press(void* ptr);
-void button_release(void* ptr);
+void button_press(UIPage *page, void* ptr);
+void button_release(UIPage *page, void* ptr);
 i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 start, vec2 destination, vec4 color1, vec4 color2);
 
 TextElement* get_element_by_text(UIPage* page, const char* text);

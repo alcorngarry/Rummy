@@ -13,10 +13,12 @@ void framebuffer_size_callback(GLFWwindow* window, i32 width, i32 height);
 void mouse_callback(GLFWwindow* window, f64 xpos, f64 ypos);
 void load_textures();
 void load_window_icon();
-void toggle_fullscreen(GLFWwindow* window, GameMemory& memory);
+void toggle_fullscreen(GLFWwindow* window);
+void set_resolution(GameMemory *memory, Resolution res);
+i32 get_supported_resolutions(Resolution *resolutions);
 
 f32 lastFrame = 0.0f;
-bool firstMouse = true;
+u8 firstMouse = true;
 f32 yaw = -90.0f;
 f32 pitch = 0.0f;
 f64 lastX = 400.0f;
@@ -27,12 +29,11 @@ f32 mouseSensitivity = 0.1f;
 f32 deltaTime = 0;
 i32 windowPosX = 0;
 i32 windowPosY = 0;
-bool isFullscreen = false;
+u8 isFullscreen = false;
 mat4 projection;
 
-i32 windowWidth = 1280;
-i32 windowHeight = 720;
-f32 aspect = 1; 
+Resolution windowResolution = {1280, 720, 60, 16.0f/9.0f};
+f32 defaultedAspect = 16.0f/9.0f;
 
 struct GameDLL {
     HMODULE dll;
@@ -140,6 +141,7 @@ GameMemory allocate_game_memory(RenderBuffer* buffer) {
   
     memory.play_audio_fn = play_audio;
     memory.load_home_music_fn = load_home_music;
+    memory.set_resolution_fn = set_resolution;
     return memory;
 }
 
@@ -163,29 +165,26 @@ i32 APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, i32 cmd
     }
   
     GameMemory memory = allocate_game_memory(buffer);
-    
-    memory.windowWidth = windowWidth;
-    memory.windowHeight = windowHeight;
-    memory.aspect = aspect;
+    memory.numberOfSupportedResolutions = get_supported_resolutions(memory.supportedResolutions);
+    set_resolution(&memory, windowResolution);
+
+    memory.resolution = windowResolution;
 
     game.game_init(&memory, false);
     
     while (!memory.shouldWindowClose) {
-
         if(memory.toggleFullScreen) {
-            toggle_fullscreen(window, memory);
+            toggle_fullscreen(window);
+            memory.toggleFullScreen = false;
         }
-        
-        memory.windowWidth = windowWidth;
-        memory.windowHeight = windowHeight;
-        memory.aspect = aspect;
+       
 
         if (hot_reload(&game, "../build/Game.dll")) {
           game.game_init(&memory, true);
           ui_reset(&memory.uiMem);
         }
 
-        f32 currentFrame = static_cast<float>(glfwGetTime());
+        f32 currentFrame = (f32)glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
         if (deltaTime > 0.1f) deltaTime = 0.1f;
@@ -193,8 +192,8 @@ i32 APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, i32 cmd
         buffer->projection = projection;
         buffer->deltaTime = deltaTime;
         buffer->bufferSize = 0;
-        buffer->aspect = aspect;
-        buffer->windowSize = vec2(memory.windowWidth, memory.windowHeight);
+        buffer->aspect = defaultedAspect;
+        buffer->windowSize = vec2(windowResolution.width, windowResolution.height);
         
         glfwPollEvents();
 
@@ -213,7 +212,7 @@ GLFWwindow* create_window() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(windowWidth, windowHeight, "Rummy", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(windowResolution.width, windowResolution.height, "Rummy", NULL, NULL);
     if (window == NULL) {
         printf("Failed to create GLFW window\n");
         glfwTerminate();
@@ -224,7 +223,7 @@ GLFWwindow* create_window() {
         printf("Failed to initialize GLAD\n");
     }
 
-    glViewport(0, 0, windowWidth, windowHeight);
+    glViewport(0, 0, windowResolution.width, windowResolution.height);
     glEnable(GL_DEPTH_TEST);
 
     glfwSetKeyCallback(window, key_callback);
@@ -233,49 +232,90 @@ GLFWwindow* create_window() {
     glfwSetMouseButtonCallback(window, mouse_button_callback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
-    aspect = static_cast<f32>(windowWidth) / static_cast<f32>(windowHeight);
-    projection = glm::ortho(0.0f, aspect, 1.0f, 0.0f, -10.0f, 10.0f);
+    projection = glm::ortho(0.0f, defaultedAspect, 1.0f, 0.0f, -10.0f, 10.0f);
 
     return window;
 }
 
-void toggle_fullscreen(GLFWwindow* window, GameMemory& memory) {
-    memory.toggleFullScreen = false;
-    isFullscreen = !isFullscreen;
+i32 get_supported_resolutions(Resolution *resolutions) {
+    GLFWmonitor* monitor = glfwGetPrimaryMonitor();
 
-    i32 width, height, xpos, ypos, refresh;
-    GLFWmonitor* monitor = nullptr;
+    i32 count;
+    const GLFWvidmode* modes = glfwGetVideoModes(monitor, &count);
 
+    for (i32 i = 0; i < count; ++i) {
+        resolutions[i] = Resolution{modes[i].width, modes[i].height, modes[i].refreshRate, (f32)modes[i].width/(f32)modes[i].height};
+    }
+
+    return count;
+}
+
+void apply_resolution() {
     if (isFullscreen) {
+        GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+
+        glfwSetWindowMonitor(
+            window,
+            monitor,
+            0,
+            0,
+            windowResolution.width,
+            windowResolution.height,
+            GLFW_DONT_CARE
+        );
+    } else {
+        glfwSetWindowSize(window, windowResolution.width, windowResolution.height);
+    }
+}
+
+void set_resolution(GameMemory* memory, Resolution res) {
+    windowResolution.width  = res.width;
+    windowResolution.height = res.height;
+
+    memory->resolution.width  = res.width;
+    memory->resolution.height = res.height;
+    //memory->resolution.aspect = res.aspect;
+
+    if (!isFullscreen) {
+        windowResolution.width  = res.width;
+        windowResolution.height = res.height;
+    }
+
+    apply_resolution();
+}
+
+void toggle_fullscreen(GLFWwindow* window) {
+    if (!isFullscreen) {
         glfwGetWindowPos(window, &windowPosX, &windowPosY);
-        glfwGetWindowSize(window, &windowWidth, &windowHeight);
+        glfwGetWindowSize(window, &windowResolution.width, &windowResolution.height);
 
-        monitor = glfwGetPrimaryMonitor();
+        GLFWmonitor* monitor = glfwGetPrimaryMonitor();
         const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-        width = mode->width;
-        height = mode->height;
-        xpos = 0;
-        ypos = 0;
-        refresh = 144;
-    }
-    else {
-        windowWidth = 1280;
-        windowHeight = 720;
-        width = windowWidth;
-        height = windowHeight;
-        xpos = windowPosX;
-        ypos = windowPosY;
-        refresh = 0;
-    }
 
-    glfwSetWindowMonitor(window, monitor, xpos, ypos, width, height, refresh);
-    glfwMakeContextCurrent(window);
-    glfwSwapInterval(1);
+        glfwSetWindowMonitor(
+            window,
+            monitor,
+            0,
+            0,
+            windowResolution.width,
+            windowResolution.height,
+            mode->refreshRate
+        );
 
-    glViewport(0, 0, width, height);
-    aspect = (height == 0) ? 1.0f : (f32)width / (f32)height;
-    windowWidth = width;
-    windowHeight = height;
+        isFullscreen = true;
+    } else {
+        glfwSetWindowMonitor(
+            window,
+            nullptr,
+            windowPosX,
+            windowPosY,
+            windowResolution.width,
+            windowResolution.height,
+            0
+        );
+
+        isFullscreen = false;
+    }
 }
 
 void load_window_icon() {
@@ -296,17 +336,15 @@ void load_window_icon() {
 
 void framebuffer_size_callback(GLFWwindow* window, i32 width, i32 height) {
     if (width == 0 || height == 0) return;
-    windowWidth = width;
-    windowHeight = height;
+    windowResolution.width = width;
+    windowResolution.height = height;
     glViewport(0, 0, width, height);
 
-    //aspect = static_cast<f32>(width) / static_cast<f32>(height);
-    projection = glm::ortho(0.0f, aspect, 1.0f, 0.0f, -10.0f, 10.0f);
+    projection = glm::ortho(0.0f, defaultedAspect, 1.0f, 0.0f, -10.0f, 10.0f);
 }
 
 void mouse_callback(GLFWwindow* window, f64 xpos, f64 ypos) {
-    if (firstMouse)
-    {
+    if (firstMouse) {
         lastX = xpos;
         lastY = ypos;
         firstMouse = false;
@@ -326,17 +364,17 @@ void mouse_callback(GLFWwindow* window, f64 xpos, f64 ypos) {
     if (pitch > 89.0L)  pitch = 89.0L;
     if (pitch < -89.0L) pitch = -89.0L;
 
-    xpos /= windowWidth;
-    ypos /= windowHeight;
-    game.game_update_input(-1 ,-1, xpos * aspect, ypos);
+    xpos /= windowResolution.width;
+    ypos /= windowResolution.height;
+    game.game_update_input(-1 ,-1, xpos * defaultedAspect, ypos);
 }
 
 void mouse_button_callback(GLFWwindow* window, i32 button, i32 action, i32 mods) {
-    game.game_update_input(action, button, (lastX / windowWidth) * aspect, lastY / windowHeight);
+    game.game_update_input(action, button, (lastX / windowResolution.width) * defaultedAspect, lastY / windowResolution.height);
 }
 
 void key_callback(GLFWwindow* window, i32 key, i32 scancode, i32 action, i32 mods) {
-   game.game_update_input(action, key, (lastX / windowWidth) * aspect, lastY / windowHeight);
+   game.game_update_input(action, key, (lastX / windowResolution.width) * defaultedAspect, lastY / windowResolution.height);
 }
 
 void load_textures() {
