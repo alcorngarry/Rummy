@@ -68,7 +68,7 @@ void main() {
     }
 
     if(flipped) {
-      uv = 1.0f - uv;
+      //uv = 1.0f - uv;
     }
 
     if(color.x != -1.0f) {

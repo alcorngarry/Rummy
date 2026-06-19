@@ -31,6 +31,7 @@ i32 windowPosX = 0;
 i32 windowPosY = 0;
 u8 isFullscreen = false;
 mat4 projection;
+u8 vsyncEnabled = 0;
 
 Resolution windowResolution = {1280, 720, 60, 16.0f/9.0f};
 f32 defaultedAspect = 16.0f/9.0f;
@@ -138,6 +139,7 @@ GameMemory allocate_game_memory(RenderBuffer* buffer) {
     memory.uiMem.play_audio_pitch_fn = play_audio_pitch;
     memory.shouldWindowClose = false;
     memory.toggleFullScreen = false;
+    memory.toggleVsync = false;
   
     memory.play_audio_fn = play_audio;
     memory.load_home_music_fn = load_home_music;
@@ -176,6 +178,12 @@ i32 APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, i32 cmd
         if(memory.toggleFullScreen) {
             toggle_fullscreen(window);
             memory.toggleFullScreen = false;
+        }
+
+        if(memory.toggleVsync) {
+            vsyncEnabled = vsyncEnabled == 0 ? 1 : 0;
+            glfwSwapInterval(vsyncEnabled); 
+            memory.toggleVsync = false;
         }
 
         if (hot_reload(&game, "../build/Game.dll")) {
@@ -397,4 +405,5 @@ void load_textures() {
     load_texture(RELICS_T, "./res/relics.png", true, false, true);
     load_texture(UI_BG_2_T, "./res/ui-bg2.png", true, true, false);
     load_texture(BUTTON_SELECT_T, "./res/button-select.png", true, true, false);
+    load_texture(RADIO_T, "./res/radio-sheet.png", true, true, false);
 }

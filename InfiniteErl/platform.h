@@ -25,6 +25,7 @@
 #define RELICS_T 17
 #define UI_BG_2_T 18
 #define BUTTON_SELECT_T 19
+#define RADIO_T 20
 
 #ifdef BUILD_DLL
 #define GAME_DLL __declspec(dllexport)
@@ -37,6 +38,7 @@ extern "C" {
 		i32 isInitialized;
     u8 shouldWindowClose;
     u8 toggleFullScreen;
+    u8 toggleVsync;
 
     Resolution supportedResolutions[512];
     i32 numberOfSupportedResolutions;

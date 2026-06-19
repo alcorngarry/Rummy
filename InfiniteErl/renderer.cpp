@@ -502,6 +502,7 @@ void draw_image_ui(Anchor anchor, i32 textureId, f32 posx, f32 posy, f32 width, 
     uiShader->setInt("rows", rows);
     uiShader->setBool("isPanel", isPanel);
     uiShader->setVec4("color", color);
+    //now this is actual garbage
     uiShader->setBool("flipped", isHovered);
     uiShader->setBool("useColorOnly", textureId == -1 ? true : false);
     uiShader->setVec2("resolution", windowSize);

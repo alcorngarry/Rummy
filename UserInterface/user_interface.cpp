@@ -1,6 +1,8 @@
 #include "user_interface.h"
 #include "../InfiniteErl/renderer.h" 
 
+typedef void (*ValueToTextFn)(void* value, i32 index, char* out, i32 outSize);
+
 u32 imageMeshHandle;
 MessageBuffer* messageBuffer = nullptr;
 void (*play_audio)(const char* filename);
@@ -387,36 +389,31 @@ i32 add_ui_element(UIPage* page, UIElement element, bool actionable) {
 
 void next_option(UIPage *page, void *ptr) {
     UIElement *self = (UIElement *)ptr;
-    TextElement *optionsText = self->textChild;
+    TextElement *text = self->textChild;
 
-    Resolution *values = (Resolution*)page->values[optionsText->valueId];
-    
-    optionsText->activeValueId = optionsText->activeValueId == optionsText->numberOfValues - 1 ? 0 : optionsText->activeValueId + 1;
+    text->activeValueId = (text->activeValueId + 1) % text->numberOfValues;
 
-    snprintf(optionsText->text, sizeof(optionsText->text), "%4d x %-4d @ %dHz", 
-        values[optionsText->activeValueId].width, 
-        values[optionsText->activeValueId].height, 
-        values[optionsText->activeValueId].refreshRate
-    );
+    ValueToTextFn fmt = page->formatters[text->valueId];
+    void* data = page->values[text->valueId];
 
-    printf("text = '%s'\n", optionsText->text);
+    fmt(data, text->activeValueId, text->text, sizeof(text->text));
 }
 
 void previous_option(UIPage *page, void *ptr) {
     UIElement *self = (UIElement *)ptr;
-    TextElement *optionsText = self->textChild;
+    TextElement *text = self->textChild;
 
-    Resolution *values = (Resolution*)page->values[optionsText->valueId];
-    
-    optionsText->activeValueId = optionsText->activeValueId == 0 ? optionsText->numberOfValues - 1 : optionsText->activeValueId - 1;
+    if (text->activeValueId == 0) {
+        text->activeValueId = text->numberOfValues - 1;
+    } else {
 
-    snprintf(optionsText->text, sizeof(optionsText->text), "%4d x %-4d @ %dHz", 
-        values[optionsText->activeValueId].width, 
-        values[optionsText->activeValueId].height, 
-        values[optionsText->activeValueId].refreshRate
-    );
+        text->activeValueId--;
+    }
 
-    printf("text = '%s'\n", optionsText->text);
+    ValueToTextFn fmt = page->formatters[text->valueId];
+    void* data = page->values[text->valueId];
+
+    fmt(data, text->activeValueId, text->text, sizeof(text->text));
 }
 
 i32 add_options_element(UIPage *page, i32 optionId, i32 optionActionId, i32 optionsHandle) {
@@ -436,6 +433,17 @@ i32 add_options_element(UIPage *page, i32 optionId, i32 optionActionId, i32 opti
     leftArrow.imageChildId = rightArrowId;
 
     return add_ui_element(page, leftArrow);
+}
+
+i32 add_radio_element(UIPage *page, u8 enabled, Anchor anchor, vec2 pos, vec2 size, i32 actionId, i32 radioHandle) {
+    UIElement radio = UIElement{ anchor, -1, radioHandle, pos.x, pos.y, size.x, size.y, false, actionId};
+    SheetAnimation anim = SheetAnimation{};
+    anim.cols = 2;
+    anim.rows = 1;
+    anim.currentFrame = (i32)enabled;
+    radio.sheetAnimation = anim;
+    radio.onCompleteActionId = 3;
+    return add_ui_element(page, radio);
 }
 
 void add_cursor(UIPage *page, i32 cursorHandle, vec4 color, CursorType type) {
@@ -590,6 +598,12 @@ void toggle_visibility(UIPage *page, void *ptr) {
     self->visible = !self->visible;
 }
 
+void next_sheet_frame(UIPage *page, void *ptr) {
+    UIElement* self = (UIElement*)ptr;
+    i32 frames = self->sheetAnimation.cols * self->sheetAnimation.rows;
+    self->sheetAnimation.currentFrame = self->sheetAnimation.currentFrame == frames - 1 ? 0 : self->sheetAnimation.currentFrame + 1;
+}
+
 void add_move_animation(UIPage *page, i32 elementId, vec2 destination) {
     UIElement *e = &page->uiElements[elementId];
     Animation a = Animation{destination, vec2(e->posx, e->posy)};
@@ -729,12 +743,12 @@ void button_press(UIPage *page, void* ptr) {
     // for options will likely use an imageChild
     if(el->onCompleteActionId != -1) {
     } else {
-        vec2 destination = el->animations[0].destination;
-        el->posy = destination.y;
-        // only for actual buttons
-        if(el->textChild) {
-            el->textChild->posy = destination.y;
-        }
+        //vec2 destination = el->animations[0].destination;
+        //el->posy = destination.y;
+        //// only for actual buttons
+        //if(el->textChild) {
+        //    el->textChild->posy = destination.y;
+        //}
     }
 }
 
@@ -744,13 +758,13 @@ void button_release(UIPage *page, void* ptr) {
     if(el->onCompleteActionId != -1) {
         RUN_ON_COMPLETE_ACTION(page, el);
     } else {
-        vec2 start = el->animations[0].start;
-        el->posy = start.y;
+      //  vec2 start = el->animations[0].start;
+      //  el->posy = start.y;
 
-        // only for actual buttons
-        if(el->textChild) {
-            el->textChild->posy = start.y;
-        }
+      //  // only for actual buttons
+      //  if(el->textChild) {
+      //      el->textChild->posy = start.y;
+      //  }
     }
 }
 
@@ -905,6 +919,11 @@ void update(UIPage* page, f32 deltaTime) {
     draw_messages(deltaTime);
 }
 
+void format_string_array(void* value, i32 index, char* out, i32 outSize) {
+    char** arr = (char**)value;
+    snprintf(out, outSize, "%s", arr[index]);
+}
+
 void ui_reset(UIMemory* mem) {
     mem->used = 0;
 }
@@ -932,23 +951,24 @@ void create_image_quad(UIMemory* mem) {
 }
 
 void load_self_actions() {
-  selfActions[numberOfSelfActions++] = &toggle_visibility;
-  selfActions[numberOfSelfActions++] = &next_option;
-  selfActions[numberOfSelfActions++] = &previous_option;
+    selfActions[numberOfSelfActions++] = &toggle_visibility;
+    selfActions[numberOfSelfActions++] = &next_option;
+    selfActions[numberOfSelfActions++] = &previous_option;
+    selfActions[numberOfSelfActions++] = &next_sheet_frame;
 }
 
 UIPage* create_ui_page(UIMemory* mem) {
-  create_image_quad(mem);
-  play_audio = mem->play_audio_fn;
-  play_audio_pitch = mem->play_audio_pitch_fn;
-  load_self_actions();
-  messageBuffer = allocateMessageBuffer(128);
-  
-  UIPage* page = (UIPage*)ui_push_size(mem, sizeof(UIPage));
-  memset(page, 0, sizeof(UIPage));
-  page->elementHovered = -1;
-  page->tabCursorId = -1;
-  page->elementCursorId = -1;
-  page->tabSelected = -1;
-  return page;
+    create_image_quad(mem);
+    play_audio = mem->play_audio_fn;
+    play_audio_pitch = mem->play_audio_pitch_fn;
+    load_self_actions();
+    messageBuffer = allocateMessageBuffer(128);
+    
+    UIPage* page = (UIPage*)ui_push_size(mem, sizeof(UIPage));
+    memset(page, 0, sizeof(UIPage));
+    page->elementHovered = -1;
+    page->tabCursorId = -1;
+    page->elementCursorId = -1;
+    page->tabSelected = -1;
+    return page;
 }

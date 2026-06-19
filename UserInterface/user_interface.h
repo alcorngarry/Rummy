@@ -8,6 +8,7 @@
 
 struct UIPage;
 typedef void (*UISelfActionFuncPtr)(UIPage *page, void* self);
+typedef void (*ValueToTextFn)(void* value, i32 index, char* out, i32 outSize);
 
 #define BUTTON_PRESS(el) \
     do { \
@@ -172,7 +173,8 @@ struct UIPage {
 
   //maybe use buffers instead of arrays??
   void* values[20];
-  u8 numberOfValues;
+  ValueToTextFn formatters[20];
+  u8 numberOfValues; //formatters is tied to this indirectly
 
   ActionFuncPtr actions[20];
   u8 numberOfActions;
@@ -215,6 +217,7 @@ void switch_tab(UIPage *page);
 i32 add_element_to_tab(UIPage *page, i32 windowId, i32 tabId, i32 element);
 i32 add_text_element_to_tab(UIPage *page, i32 windowId, i32 tabId, TextElement element);
 i32 add_options_element(UIPage *page, i32 optionId, i32 optionActionId, i32 optionsHandle);
+i32 add_radio_element(UIPage *page, u8 enabled, Anchor anchor, vec2 pos, vec2 size, i32 actionId, i32 radioHandle);
   
 i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 scale, vec4 color, i32 actionId);
 
@@ -227,6 +230,7 @@ UIElement* get_element_by_id(UIPage* page, const char* id);
 TextElement* get_text_element_by_id(UIPage* page, const char* id);
 
 void delete_text_element(UIPage* page, i32 index);
+void format_string_array(void* value, i32 index, char* out, i32 outSize);
 
 void write_page(UIPage *page, const char* path);
 void read_page(UIPage *page, const char* path);

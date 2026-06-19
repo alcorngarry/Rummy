@@ -21,7 +21,7 @@ u8 debugMenuOpen = false;
 u64 numTableTiles = 0;
 i32 progressScore = 0;
 u64 hoveredSetValue = 100;
-char *videoModes[3] = {"Windowed", "Fullscreen", "Fullscreen Borderless"};
+char *videoModes[2] = {"Window", "Fullscreen"};
 
 void get_playable_tiles(Set *set);
 void remove_empty_sets();
@@ -2112,35 +2112,36 @@ void add_options_ui() {
     resOptionId = add_options_element(gState->uiPage, resolutionOptionId, 13, BUTTON_T);
     //
 
+
+    //
+    TextElement videoMode = TextElement{ Anchor::CENTER, "Video mode", gMemory->resolution.aspect * 0.5f, 0.5f, -1, false, DEFAULT_FONT_SCALE * 3, vec3(1.0f)};
+
+    TextElement videoModeEntry = TextElement{ Anchor::CENTER, "", gMemory->resolution.aspect * 0.5f, 0.6f, -1, false, DEFAULT_FONT_SCALE * 2, vec3(1.0f)};
+    videoModeEntry.valueId = 10;
+    videoModeEntry.numberOfValues = 2;
+    //need to track the status of video mode in the engine
+    snprintf(videoModeEntry.text, sizeof(videoModeEntry.text), "%s", "Windowed");
+    i32 videoModeId = add_options_element(gState->uiPage, add_text_element(gState->uiPage, videoModeEntry), 14, BUTTON_T);
+    //
+
+    i32 vsyncRadio = add_radio_element(gState->uiPage, false, CENTER, vec2(0.5f, 0.85f), vec2(0.1f), 15, RADIO_T); 
+
     // window create
     i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::CENTER, vec2(0.95f, 0.6f), vec2(0.5f, 2.0f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE); 
     add_button_to_window(gState->uiPage, windowIndex, back);
     //
 
-
     add_tabs_to_window(gState->uiPage, windowIndex, tabs, 2);
-
-    TextElement videoMode = TextElement{ Anchor::CENTER, "Video mode", gMemory->resolution.aspect * 0.5f, 0.5f, -1, false, DEFAULT_FONT_SCALE * 3, vec3(1.0f)};
-
-//    TextElement videoModeEntry = TextElement{ Anchor::CENTER, "", gMemory->resolution.aspect * 0.5f, 0.35f, -1, false, DEFAULT_FONT_SCALE * 2, vec3(1.0f)};
-//    videoModeEntry.valueId = 10;
-//    videoModeEntry.numberOfValues = 3;
-//    //need to track the status of video mode in the engine
-//    snprintf(videoModeEntry.text, sizeof(videoModeEntry.text), "%s", "Windowed");
-//    i32 resolutionOptionId = add_text_element(gState->uiPage, resolutionEntry);
-//    resOptionId = add_options_element(gState->uiPage, resolutionOptionId, 13, BUTTON_T);
-
-
-    //TextElement mode2 = TextElement{ Anchor::CENTER, "Windowed", gMemory->resolution.aspect * 0.5f, 0.6f, -1, false, DEFAULT_FONT_SCALE * 2, vec3(1.0f)};
     TextElement vsync = TextElement{ Anchor::CENTER, "Vsync", gMemory->resolution.aspect * 0.5f, 0.75f, -1, false, DEFAULT_FONT_SCALE * 3, vec3(1.0f)};
-    TextElement vsync2 = TextElement{ Anchor::CENTER, "X", gMemory->resolution.aspect * 0.5f, 0.85f, -1, false, DEFAULT_FONT_SCALE * 2, vec3(1.0f)};
-    
+
+
     add_text_element_to_tab(gState->uiPage, windowIndex, video, resolution);
     add_text_element_to_tab(gState->uiPage, windowIndex, video, videoMode);
     //add_text_element_to_tab(gState->uiPage, windowIndex, video, mode2);
     add_text_element_to_tab(gState->uiPage, windowIndex, video, vsync);
-    add_text_element_to_tab(gState->uiPage, windowIndex, video, vsync2);
     add_element_to_tab(gState->uiPage, windowIndex, video, resOptionId);
+    add_element_to_tab(gState->uiPage, windowIndex, video, videoModeId);
+    add_element_to_tab(gState->uiPage, windowIndex, video, vsyncRadio);
 }
 
 void init_game() {
@@ -2435,6 +2436,25 @@ void set_resolution() {
     gMemory->set_resolution_fn(gMemory, selected);
 }
 
+void set_video_format() {
+    gMemory->toggleFullScreen = true;
+}
+
+void toggle_vsync() {
+    gMemory->toggleVsync = true;
+}
+
+void format_resolution(void* value, i32 index, char* out, i32 outSize) {
+    Resolution* res = (Resolution*)value;
+
+    snprintf(out, outSize,
+        "%4d x %-4d @ %dHz",
+        res[index].width,
+        res[index].height,
+        res[index].refreshRate
+    );
+}
+
 void add_game_ui_data(UIPage *uiPage) {
     uiPage->actions[uiPage->numberOfActions++] = &init_game;
     uiPage->actions[uiPage->numberOfActions++] = &add_options_ui;
@@ -2450,6 +2470,8 @@ void add_game_ui_data(UIPage *uiPage) {
     uiPage->actions[uiPage->numberOfActions++] = &add_relic;
     uiPage->actions[uiPage->numberOfActions++] = &nothing;
     uiPage->actions[uiPage->numberOfActions++] = &set_resolution; // 13
+    uiPage->actions[uiPage->numberOfActions++] = &set_video_format; // 14
+    uiPage->actions[uiPage->numberOfActions++] = &toggle_vsync; // 15
     
     uiPage->values[uiPage->numberOfValues++] = &gState->player.playerData.score;
     uiPage->values[uiPage->numberOfValues++] = &gState->gameData.turnLimit;
@@ -2460,8 +2482,11 @@ void add_game_ui_data(UIPage *uiPage) {
     uiPage->values[uiPage->numberOfValues++] = &gState->gameData.rounds;
     uiPage->values[uiPage->numberOfValues++] = &progressScore;
     uiPage->values[uiPage->numberOfValues++] = &hoveredSetValue;
-    uiPage->values[uiPage->numberOfValues++] = &gMemory->supportedResolutions; 
+    uiPage->formatters[uiPage->numberOfValues] = &format_resolution;
+    uiPage->values[uiPage->numberOfValues++] = &gMemory->supportedResolutions; //9 
+    uiPage->formatters[uiPage->numberOfValues] = &format_string_array;
     uiPage->values[uiPage->numberOfValues++] = &videoModes; //10 
+
 }
 
 void reinit_page_state() {
