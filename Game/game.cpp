@@ -2120,13 +2120,14 @@ void add_options_ui() {
     TextElement videoModeEntry = TextElement{ Anchor::CENTER, "", RENDERING_ASPECT * 0.5f, 0.6f, -1, false, DEFAULT_FONT_SCALE * 2, vec3(1.0f)};
     videoModeEntry.valueId = 10;
     videoModeEntry.numberOfValues = 2;
+    videoModeEntry.activeValueId = gMemory->is_full_screen_fn();
     //need to track the status of video mode in the engine
-    snprintf(videoModeEntry.text, sizeof(videoModeEntry.text), "%s", "Windowed");
+    snprintf(videoModeEntry.text, sizeof(videoModeEntry.text), "%s", videoModes[gMemory->is_full_screen_fn()]);
     i32 videoModeId = add_options_element(gState->uiPage, add_text_element(gState->uiPage, videoModeEntry), 14, BUTTON_T);
     //
 
     //always false, pull from the engine
-    i32 vsyncRadio = add_radio_element(gState->uiPage, false, CENTER, vec2(0.5f, 0.85f), vec2(0.05f), 15, RADIO_T); 
+    i32 vsyncRadio = add_radio_element(gState->uiPage, gMemory->is_vsync_on_fn(), CENTER, vec2(0.5f, 0.85f), vec2(0.05f), 15, RADIO_T); 
 
     // window create
     i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::CENTER, vec2(0.95f, 0.6f), vec2(0.5f, 2.0f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE); 
@@ -2444,17 +2445,6 @@ void toggle_vsync() {
     gMemory->toggleVsync = true;
 }
 
-void format_resolution(void* value, i32 index, char* out, i32 outSize) {
-    Resolution* res = (Resolution*)value;
-
-    snprintf(out, outSize,
-        "%4d x %-4d @ %dHz",
-        res[index].width,
-        res[index].height,
-        res[index].refreshRate
-    );
-}
-
 void add_game_ui_data(UIPage *uiPage) {
     uiPage->actions[uiPage->numberOfActions++] = &init_game;
     uiPage->actions[uiPage->numberOfActions++] = &add_options_ui;
@@ -2482,7 +2472,7 @@ void add_game_ui_data(UIPage *uiPage) {
     uiPage->values[uiPage->numberOfValues++] = &gState->gameData.rounds;
     uiPage->values[uiPage->numberOfValues++] = &progressScore;
     uiPage->values[uiPage->numberOfValues++] = &hoveredSetValue;
-    uiPage->formatters[uiPage->numberOfValues] = &format_resolution;
+    uiPage->formatters[uiPage->numberOfValues] = gMemory->format_resolution_fn;
     uiPage->values[uiPage->numberOfValues++] = gMemory->supportedResolutions; //9 
     uiPage->formatters[uiPage->numberOfValues] = &format_string_array;
     uiPage->values[uiPage->numberOfValues++] = &videoModes; //10 

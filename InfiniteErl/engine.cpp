@@ -16,6 +16,14 @@ void load_window_icon();
 void toggle_fullscreen(GLFWwindow* window);
 void set_resolution(i32 resolutionId);
 i32 get_supported_resolutions(Resolution *resolutions);
+void format_resolution(void* value, i32 index, char* out, i32 outSize);
+u8 is_full_screen();
+u8 is_vsync_on();
+
+struct VideoSettings {
+    u8 fullScreen;
+    u8 vsync;
+};
 
 f32 lastFrame = 0.0f;
 u8 firstMouse = true;
@@ -38,6 +46,7 @@ i32 windowResolutionId = 0;
 f32 defaultedAspect = 16.0f/9.0f;
 Resolution supportedResolutions[512];
 i32 numberOfSupportedResolutions = 0;
+VideoSettings videoSettings = {false, false};
 
 struct GameDLL {
     HMODULE dll;
@@ -143,11 +152,31 @@ GameMemory allocate_game_memory(RenderBuffer* buffer) {
     memory.shouldWindowClose = false;
     memory.toggleFullScreen = false;
     memory.toggleVsync = false;
+
+    memory.resolutionId = windowResolutionId;
+    memory.supportedResolutions = supportedResolutions;
+    memory.numberOfSupportedResolutions = numberOfSupportedResolutions;
   
     memory.play_audio_fn = play_audio;
     memory.load_home_music_fn = load_home_music;
     memory.set_resolution_fn = set_resolution;
+    memory.format_resolution_fn = format_resolution;
+    memory.is_full_screen_fn = is_full_screen;
+    memory.is_vsync_on_fn = is_vsync_on;
     return memory;
+}
+
+void update_video_settings(GameMemory *memory) {
+    if(memory->toggleFullScreen) {
+        toggle_fullscreen(window);
+        memory->toggleFullScreen = false;
+    }
+
+    if(memory->toggleVsync) {
+        vsyncEnabled = vsyncEnabled == 0 ? 1 : 0;
+        glfwSwapInterval(vsyncEnabled); 
+        memory->toggleVsync = false;
+    }
 }
 
 #ifdef CONSOLE
@@ -170,22 +199,10 @@ i32 APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, i32 cmd
     }
   
     GameMemory memory = allocate_game_memory(buffer);
-    memory.resolutionId = windowResolutionId;
-    memory.supportedResolutions = supportedResolutions;
-    memory.numberOfSupportedResolutions = numberOfSupportedResolutions;
     game.game_init(&memory, false);
     
     while (!memory.shouldWindowClose) {
-        if(memory.toggleFullScreen) {
-            toggle_fullscreen(window);
-            memory.toggleFullScreen = false;
-        }
-
-        if(memory.toggleVsync) {
-            vsyncEnabled = vsyncEnabled == 0 ? 1 : 0;
-            glfwSwapInterval(vsyncEnabled); 
-            memory.toggleVsync = false;
-        }
+        update_video_settings(&memory);
 
         if (hot_reload(&game, "../build/Game.dll")) {
           game.game_init(&memory, true);
@@ -281,11 +298,30 @@ void apply_resolution() {
     }
 }
 
+void format_resolution(void* value, i32 index, char* out, i32 outSize) {
+    Resolution* res = (Resolution*)value;
+
+    snprintf(out, outSize,
+        "%4d x %-4d @ %dHz",
+        res[index].width,
+        res[index].height,
+        res[index].refreshRate
+    );
+}
+
 void set_resolution(i32 resolutionId) {
     windowResolution = supportedResolutions[resolutionId];
     windowResolutionId = resolutionId;
 
     apply_resolution();
+}
+
+u8 is_full_screen() {
+    return isFullscreen;
+}
+
+u8 is_vsync_on() {
+    return vsyncEnabled;
 }
 
 void toggle_fullscreen(GLFWwindow* window) {

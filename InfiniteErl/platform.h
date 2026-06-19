@@ -58,6 +58,10 @@ extern "C" {
     void (*play_audio_fn)(const char* filename);
     void (*load_home_music_fn)(const char* filename);
     void (*set_resolution_fn)(i32 resolutionId);
+    void (*format_resolution_fn)(void* value, i32 index, char* out, i32 outSize);
+
+    u8 (*is_full_screen_fn)();
+    u8 (*is_vsync_on_fn)();
 
 		u32(*load_quad_buffer_fn)(f32* vertices, i32 vertexCount, u32* indices, i32 indexCount);
 		u32(*load_walls_buffer_fn)(f32* vertices, i32 vertexCount);

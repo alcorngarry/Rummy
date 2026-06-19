@@ -48,9 +48,4 @@ struct Resolution {
     f32 aspect;
 };
 
-struct VideoSettings {
-    u8 fullScreen;
-    u8 vsync;
-}
-
 #endif
