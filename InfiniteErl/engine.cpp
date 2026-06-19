@@ -14,7 +14,7 @@ void mouse_callback(GLFWwindow* window, f64 xpos, f64 ypos);
 void load_textures();
 void load_window_icon();
 void toggle_fullscreen(GLFWwindow* window);
-void set_resolution(GameMemory *memory, Resolution res);
+void set_resolution(i32 resolutionId);
 i32 get_supported_resolutions(Resolution *resolutions);
 
 f32 lastFrame = 0.0f;
@@ -33,8 +33,11 @@ u8 isFullscreen = false;
 mat4 projection;
 u8 vsyncEnabled = 0;
 
-Resolution windowResolution = {1280, 720, 60, 16.0f/9.0f};
+Resolution windowResolution; //= {1280, 720, 60, 16.0f/9.0f};
+i32 windowResolutionId = 0;
 f32 defaultedAspect = 16.0f/9.0f;
+Resolution supportedResolutions[512];
+i32 numberOfSupportedResolutions = 0;
 
 struct GameDLL {
     HMODULE dll;
@@ -167,11 +170,9 @@ i32 APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, i32 cmd
     }
   
     GameMemory memory = allocate_game_memory(buffer);
-    memory.numberOfSupportedResolutions = get_supported_resolutions(memory.supportedResolutions);
-    set_resolution(&memory, windowResolution);
-
-    memory.resolution = windowResolution;
-
+    memory.resolutionId = windowResolutionId;
+    memory.supportedResolutions = supportedResolutions;
+    memory.numberOfSupportedResolutions = numberOfSupportedResolutions;
     game.game_init(&memory, false);
     
     while (!memory.shouldWindowClose) {
@@ -219,6 +220,10 @@ GLFWwindow* create_window() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
+    numberOfSupportedResolutions = get_supported_resolutions(supportedResolutions);
+    windowResolution = supportedResolutions[0];
+    windowResolutionId = 0;
+
     GLFWwindow* window = glfwCreateWindow(windowResolution.width, windowResolution.height, "Rummy", NULL, NULL);
     if (window == NULL) {
         printf("Failed to create GLFW window\n");
@@ -238,6 +243,7 @@ GLFWwindow* create_window() {
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    glfwSwapInterval(vsyncEnabled); 
 
     projection = glm::ortho(0.0f, defaultedAspect, 1.0f, 0.0f, -10.0f, 10.0f);
 
@@ -275,18 +281,9 @@ void apply_resolution() {
     }
 }
 
-void set_resolution(GameMemory* memory, Resolution res) {
-    windowResolution.width  = res.width;
-    windowResolution.height = res.height;
-
-    memory->resolution.width  = res.width;
-    memory->resolution.height = res.height;
-    //memory->resolution.aspect = res.aspect;
-
-    if (!isFullscreen) {
-        windowResolution.width  = res.width;
-        windowResolution.height = res.height;
-    }
+void set_resolution(i32 resolutionId) {
+    windowResolution = supportedResolutions[resolutionId];
+    windowResolutionId = resolutionId;
 
     apply_resolution();
 }

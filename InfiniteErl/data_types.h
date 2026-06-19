@@ -19,6 +19,7 @@
 #define assert(Expression) if(!(Expression)) { *(int *)0 = 0; }
 #define RUN_SELF_ACTION(obj) (obj)->action(obj)
 #define MB 1232896
+#define RENDERING_ASPECT 1.7777778f
 
 typedef int8_t i8;
 typedef int16_t i16;
@@ -46,5 +47,10 @@ struct Resolution {
     i32 refreshRate;
     f32 aspect;
 };
+
+struct VideoSettings {
+    u8 fullScreen;
+    u8 vsync;
+}
 
 #endif

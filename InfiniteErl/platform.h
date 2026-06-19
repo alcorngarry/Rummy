@@ -40,10 +40,9 @@ extern "C" {
     u8 toggleFullScreen;
     u8 toggleVsync;
 
-    Resolution supportedResolutions[512];
+    Resolution *supportedResolutions;
     i32 numberOfSupportedResolutions;
-
-    Resolution resolution;
+    i32 resolutionId;
 
 		RenderBuffer* renderBuffer;
 		void* stateMemory;
@@ -58,7 +57,7 @@ extern "C" {
 		void (*push_ui_page_fn)(RenderBuffer*, UIPage*);
     void (*play_audio_fn)(const char* filename);
     void (*load_home_music_fn)(const char* filename);
-    void (*set_resolution_fn)(GameMemory *memory, Resolution res);
+    void (*set_resolution_fn)(i32 resolutionId);
 
 		u32(*load_quad_buffer_fn)(f32* vertices, i32 vertexCount, u32* indices, i32 indexCount);
 		u32(*load_walls_buffer_fn)(f32* vertices, i32 vertexCount);
