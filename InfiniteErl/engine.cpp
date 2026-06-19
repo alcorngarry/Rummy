@@ -177,7 +177,6 @@ i32 APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, i32 cmd
             toggle_fullscreen(window);
             memory.toggleFullScreen = false;
         }
-       
 
         if (hot_reload(&game, "../build/Game.dll")) {
           game.game_init(&memory, true);

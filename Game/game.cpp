@@ -21,6 +21,7 @@ u8 debugMenuOpen = false;
 u64 numTableTiles = 0;
 i32 progressScore = 0;
 u64 hoveredSetValue = 100;
+char *videoModes[3] = {"Windowed", "Fullscreen", "Fullscreen Borderless"};
 
 void get_playable_tiles(Set *set);
 void remove_empty_sets();
@@ -2088,46 +2089,58 @@ void add_options_ui() {
     add_cursor(gState->uiPage, BUTTON_SELECT_T, R_YELLOW, TAB);
 
     i32 back = add_button(gState->uiPage, BUTTON_T, "X", vec2(0.225f, 0.075f), vec2(0.04f, 0.035f), vec4(0.0f, 0.0f, 0.0f, 1.0f), 2);
-    i32 general = add_tab(gState->uiPage, BUTTON_T, "General", R_SILVER);
+    //i32 general = add_tab(gState->uiPage, BUTTON_T, "General", R_SILVER);
     i32 video = add_tab(gState->uiPage, BUTTON_T, "Video", R_SILVER);
     //stupid
-    gState->uiPage->uiElements[general].imageChildId = video;
+    //gState->uiPage->uiElements[general].imageChildId = video;
     i32 audio = add_tab(gState->uiPage, BUTTON_T, "Audio", R_SILVER);
     //stupid
     gState->uiPage->uiElements[video].imageChildId = audio;
-    gState->uiPage->uiElements[audio].imageChildId = general;
+    gState->uiPage->uiElements[audio].imageChildId = video;
 
-    i32 tabs[3] = {general, video, audio};
+
+    i32 tabs[2] = {video, audio};
 
     TextElement resolution = TextElement{ Anchor::CENTER, "Resolution", gMemory->resolution.aspect * 0.5f, 0.25f, -1, false, DEFAULT_FONT_SCALE * 3, vec3(1.0f)};
-
+    //create entries
     TextElement resolutionEntry = TextElement{ Anchor::CENTER, "", gMemory->resolution.aspect * 0.5f, 0.35f, -1, false, DEFAULT_FONT_SCALE * 2, vec3(1.0f)};
     resolutionEntry.valueId = 9;
     resolutionEntry.numberOfValues = gMemory->numberOfSupportedResolutions;
-
     snprintf(resolutionEntry.text, sizeof(resolutionEntry.text), "%4d x %-4d @ %dHz", 
         gMemory->resolution.width, gMemory->resolution.height, gMemory->resolution.refreshRate);
-
     i32 resolutionOptionId = add_text_element(gState->uiPage, resolutionEntry);
-    
     resOptionId = add_options_element(gState->uiPage, resolutionOptionId, 13, BUTTON_T);
+    //
 
+    // window create
     i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::CENTER, vec2(0.95f, 0.6f), vec2(0.5f, 2.0f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE); 
     add_button_to_window(gState->uiPage, windowIndex, back);
-    add_tabs_to_window(gState->uiPage, windowIndex, tabs, 3);
+    //
 
-    TextElement mode = TextElement{ Anchor::CENTER, "Video mode", gMemory->resolution.aspect * 0.5f, 0.5f, -1, false, DEFAULT_FONT_SCALE * 3, vec3(1.0f)};
-    TextElement mode2 = TextElement{ Anchor::CENTER, "Windowed", gMemory->resolution.aspect * 0.5f, 0.6f, -1, false, DEFAULT_FONT_SCALE * 2, vec3(1.0f)};
+
+    add_tabs_to_window(gState->uiPage, windowIndex, tabs, 2);
+
+    TextElement videoMode = TextElement{ Anchor::CENTER, "Video mode", gMemory->resolution.aspect * 0.5f, 0.5f, -1, false, DEFAULT_FONT_SCALE * 3, vec3(1.0f)};
+
+//    TextElement videoModeEntry = TextElement{ Anchor::CENTER, "", gMemory->resolution.aspect * 0.5f, 0.35f, -1, false, DEFAULT_FONT_SCALE * 2, vec3(1.0f)};
+//    videoModeEntry.valueId = 10;
+//    videoModeEntry.numberOfValues = 3;
+//    //need to track the status of video mode in the engine
+//    snprintf(videoModeEntry.text, sizeof(videoModeEntry.text), "%s", "Windowed");
+//    i32 resolutionOptionId = add_text_element(gState->uiPage, resolutionEntry);
+//    resOptionId = add_options_element(gState->uiPage, resolutionOptionId, 13, BUTTON_T);
+
+
+    //TextElement mode2 = TextElement{ Anchor::CENTER, "Windowed", gMemory->resolution.aspect * 0.5f, 0.6f, -1, false, DEFAULT_FONT_SCALE * 2, vec3(1.0f)};
     TextElement vsync = TextElement{ Anchor::CENTER, "Vsync", gMemory->resolution.aspect * 0.5f, 0.75f, -1, false, DEFAULT_FONT_SCALE * 3, vec3(1.0f)};
     TextElement vsync2 = TextElement{ Anchor::CENTER, "X", gMemory->resolution.aspect * 0.5f, 0.85f, -1, false, DEFAULT_FONT_SCALE * 2, vec3(1.0f)};
     
     add_text_element_to_tab(gState->uiPage, windowIndex, video, resolution);
-    add_text_element_to_tab(gState->uiPage, windowIndex, video, mode);
-    add_text_element_to_tab(gState->uiPage, windowIndex, video, mode2);
+    add_text_element_to_tab(gState->uiPage, windowIndex, video, videoMode);
+    //add_text_element_to_tab(gState->uiPage, windowIndex, video, mode2);
     add_text_element_to_tab(gState->uiPage, windowIndex, video, vsync);
     add_text_element_to_tab(gState->uiPage, windowIndex, video, vsync2);
     add_element_to_tab(gState->uiPage, windowIndex, video, resOptionId);
-    add_element_to_tab(gState->uiPage, windowIndex, video, resOptionId - 1);
 }
 
 void init_game() {
@@ -2447,7 +2460,8 @@ void add_game_ui_data(UIPage *uiPage) {
     uiPage->values[uiPage->numberOfValues++] = &gState->gameData.rounds;
     uiPage->values[uiPage->numberOfValues++] = &progressScore;
     uiPage->values[uiPage->numberOfValues++] = &hoveredSetValue;
-    uiPage->values[uiPage->numberOfValues++] = &gMemory->supportedResolutions; //9 
+    uiPage->values[uiPage->numberOfValues++] = &gMemory->supportedResolutions; 
+    uiPage->values[uiPage->numberOfValues++] = &videoModes; //10 
 }
 
 void reinit_page_state() {

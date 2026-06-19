@@ -427,12 +427,15 @@ i32 add_options_element(UIPage *page, i32 optionId, i32 optionActionId, i32 opti
     rightArrow.actionId = optionActionId;
     rightArrow.onCompleteActionId = 1;
     rightArrow.textChild = option;
+    i32 rightArrowId = add_ui_element(page, rightArrow);
 
-    add_ui_element(page, rightArrow);
-    rightArrow.posx -= 0.4f;
-    rightArrow.onCompleteActionId = 2;
+    UIElement leftArrow = rightArrow;
+    leftArrow.posx -= 0.4f;
+    leftArrow.onCompleteActionId = 2;
 
-    return add_ui_element(page, rightArrow);
+    leftArrow.imageChildId = rightArrowId;
+
+    return add_ui_element(page, leftArrow);
 }
 
 void add_cursor(UIPage *page, i32 cursorHandle, vec4 color, CursorType type) {
@@ -460,6 +463,17 @@ i32 add_text_element_to_tab(UIPage *page, i32 windowId, i32 tabId, TextElement e
 i32 add_element_to_tab(UIPage *page, i32 windowId, i32 tabId, i32 element) {
     UIElement *tab = &page->uiElements[tabId];
     tab->dependentElements[tab->numberOfDependentElements++] = &page->uiElements[element];
+
+    if(page->uiElements[element].textChild) {
+        tab->dependentTextElements[tab->numberOfDependentTextElements++] = page->uiElements[element].textChild;
+        add_text_to_window(page, windowId, page->uiElements[element].textChild->id);
+    }
+
+    if(page->uiElements[element].imageChildId != -1) {
+        UIElement *child = &page->uiElements[page->uiElements[element].imageChildId];
+        tab->dependentElements[tab->numberOfDependentElements++] = child;
+        add_image_to_window(page, windowId, child->id);
+    }
 
     add_image_to_window(page, windowId, element);
     return element;
