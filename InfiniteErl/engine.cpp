@@ -23,7 +23,11 @@ u8 is_vsync_on();
 struct VideoSettings {
     u8 fullScreen;
     u8 vsync;
+    i32 resolutionId;
 };
+
+VideoSettings load_video_settings();
+void save_video_settings();
 
 f32 lastFrame = 0.0f;
 u8 firstMouse = true;
@@ -37,9 +41,7 @@ f32 mouseSensitivity = 0.1f;
 f32 deltaTime = 0;
 i32 windowPosX = 0;
 i32 windowPosY = 0;
-u8 isFullscreen = false;
 mat4 projection;
-u8 vsyncEnabled = 0;
 
 Resolution windowResolution; //= {1280, 720, 60, 16.0f/9.0f};
 i32 windowResolutionId = 0;
@@ -173,8 +175,8 @@ void update_video_settings(GameMemory *memory) {
     }
 
     if(memory->toggleVsync) {
-        vsyncEnabled = vsyncEnabled == 0 ? 1 : 0;
-        glfwSwapInterval(vsyncEnabled); 
+        videoSettings.vsync = !videoSettings.vsync;
+        glfwSwapInterval(videoSettings.vsync); 
         memory->toggleVsync = false;
     }
 }
@@ -226,7 +228,8 @@ i32 APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, i32 cmd
         render_buffer(buffer);
         glfwSwapBuffers(window);
     }
-    
+
+    save_video_settings();
     glfwTerminate();
     return 0;
 }
@@ -237,9 +240,18 @@ GLFWwindow* create_window() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
+    videoSettings = load_video_settings();
+
     numberOfSupportedResolutions = get_supported_resolutions(supportedResolutions);
-    windowResolution = supportedResolutions[0];
-    windowResolutionId = 0;
+
+    if (videoSettings.resolutionId >= 0 && videoSettings.resolutionId < numberOfSupportedResolutions) {
+        windowResolutionId = videoSettings.resolutionId;
+    } else {
+        windowResolutionId = 0;
+    }
+
+    windowResolution = supportedResolutions[videoSettings.resolutionId];
+    windowResolutionId = videoSettings.resolutionId;
 
     GLFWwindow* window = glfwCreateWindow(windowResolution.width, windowResolution.height, "Rummy", NULL, NULL);
     if (window == NULL) {
@@ -260,7 +272,13 @@ GLFWwindow* create_window() {
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-    glfwSwapInterval(vsyncEnabled); 
+    glfwSwapInterval(videoSettings.vsync); 
+    
+
+    if(videoSettings.fullScreen) {
+        videoSettings.fullScreen = false; // this is stupid.
+        toggle_fullscreen(window);
+    }
 
     projection = glm::ortho(0.0f, defaultedAspect, 1.0f, 0.0f, -10.0f, 10.0f);
 
@@ -281,7 +299,7 @@ i32 get_supported_resolutions(Resolution *resolutions) {
 }
 
 void apply_resolution() {
-    if (isFullscreen) {
+    if (videoSettings.fullScreen) {
         GLFWmonitor* monitor = glfwGetPrimaryMonitor();
 
         glfwSetWindowMonitor(
@@ -317,15 +335,15 @@ void set_resolution(i32 resolutionId) {
 }
 
 u8 is_full_screen() {
-    return isFullscreen;
+    return videoSettings.fullScreen;
 }
 
 u8 is_vsync_on() {
-    return vsyncEnabled;
+    return videoSettings.vsync;
 }
 
 void toggle_fullscreen(GLFWwindow* window) {
-    if (!isFullscreen) {
+    if (!videoSettings.fullScreen) {
         glfwGetWindowPos(window, &windowPosX, &windowPosY);
         glfwGetWindowSize(window, &windowResolution.width, &windowResolution.height);
 
@@ -342,7 +360,7 @@ void toggle_fullscreen(GLFWwindow* window) {
             mode->refreshRate
         );
 
-        isFullscreen = true;
+        videoSettings.fullScreen = true;
     } else {
         glfwSetWindowMonitor(
             window,
@@ -354,7 +372,7 @@ void toggle_fullscreen(GLFWwindow* window) {
             0
         );
 
-        isFullscreen = false;
+        videoSettings.fullScreen = false;
     }
 }
 
@@ -439,4 +457,36 @@ void load_textures() {
     load_texture(UI_BG_2_T, "./res/ui-bg2.png", true, true, false);
     load_texture(BUTTON_SELECT_T, "./res/button-select.png", true, true, false);
     load_texture(RADIO_T, "./res/radio-sheet.png", true, true, false);
+}
+
+VideoSettings load_video_settings() {
+    VideoSettings settings = {};
+
+    FILE* file = fopen("video_settings.erls", "rb");
+    if (file)
+    {
+        fread(&settings, sizeof(settings), 1, file);
+        fclose(file);
+    } else {
+      settings.vsync = false;
+      settings.resolutionId = 0;
+      settings.fullScreen = false;
+    }
+
+    return settings;
+}
+
+void save_video_settings() {
+    VideoSettings settings = {};
+
+    settings.resolutionId = windowResolutionId;
+    settings.fullScreen = videoSettings.fullScreen;
+    settings.vsync = videoSettings.vsync;
+
+    FILE* file = fopen("video_settings.erls", "wb");
+    if (file)
+    {
+        fwrite(&settings, sizeof(settings), 1, file);
+        fclose(file);
+    }
 }
