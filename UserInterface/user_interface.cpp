@@ -419,7 +419,7 @@ void previous_option(UIPage *page, void *ptr) {
 i32 add_options_element(UIPage *page, i32 optionId, i32 optionActionId, i32 optionsHandle) {
     TextElement *option = &page->textElements[optionId];
 
-    UIElement rightArrow = UIElement{ option->anchor, -1, optionsHandle, (option->posx / page->aspect) + 0.2f, option->posy, 0.05f, 0.05f, false, 12};
+    UIElement rightArrow = UIElement{ option->anchor, -1, optionsHandle, option->posx + 0.2f, option->posy, 0.05f, 0.05f, false, 12};
     //pass this in
     rightArrow.actionId = optionActionId;
     rightArrow.onCompleteActionId = 1;
@@ -544,7 +544,7 @@ void add_tabs_to_window(UIPage *page, i32 windowId, i32 *tabIds, i32 numberOfTab
         tab->posx = window->animations[0].destination.x + offset;
         tab->posy = window->animations[0].destination.y - (window->height * 0.5f) + (tab->height);
 
-        tab->textChild->posx = page->aspect * (window->animations[0].destination.x + offset);
+        tab->textChild->posx = window->animations[0].destination.x + offset;
         tab->textChild->posy = window->animations[0].destination.y - (window->height * 0.5f) + (tab->height);
 
 
@@ -576,7 +576,7 @@ i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 
     button.actionId = -1;
     add_ui_element(page, button, false);
   
-    TextElement bText = TextElement{ Anchor::CENTER, "", pos.x * page->aspect, pos.y, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+    TextElement bText = TextElement{ Anchor::CENTER, "", pos.x, pos.y, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
     strcpy(bText.text, text);
     add_text_element(page, bText);
 
@@ -686,8 +686,6 @@ void add_text_to_window(UIPage *page, i32 windowId, i32 elementId) {
     f32 speed = window->animations[window->numberOfAnimations - 1].duration;
     vec2 motionDifference = window->animations[window->numberOfAnimations - 1].start - window->animations[window->numberOfAnimations - 1].destination;
 
-    motionDifference.x *= page->aspect;
-    
     text->animations[text->numberOfAnimations].start = vec2(text->posx + motionDifference.x, text->posy + motionDifference.y);
     text->animations[text->numberOfAnimations].destination = vec2(text->posx, text->posy);
     text->animations[text->numberOfAnimations].duration = speed;

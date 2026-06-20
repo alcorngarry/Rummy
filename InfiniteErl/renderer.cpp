@@ -362,7 +362,7 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
     f32 pixelScale = scale;
     f32 lineHeight = characters['T']->Size.y * pixelScale * 1.25f;
 
-    f32 startX = posx;
+    f32 startX = posx * RENDERING_ASPECT;
     f32 y = posy + fontAscent * pixelScale;
 
     if (anchor == Anchor::CENTER) {

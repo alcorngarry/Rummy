@@ -451,16 +451,16 @@ void add_tile_amount(void* ptr) {
 
             set->value = 0;
             gState->uiPage->values[gState->uiPage->numberOfValues++] = &set->value;
-            TextElement setElement = TextElement{ Anchor::CENTER, "", pos.x * RENDERING_ASPECT, pos.y - 0.2f, -1, true, DEFAULT_FONT_SCALE * 3.0 };
+            TextElement setElement = TextElement{ Anchor::CENTER, "", pos.x, pos.y - 0.2f, -1, true, DEFAULT_FONT_SCALE * 3.0 };
             stupidSetId = add_dynamic_text_element(gState->uiPage, setElement, "+", gState->uiPage->numberOfValues - 1, UINT_64);
         }
 
         
         if(!tileStarted) {
-            TextElement bonus = TextElement{ Anchor::CENTER, "", pos.x, pos.y, -1, true, DEFAULT_FONT_SCALE * 2.0 };
+            TextElement bonus = TextElement{ Anchor::CENTER, "", pos.x / RENDERING_ASPECT, pos.y, -1, true, DEFAULT_FONT_SCALE * 2.0 };
             snprintf(bonus.text, sizeof(bonus.text), "+%d", (i32)tile->details.tileNumber);
             tileDone = add_text_element(gState->uiPage, bonus);
-            add_move_text_animation(gState->uiPage, tileDone, vec2(pos.x, pos.y - 0.1f), 0.5f);
+            add_move_text_animation(gState->uiPage, tileDone, vec2(pos.x / RENDERING_ASPECT, pos.y - 0.1f), 0.5f);
             self->model = self->baseModel;
             tileStarted = true;
         }
@@ -486,29 +486,32 @@ void add_set_amount(void *ptr) {
 
     if(!started) {
         if(set->setType == RUN && gState->player.playerData.runMultipliers > 1) {
+            //need to specify ui type
             vec2 setPos = world_to_ui(
                 set->object.model,
                 gMemory->renderBuffer->view,
                 gMemory->renderBuffer->projection        
             );
+            setPos.x *= RENDERING_ASPECT;
 
-            TextElement multiplier = TextElement{ Anchor::CENTER, "", setPos.x + 0.4f * RENDERING_ASPECT, setPos.y - 0.2f, -1, true, DEFAULT_FONT_SCALE * 3.0 };
+            TextElement multiplier = TextElement{ Anchor::CENTER, "", setPos.x + 0.4f, setPos.y - 0.2f, -1, true, DEFAULT_FONT_SCALE * 3.0 };
             multiplier.color = vec4(1.0f, 0.0f, 0.0f, 1.0f);
             snprintf(multiplier.text, sizeof(multiplier.text), "x%d", gState->player.playerData.runMultipliers);
             multiplierId = add_text_element(gState->uiPage, multiplier);
-            add_move_text_animation(gState->uiPage, multiplierId, vec2(setPos.x * RENDERING_ASPECT, setPos.y - 0.2f), 0.75f);
+            add_move_text_animation(gState->uiPage, multiplierId, vec2(setPos.x, setPos.y - 0.2f), 0.75f);
         } else if (set->setType == GROUP && gState->player.playerData.groupMultipliers > 1) {
             vec2 setPos = world_to_ui(
                 set->object.model,
                 gMemory->renderBuffer->view,
                 gMemory->renderBuffer->projection        
             );
+            setPos.x *= RENDERING_ASPECT;
 
-            TextElement multiplier = TextElement{ Anchor::CENTER, "", setPos.x + 0.4f * RENDERING_ASPECT, setPos.y - 0.2f, -1, true, DEFAULT_FONT_SCALE * 3.0 };
+            TextElement multiplier = TextElement{ Anchor::CENTER, "", setPos.x + 0.4f, setPos.y - 0.2f, -1, true, DEFAULT_FONT_SCALE * 3.0 };
             multiplier.color = vec4(1.0f, 0.0f, 0.0f, 1.0f);
             snprintf(multiplier.text, sizeof(multiplier.text), "x%d", gState->player.playerData.groupMultipliers);
             multiplierId = add_text_element(gState->uiPage, multiplier);
-            add_move_text_animation(gState->uiPage, multiplierId, vec2(setPos.x * RENDERING_ASPECT, setPos.y - 0.2f), 0.75f);
+            add_move_text_animation(gState->uiPage, multiplierId, vec2(setPos.x, setPos.y - 0.2f), 0.75f);
         }
     }
 
@@ -523,7 +526,7 @@ void add_set_amount(void *ptr) {
         }
     } else {
         if(!moveMadeForSet && gState->uiPage->textElements[stupidSetId].countAnimation.complete) {
-            add_move_text_animation(gState->uiPage, stupidSetId, vec2(0.5 * RENDERING_ASPECT, 0.07f), 0.5f);
+            add_move_text_animation(gState->uiPage, stupidSetId, vec2(0.5, 0.07f), 0.5f);
             moveMadeForSet = true;
         }
         multiplierId = -1;
@@ -1422,7 +1425,7 @@ void update_set_ui(Set *set) {
     TextElement* text = get_text_element_by_parent_id(gState->uiPage, 99);
     if(!text) return;
 
-    text->posx = pos.x * RENDERING_ASPECT;
+    text->posx = pos.x;
     text->posy = pos.y - 0.1f;
 
     UIElement* bg = get_element_by_parent_id(gState->uiPage, 99);
@@ -1754,29 +1757,29 @@ void add_in_game_ui() {
 
     i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::TOP_LEFT, vec2(0.12f, 0.6f), vec2(0.075f, -0.2f), vec2(0.075f, 0.01f), R_SILVER, R_DARK_BLUE); 
 
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Score", RENDERING_ASPECT * 0.2f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}));
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", RENDERING_ASPECT * 0.2f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f)}, 
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Score", 0.2f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}));
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.2f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f)}, 
         "", 0, TextType::UINT_64));
 
     // why is this weird??
     printf("Turn limit %i\n", gState->gameData.turnLimit);
-    TextElement drawsRemaining = TextElement{ Anchor::CENTER, "", 0.88f * RENDERING_ASPECT, 0.135f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+    TextElement drawsRemaining = TextElement{ Anchor::CENTER, "", 0.88f, 0.135f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
     drawsRemaining.haveCountAnimation = false;
     add_dynamic_text_element(gState->uiPage, drawsRemaining, "", 1, TextType::INT_32);
 
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Score Minimum", RENDERING_ASPECT * 0.35f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}));
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", RENDERING_ASPECT * 0.35f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f)}, 
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Score Minimum", 0.35f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}));
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.35f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f)}, 
         "", 2, TextType::UINT_64));
 
 //    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.16f, 0.07f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}, 
 //        "Round: ", &gState->gameData.rounds, TextType::UINT_64));
 //
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Cash", RENDERING_ASPECT * 0.5f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(R_GOLDEN)}));
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", RENDERING_ASPECT * 0.5f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_GOLDEN)}, 
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Cash", 0.5f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(R_GOLDEN)}));
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_GOLDEN)}, 
         "$", 3, TextType::UINT_64));
 
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Round", RENDERING_ASPECT * 0.6f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}));
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", RENDERING_ASPECT * 0.6f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f)}, 
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Round", 0.6f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}));
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.6f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f)}, 
         "", 6, TextType::UINT_64));
 
     i32 relicIds[MAX_RELICS];
@@ -1849,12 +1852,12 @@ void add_in_game_ui() {
         }
     }
 
-//    add_text_to_window(gState->uiPage, multWindowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.1f * RENDERING_ASPECT, 0.8f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f, 1.0f, 1.0f)}, 
+//    add_text_to_window(gState->uiPage, multWindowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.1f, 0.8f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f, 1.0f, 1.0f)}, 
 //        "Run x", &gState->player.playerData.runMultipliers, TextType::INT_32));
-//    add_text_to_window(gState->uiPage, multWindowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.1f * RENDERING_ASPECT, 0.9f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f, 1.0f, 1.0f)}, 
+//    add_text_to_window(gState->uiPage, multWindowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.1f, 0.9f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f, 1.0f, 1.0f)}, 
 //        "Group x", &gState->player.playerData.groupMultipliers, TextType::INT_32));
 //
-    TextElement poolTiles = TextElement{ Anchor::CENTER, "", 0.8f * RENDERING_ASPECT, 0.98f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+    TextElement poolTiles = TextElement{ Anchor::CENTER, "", 0.8f, 0.98f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
     poolTiles.haveCountAnimation = false;
     add_dynamic_text_element(gState->uiPage, poolTiles, "", 4, TextType::INT_32);
 
@@ -1869,7 +1872,7 @@ void add_in_game_ui() {
 
 void add_end_game_ui() {
     gState->pageState = END_GAME;
-    TextElement gameOver = TextElement{ Anchor::CENTER, "Game Over!", 0.5f * RENDERING_ASPECT, 0.06f, -1, true, DEFAULT_FONT_SCALE * 5.0 };
+    TextElement gameOver = TextElement{ Anchor::CENTER, "Game Over!", 0.5f, 0.06f, -1, true, DEFAULT_FONT_SCALE * 5.0 };
     gameOver.color = vec3(1.0f, 0.0f, 0.0f);
 
     i32 gameOverText = add_text_element(gState->uiPage, gameOver);
@@ -1883,14 +1886,14 @@ void add_end_game_ui() {
     add_button_to_window(gState->uiPage, windowIndex, mainMenu);
 
     //maybe do a run total score...
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * RENDERING_ASPECT, 0.33f, -1, true, DEFAULT_FONT_SCALE }, 
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f, 0.33f, -1, true, DEFAULT_FONT_SCALE }, 
         "COMPLETED ROUND WITH SCORE: ", 0, TextType::UINT_64));
 
     for(i32 i = 0; i < gState->table.numberOfSets; i++) {
         numTableTiles += gState->table.sets[i].numberOfTiles;
     }
     //maybe do total tiles played... ewwww
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * RENDERING_ASPECT, 0.36f, -1, true, DEFAULT_FONT_SCALE }, 
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f, 0.36f, -1, true, DEFAULT_FONT_SCALE }, 
         "TILES USED: ", 5, TextType::UINT_64));
 }
 
@@ -1965,7 +1968,7 @@ void add_shop_purchase_menu() {
 
     SheetAnimation panelSheet = SheetAnimation{3, 3};
     
-    UIElement relicBg = UIElement{ Anchor::CENTER, -1, UI_BG_T, 0.26f, 0.55f, 0.3f * RENDERING_ASPECT, 0.225f};
+    UIElement relicBg = UIElement{ Anchor::CENTER, -1, UI_BG_T, 0.26f, 0.55f, 0.5f, 0.225f};
     relicBg.sheetAnimation = panelSheet;
     relicBg.actionId = 11;
 
@@ -1988,24 +1991,24 @@ void add_shop_purchase_menu() {
 
     i32 windowIndex = add_window(gState->uiPage, UI_BG_2_T, Anchor::CENTER, vec2(0.75f, 0.75f), vec2(0.5f, 2.0f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE); 
 
-    TextElement relicName = TextElement{ Anchor::CENTER, "", 0.26f * RENDERING_ASPECT, 0.325f, -1, true, DEFAULT_FONT_SCALE, vec3(R_DARK_GRAY)}; 
+    TextElement relicName = TextElement{ Anchor::CENTER, "", 0.26f, 0.325f, -1, true, DEFAULT_FONT_SCALE, vec3(R_DARK_GRAY)}; 
     snprintf(relicName.text, sizeof(relicName.text), "%s", gState->relics[relicIds[0]].name);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicName));
-    relicName.posx += 0.24f * RENDERING_ASPECT;
+    relicName.posx += 0.24f;
     snprintf(relicName.text, sizeof(relicName.text), "%s", gState->relics[relicIds[1]].name);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicName));
-    relicName.posx += 0.24f * RENDERING_ASPECT;
+    relicName.posx += 0.24f;
     snprintf(relicName.text, sizeof(relicName.text), "%s", gState->relics[relicIds[2]].name);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicName));
 
-    TextElement relicDesc = TextElement{ Anchor::CENTER, "", 0.26f * RENDERING_ASPECT, 0.6f, -1, true, DEFAULT_FONT_SCALE, vec3(R_DARK_GRAY)}; 
+    TextElement relicDesc = TextElement{ Anchor::CENTER, "", 0.26f, 0.6f, -1, true, DEFAULT_FONT_SCALE, vec3(R_DARK_GRAY)}; 
     relicDesc.maxWidth = 0.3f;
     snprintf(relicDesc.text, sizeof(relicDesc.text), "%s", gState->relics[relicIds[0]].description);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicDesc));
-    relicDesc.posx += 0.24f * RENDERING_ASPECT;
+    relicDesc.posx += 0.24f;
     snprintf(relicDesc.text, sizeof(relicDesc.text), "%s", gState->relics[relicIds[1]].description);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicDesc));
-    relicDesc.posx += 0.24f * RENDERING_ASPECT;
+    relicDesc.posx += 0.24f;
     snprintf(relicDesc.text, sizeof(relicDesc.text), "%s", gState->relics[relicIds[2]].description);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicDesc));
 
@@ -2021,26 +2024,26 @@ void add_shop_purchase_menu() {
 //    add_button_to_window(gState->uiPage, windowIndex, groupId);
 //    add_button_to_window(gState->uiPage, windowIndex, runId);
 
-    //TextElement dollarSign = TextElement{ Anchor::CENTER, "$1", 0.6f * RENDERING_ASPECT, 0.48f, -1, true, DEFAULT_FONT_SCALE * 4.0, vec3(1.0f, 0.0f, 0.0f)};
+    //TextElement dollarSign = TextElement{ Anchor::CENTER, "$1", 0.6f, 0.48f, -1, true, DEFAULT_FONT_SCALE * 4.0, vec3(1.0f, 0.0f, 0.0f)};
     //add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, dollarSign));
 
     //dollarSign.posy += 0.12f;
     //add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, dollarSign));
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Round Score", 0.3f * RENDERING_ASPECT, 0.175f, -1, true, DEFAULT_FONT_SCALE }));
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Round Score", 0.3f, 0.175f, -1, true, DEFAULT_FONT_SCALE }));
 
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.3f * RENDERING_ASPECT, 0.225f, -1, true, DEFAULT_FONT_SCALE * 3.0f }, 
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.3f, 0.225f, -1, true, DEFAULT_FONT_SCALE * 3.0f }, 
         "", 0, UINT_64));
 
     for(i32 i = 0; i < gState->table.numberOfSets; i++) {
         numTableTiles += gState->table.sets[i].numberOfTiles;
     }
 
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Tiles Used", 0.7f * RENDERING_ASPECT, 0.175f, -1, true, DEFAULT_FONT_SCALE }));
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.7f * RENDERING_ASPECT, 0.225f, -1, true, DEFAULT_FONT_SCALE * 3.0f}, 
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Tiles Used", 0.7f, 0.175f, -1, true, DEFAULT_FONT_SCALE }));
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.7f, 0.225f, -1, true, DEFAULT_FONT_SCALE * 3.0f}, 
         "", 5, UINT_64));
 
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Cash", 0.5f * RENDERING_ASPECT, 0.175f, -1, true, DEFAULT_FONT_SCALE, vec3(R_GOLDEN) }));
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f * RENDERING_ASPECT, 0.225f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_GOLDEN)}, 
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Cash", 0.5f, 0.175f, -1, true, DEFAULT_FONT_SCALE, vec3(R_GOLDEN) }));
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f, 0.225f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_GOLDEN)}, 
         "$", 3, TextType::UINT_64));
 }
 
@@ -2048,8 +2051,8 @@ void add_shop_ui() {
     gState->pageState = SHOP;
     i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::CENTER, vec2(0.12f, 0.85f), vec2(0.5f, 0.0f), vec2(0.5f, 0.07f), R_SILVER, R_DARK_BLUE); 
 
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Round Score", RENDERING_ASPECT * 0.5f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(R_GOLDEN)}));
-    i32 progressIndex = add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", RENDERING_ASPECT * 0.5f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_GOLDEN)}, 
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Round Score", 0.5f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(R_GOLDEN)}));
+    i32 progressIndex = add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_GOLDEN)}, 
         "", 7, INT_32);
     add_text_to_window(gState->uiPage, windowIndex, progressIndex);
 }
@@ -2070,7 +2073,7 @@ void add_main_menu_ui() {
 
     //add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.0f, 0.0f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}, "", &gState->deltaTime, TextType::FLOAT_32);
 
-    add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Conquian", 0.5f * RENDERING_ASPECT, 0.5f, -1, true, DEFAULT_FONT_SCALE * 5.0 });
+    add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "???", 0.5f, 0.5f, -1, true, DEFAULT_FONT_SCALE * 5.0 });
 //    write_page(gState->uiPage, "main_menu.eui");
 }
 
@@ -2101,9 +2104,9 @@ void add_options_ui() {
 
     i32 tabs[2] = {video, audio};
 
-    TextElement resolution = TextElement{ Anchor::CENTER, "Resolution", RENDERING_ASPECT * 0.5f, 0.25f, -1, false, DEFAULT_FONT_SCALE * 3, vec3(1.0f)};
+    TextElement resolution = TextElement{ Anchor::CENTER, "Resolution", 0.5f, 0.25f, -1, false, DEFAULT_FONT_SCALE * 3, vec3(1.0f)};
     //create entries
-    TextElement resolutionEntry = TextElement{ Anchor::CENTER, "", RENDERING_ASPECT * 0.5f, 0.35f, -1, false, DEFAULT_FONT_SCALE * 2, vec3(1.0f)};
+    TextElement resolutionEntry = TextElement{ Anchor::CENTER, "", 0.5f, 0.35f, -1, false, DEFAULT_FONT_SCALE * 2, vec3(1.0f)};
     resolutionEntry.valueId = 9;
     resolutionEntry.numberOfValues = gMemory->numberOfSupportedResolutions;
     resolutionEntry.activeValueId = gMemory->resolutionId; 
@@ -2115,9 +2118,9 @@ void add_options_ui() {
 
 
     //
-    TextElement videoMode = TextElement{ Anchor::CENTER, "Video mode", RENDERING_ASPECT * 0.5f, 0.5f, -1, false, DEFAULT_FONT_SCALE * 3, vec3(1.0f)};
+    TextElement videoMode = TextElement{ Anchor::CENTER, "Video mode", 0.5f, 0.5f, -1, false, DEFAULT_FONT_SCALE * 3, vec3(1.0f)};
 
-    TextElement videoModeEntry = TextElement{ Anchor::CENTER, "", RENDERING_ASPECT * 0.5f, 0.6f, -1, false, DEFAULT_FONT_SCALE * 2, vec3(1.0f)};
+    TextElement videoModeEntry = TextElement{ Anchor::CENTER, "", 0.5f, 0.6f, -1, false, DEFAULT_FONT_SCALE * 2, vec3(1.0f)};
     videoModeEntry.valueId = 10;
     videoModeEntry.numberOfValues = 2;
     videoModeEntry.activeValueId = gMemory->is_full_screen_fn();
@@ -2135,7 +2138,7 @@ void add_options_ui() {
     //
 
     add_tabs_to_window(gState->uiPage, windowIndex, tabs, 2);
-    TextElement vsync = TextElement{ Anchor::CENTER, "Vsync", RENDERING_ASPECT * 0.5f, 0.75f, -1, false, DEFAULT_FONT_SCALE * 3, vec3(1.0f)};
+    TextElement vsync = TextElement{ Anchor::CENTER, "Vsync", 0.5f, 0.75f, -1, false, DEFAULT_FONT_SCALE * 3, vec3(1.0f)};
 
 
     add_text_element_to_tab(gState->uiPage, windowIndex, video, resolution);
@@ -2203,8 +2206,8 @@ void calculate_round_bonus(GameData *gd, PlayerData pd) {
       //add bonus for board clear
       extraDollas += 5;
 
-      TextElement bonus = TextElement{ Anchor::CENTER, "+5", 0.5f * RENDERING_ASPECT, 0.05f, -1, true, DEFAULT_FONT_SCALE * 5.0 };
-      add_move_text_animation(gState->uiPage, add_text_element(gState->uiPage, bonus), vec2(0.5f * RENDERING_ASPECT, 0.25f));
+      TextElement bonus = TextElement{ Anchor::CENTER, "+5", 0.5f, 0.05f, -1, true, DEFAULT_FONT_SCALE * 5.0 };
+      add_move_text_animation(gState->uiPage, add_text_element(gState->uiPage, bonus), vec2(0.5f, 0.25f));
 
     }
 
@@ -2607,8 +2610,8 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
     }
 
     if (key == 296 && action == 1) {
-      TextElement bonus = TextElement{ Anchor::CENTER, "+5", 0.5f * RENDERING_ASPECT, 0.05f, -1, true, DEFAULT_FONT_SCALE * 5.0 };
-      add_move_text_animation(gState->uiPage, add_text_element(gState->uiPage, bonus), vec2(0.5f * RENDERING_ASPECT, 0.25f));
+      TextElement bonus = TextElement{ Anchor::CENTER, "+5", 0.5f, 0.05f, -1, true, DEFAULT_FONT_SCALE * 5.0 };
+      add_move_text_animation(gState->uiPage, add_text_element(gState->uiPage, bonus), vec2(0.5f, 0.25f));
     }
 
     if (key == 295 && action == 1) {
