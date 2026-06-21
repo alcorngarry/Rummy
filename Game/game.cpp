@@ -1752,8 +1752,7 @@ void add_in_game_ui() {
     add_button(gState->uiPage, BUTTON_T, "C", vec2(0.9f, 0.835f), vec2(0.09f, 0.06f), R_PURPLE, 6);
     add_button(gState->uiPage, BUTTON_T, "#", vec2(0.9f, 0.935f), vec2(0.09f, 0.06f), R_GREEN, 7);
 
-    // change the button image for this!
-    add_button(gState->uiPage, BUTTON_T, "X", vec2(0.035f, 0.05f), vec2(0.06f, 0.03f), R_DARK_GRAY, 2);
+    add_button(gState->uiPage, BUTTON_T, BACK_T, vec2(0.035f, 0.05f), vec2(0.04f, 0.035f), R_DARK_GRAY, 2);
 
     i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::TOP_LEFT, vec2(0.12f, 0.6f), vec2(0.075f, -0.2f), vec2(0.075f, 0.01f), R_SILVER, R_DARK_BLUE); 
 
@@ -2091,12 +2090,13 @@ void add_options_ui() {
     //should be auto added when adding tabs, but color
     add_cursor(gState->uiPage, BUTTON_SELECT_T, R_YELLOW, TAB);
 
-    i32 back = add_button(gState->uiPage, BUTTON_T, "X", vec2(0.225f, 0.075f), vec2(0.04f, 0.035f), vec4(0.0f, 0.0f, 0.0f, 1.0f), 2);
+    //i32 back = add_button(gState->uiPage, BUTTON_T, "X", vec2(0.225f, 0.075f), vec2(0.04f, 0.035f), vec4(0.0f, 0.0f, 0.0f, 1.0f), 2);
+    i32 back = add_button(gState->uiPage, BUTTON_T, BACK_T, vec2(0.24f, 0.075f), vec2(0.04f, 0.035f), R_DARK_GRAY, 2);
     //i32 general = add_tab(gState->uiPage, BUTTON_T, "General", R_SILVER);
-    i32 video = add_tab(gState->uiPage, BUTTON_T, "Video", R_SILVER);
+    i32 video = add_tab(gState->uiPage, BUTTON_T, "Video", R_DARK_GRAY);
     //stupid
     //gState->uiPage->uiElements[general].imageChildId = video;
-    i32 audio = add_tab(gState->uiPage, BUTTON_T, "Audio", R_SILVER);
+    i32 audio = add_tab(gState->uiPage, BUTTON_T, "Audio", R_DARK_GRAY);
     //stupid
     gState->uiPage->uiElements[video].imageChildId = audio;
     gState->uiPage->uiElements[audio].imageChildId = video;
@@ -2113,7 +2113,7 @@ void add_options_ui() {
     snprintf(resolutionEntry.text, sizeof(resolutionEntry.text), "%4d x %-4d @ %dHz", 
         gMemory->supportedResolutions[gMemory->resolutionId].width, gMemory->supportedResolutions[gMemory->resolutionId].height, gMemory->supportedResolutions[gMemory->resolutionId].refreshRate);
     i32 resolutionOptionId = add_text_element(gState->uiPage, resolutionEntry);
-    resOptionId = add_options_element(gState->uiPage, resolutionOptionId, 13, BUTTON_T);
+    resOptionId = add_options_element(gState->uiPage, resolutionOptionId, 13, BUTTON_T, OPTION_T, R_DARK_GRAY);
     //
 
 
@@ -2126,7 +2126,7 @@ void add_options_ui() {
     videoModeEntry.activeValueId = gMemory->is_full_screen_fn();
     //need to track the status of video mode in the engine
     snprintf(videoModeEntry.text, sizeof(videoModeEntry.text), "%s", videoModes[gMemory->is_full_screen_fn()]);
-    i32 videoModeId = add_options_element(gState->uiPage, add_text_element(gState->uiPage, videoModeEntry), 14, BUTTON_T);
+    i32 videoModeId = add_options_element(gState->uiPage, add_text_element(gState->uiPage, videoModeEntry), 14, BUTTON_T, OPTION_T, R_DARK_GRAY);
     //
 
     //always false, pull from the engine

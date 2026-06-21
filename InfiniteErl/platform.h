@@ -26,6 +26,8 @@
 #define UI_BG_2_T 18
 #define BUTTON_SELECT_T 19
 #define RADIO_T 20
+#define BACK_T 21
+#define OPTION_T 22
 
 #ifdef BUILD_DLL
 #define GAME_DLL __declspec(dllexport)

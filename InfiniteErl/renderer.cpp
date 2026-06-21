@@ -138,7 +138,8 @@ void push_ui_page(RenderBuffer* buffer, UIPage* uiPage) {
                 uiPage->uiElements[i].meshHandle,
                 uiPage->uiElements[i].isPanel,
                 uiPage->uiElements[i].color,
-                uiPage->uiElements[i].hovered
+                uiPage->uiElements[i].hovered,
+                uiPage->uiElements[i].hasShadow
             };
             push_ui_image(buffer, &image);
         }
@@ -291,7 +292,8 @@ void render_buffer(RenderBuffer* buffer) {
                 entry->isPanel,
                 entry->color,
                 entry->isHovered,
-                buffer->windowSize
+                buffer->windowSize,
+                entry->hasShadow
               );
               break;
           }
@@ -487,7 +489,31 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
     glDisable(GL_BLEND);
 }
 
-void draw_image_ui(Anchor anchor, i32 textureId, f32 posx, f32 posy, f32 width, f32 height, i32 cols, i32 rows, i32 currentFrame, bool isAnimated, u32 vao, u8 isPanel, vec4 color, u8 isHovered, vec2 windowSize) {
+void draw_ui_shadow(f32 px, f32 py, f32 w, f32 h, i32 textureId, u32 vao, bool isAnimated, i32 cols, i32 rows, i32 currentFrame, u8 isPanel, vec2 windowSize) {
+    constexpr f32 shadowOffset = 0.004f; // ~4px in normalized coords at 1080p
+
+    uiShader->setBool("hasShadow", true);
+    uiShader->setVec2("pos", vec2(px + shadowOffset, py + shadowOffset));
+    uiShader->setVec2("size", vec2(w, h));
+    uiShader->setVec4("color", vec4(0.0f, 0.0f, 0.0f, 0.45f));
+
+    uiShader->setBool("useSpriteSheet", isAnimated);
+    uiShader->setInt("frameIndex", currentFrame);
+    uiShader->setInt("cols", cols);
+    uiShader->setInt("rows", rows);
+    uiShader->setBool("isPanel", isPanel);
+    uiShader->setBool("useColorOnly", textureId == -1);
+    uiShader->setVec2("resolution", windowSize);
+
+    glBindVertexArray(vao);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, textureId);
+
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+}
+
+void draw_image_ui(Anchor anchor, i32 textureId, f32 posx, f32 posy, f32 width, f32 height, i32 cols, i32 rows, i32 currentFrame, bool isAnimated, u32 vao, u8 isPanel, vec4 color, u8 isHovered, vec2 windowSize, u8 hasShadow) {
     glDepthMask(GL_FALSE);
     glEnable(GL_BLEND);
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
@@ -522,9 +548,16 @@ void draw_image_ui(Anchor anchor, i32 textureId, f32 posx, f32 posy, f32 width, 
     }
 
     uiShader->setVec2("size", vec2(w, h));
-    uiShader->setVec2("pos", vec2(px, py));
-    glBindVertexArray(vao);
+    if (hasShadow) {
+        draw_ui_shadow(px, py, w, h, textureId, vao, isAnimated, cols, rows, currentFrame, isPanel, windowSize);
+    }
 
+    uiShader->setBool("hasShadow", false);
+    uiShader->setVec2("pos", vec2(px, py));
+    uiShader->setVec4("color", color); 
+
+
+    glBindVertexArray(vao);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, textureId);
 

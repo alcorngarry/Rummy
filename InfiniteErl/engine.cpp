@@ -450,13 +450,15 @@ void load_textures() {
     load_texture(TILE_SLOT_T, "./res/tile-slot.png", true, true, false);
     load_texture(BG_PATTERN_T, "./res/bg-pattern.png", true, true, true);
     load_texture(UI_BG_T, "./res/ui-bg3.png", true, true, false);
-    load_texture(BUTTON_T, "./res/button2.png", true, false, false);
+    load_texture(BUTTON_T, "./res/button.png", true, false, false);
     load_texture(POOL_T, "./res/pool.png", true, true, false);
     load_texture(CIRCLE_BUTTON_T, "./res/circle-button.png", true, true, false);
     load_texture(RELICS_T, "./res/relics.png", true, false, true);
     load_texture(UI_BG_2_T, "./res/ui-bg2.png", true, true, false);
     load_texture(BUTTON_SELECT_T, "./res/button-select.png", true, true, false);
     load_texture(RADIO_T, "./res/radio-sheet.png", true, true, false);
+    load_texture(BACK_T, "./res/back-icon.png", true, true, false);
+    load_texture(OPTION_T, "./res/option-button.png", true, false, false);
 }
 
 VideoSettings load_video_settings() {

@@ -388,6 +388,7 @@ i32 add_ui_element(UIPage* page, UIElement element, bool actionable) {
 }
 
 void next_option(UIPage *page, void *ptr) {
+    printf("NEXT\n");
     UIElement *self = (UIElement *)ptr;
     TextElement *text = self->textChild;
 
@@ -400,6 +401,7 @@ void next_option(UIPage *page, void *ptr) {
 }
 
 void previous_option(UIPage *page, void *ptr) {
+    printf("PREV\n");
     UIElement *self = (UIElement *)ptr;
     TextElement *text = self->textChild;
 
@@ -416,21 +418,46 @@ void previous_option(UIPage *page, void *ptr) {
     fmt(data, text->activeValueId, text->text, sizeof(text->text));
 }
 
-i32 add_options_element(UIPage *page, i32 optionId, i32 optionActionId, i32 optionsHandle) {
+i32 add_options_element(UIPage *page, i32 optionId, i32 optionActionId, i32 optionsHandle, i32 optionsIconHandle, vec4 color) {
     TextElement *option = &page->textElements[optionId];
 
+    //
+    SheetAnimation iconSheet = SheetAnimation{};
+    iconSheet.cols = 2;
+    iconSheet.rows = 1;
+    iconSheet.currentFrame = 1;
+
+    UIElement rightArrowIcon = UIElement{ option->anchor, -1, optionsIconHandle, option->posx + 0.2f, option->posy, 0.03f, 0.03f, true, 12}; 
+    rightArrowIcon.actionId = optionActionId;
+    rightArrowIcon.sheetAnimation = iconSheet;
+    rightArrowIcon.onCompleteActionId = 1;
+    rightArrowIcon.textChild = option;
+    //
+
     UIElement rightArrow = UIElement{ option->anchor, -1, optionsHandle, option->posx + 0.2f, option->posy, 0.05f, 0.05f, false, 12};
-    //pass this in
     rightArrow.actionId = optionActionId;
     rightArrow.onCompleteActionId = 1;
+    rightArrow.color = color;
     rightArrow.textChild = option;
-    i32 rightArrowId = add_ui_element(page, rightArrow);
+
+    //
+    UIElement leftArrowIcon = rightArrowIcon; 
+    leftArrowIcon.sheetAnimation.currentFrame = 0;
+    leftArrowIcon.posx -= 0.4f;
+    leftArrowIcon.onCompleteActionId = 2;
+    //
 
     UIElement leftArrow = rightArrow;
     leftArrow.posx -= 0.4f;
     leftArrow.onCompleteActionId = 2;
 
+    i32 rightArrowIconId = add_ui_element(page, rightArrowIcon); 
+    leftArrowIcon.imageChildId = rightArrowIconId;
+    i32 leftArrowIconId = add_ui_element(page, leftArrowIcon);
+    rightArrow.imageChildId = leftArrowIconId;
+    i32 rightArrowId = add_ui_element(page, rightArrow);
     leftArrow.imageChildId = rightArrowId;
+
 
     return add_ui_element(page, leftArrow);
 }
@@ -477,10 +504,12 @@ i32 add_element_to_tab(UIPage *page, i32 windowId, i32 tabId, i32 element) {
         add_text_to_window(page, windowId, page->uiElements[element].textChild->id);
     }
 
-    if(page->uiElements[element].imageChildId != -1) {
-        UIElement *child = &page->uiElements[page->uiElements[element].imageChildId];
+    i32 childId = page->uiElements[element].imageChildId;
+    while(childId != -1) {
+        UIElement *child = &page->uiElements[childId];
         tab->dependentElements[tab->numberOfDependentElements++] = child;
         add_image_to_window(page, windowId, child->id);
+        childId = child->imageChildId;
     }
 
     add_image_to_window(page, windowId, element);
@@ -555,26 +584,16 @@ void add_tabs_to_window(UIPage *page, i32 windowId, i32 *tabIds, i32 numberOfTab
 
 i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 scale, vec4 color, i32 actionId) {
     i32 buttonId = page->numberOfImageElements;
-    i32 shadowId = page->numberOfImageElements + 1;
     i32 textId = page->numberOfTextElements;
 
     UIElement button = UIElement{ Anchor::CENTER, -1, buttonHandle, pos.x, pos.y, scale.x, scale.y, true, actionId};
     button.color = color;
-    button.imageChildId = shadowId;
+    button.hasShadow = true;
 
     Animation buttonClick = Animation{vec2(button.posx, button.posy + 0.01f), pos};
     button.animations[button.numberOfAnimations++] = buttonClick;
 
     add_ui_element(page, button, true);
-
-    button.color = vec4(0.0f, 0.0f, 0.0f, 0.5f);
-    button.posy += 0.01f;
-    button.width *= 0.95f;
-    button.height *= 0.95f;
-    button.animations[0] = {};
-    button.numberOfAnimations = 0;
-    button.actionId = -1;
-    add_ui_element(page, button, false);
   
     TextElement bText = TextElement{ Anchor::CENTER, "", pos.x, pos.y, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
     strcpy(bText.text, text);
@@ -585,12 +604,19 @@ i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 
     return buttonId;
 }
 
-void add_shadow(UIPage *page, UIElement element) {
-    element.animations[0].start = vec2(element.animations[0].start.x - 0.0025f, element.animations[0].start.y + 0.005f);
-    element.animations[0].destination = vec2(element.animations[0].destination.x - 0.0025f, element.animations[0].destination.y + 0.005f);
+i32 add_button(UIPage *page, i32 buttonHandle, i32 buttonImageHandle, vec2 pos, vec2 scale, vec4 color, i32 actionId) {
 
-    element.color = vec4(0.0f, 0.0f, 0.0f, 0.5f);
-    add_ui_element(page, element);
+    UIElement buttonImage = UIElement{ Anchor::CENTER, -1, buttonImageHandle, pos.x, pos.y, scale.x * 0.8f, scale.y * 0.8f};
+    i32 buttonImageId = add_ui_element(page, buttonImage, false);
+
+    UIElement button = UIElement{ Anchor::CENTER, -1, buttonHandle, pos.x, pos.y, scale.x, scale.y, true, actionId};
+    button.color = color;
+    button.imageChildId = buttonImageId;
+    button.hasShadow = true;
+
+    Animation buttonClick = Animation{vec2(button.posx, button.posy + 0.01f), pos};
+    button.animations[button.numberOfAnimations++] = buttonClick;
+    return add_ui_element(page, button, true);
 }
 
 void toggle_visibility(UIPage *page, void *ptr) {
@@ -627,28 +653,30 @@ vec2 get_center(Anchor anchor, vec2 size, vec2 pos) {
 }
 
 i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 start, vec2 destination, vec4 color1, vec4 color2) {
-    UIElement e = UIElement{ anchor, -1, windowHandle, start.x, start.y, scale.x, scale.y, true};
+    UIElement border = UIElement{ anchor, -1, windowHandle, start.x, start.y, scale.x, scale.y, true};
 
     SheetAnimation panelSheet = SheetAnimation{3, 3};
-    e.sheetAnimation = panelSheet;
+    border.sheetAnimation = panelSheet;
 
-    e.isPanel = true;
-    e.color = color1;
-    e.hovered = true;
+    border.isPanel = true;
+    border.color = color1;
+    border.hovered = true;
 
     Animation moveWindow = Animation{destination, start};
     moveWindow.autoAnimate = true;
     moveWindow.duration = 1.0f;
-    e.animations[e.numberOfAnimations++] = moveWindow; 
+    border.animations[border.numberOfAnimations++] = moveWindow; 
+    border.hasShadow = true;
 
-    i32 index = add_ui_element(page, e);
-    UIElement bg = e;
+    i32 index = add_ui_element(page, border);
+    UIElement bg = border;
     //does not handle no image yet
     bg.anchor = CENTER;
-    vec2 bgStart = get_center(anchor, vec2(e.width, e.height), start);
-    vec2 bgDest = get_center(anchor, vec2(e.width, e.height), destination);
+    vec2 bgStart = get_center(anchor, vec2(border.width, border.height), start);
+    vec2 bgDest = get_center(anchor, vec2(border.width, border.height), destination);
     bg.posx = bgStart.x;
     bg.posy = bgStart.y;
+    bg.hasShadow = false;
 
     bg.animations[0].destination = bgDest;
     bg.animations[0].start = bgStart;
@@ -660,7 +688,6 @@ i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 s
     bg.color = color2;
     add_ui_element(page, bg);
 
-    add_shadow(page, e);
     return index;
 }
 
@@ -699,7 +726,6 @@ void add_text_to_window(UIPage *page, i32 windowId, i32 elementId) {
 void add_button_to_window(UIPage *page, i32 windowId, i32 elementId) {
     UIElement *window = &page->uiElements[windowId];
     UIElement *button = &page->uiElements[elementId];
-    UIElement *shadow = &page->uiElements[elementId + 1];
 
     f32 speed = window->animations[window->numberOfAnimations - 1].duration;
     vec2 motionDifference = window->animations[window->numberOfAnimations - 1].start - window->animations[window->numberOfAnimations - 1].destination;
@@ -713,26 +739,31 @@ void add_button_to_window(UIPage *page, i32 windowId, i32 elementId) {
     window->dependentElements[window->numberOfDependentElements] = button;
     window->numberOfDependentElements++;
 
-    //shadow
-    shadow->animations[shadow->numberOfAnimations].start = vec2(shadow->posx + motionDifference.x, shadow->posy + motionDifference.y);
-    shadow->animations[shadow->numberOfAnimations].destination = vec2(shadow->posx, shadow->posy);
-    shadow->animations[shadow->numberOfAnimations].duration = speed;
-    shadow->animations[shadow->numberOfAnimations].autoAnimate = true;
-    shadow->numberOfAnimations++;
-
-    page->uiElements[windowId].dependentElements[page->uiElements[windowId].numberOfDependentElements] = shadow;
-    page->uiElements[windowId].numberOfDependentElements++;
-
     //text
-    TextElement* text = button->textChild;
-    text->animations[text->numberOfAnimations].start = vec2(text->posx + motionDifference.x, text->posy + motionDifference.y);
-    text->animations[text->numberOfAnimations].destination = vec2(text->posx, text->posy);
-    text->animations[text->numberOfAnimations].duration = speed;
-    text->animations[text->numberOfAnimations].autoAnimate = true;
-    text->numberOfAnimations++;
+    if(button->textChild) {
+        TextElement* text = button->textChild;
+        text->animations[text->numberOfAnimations].start = vec2(text->posx + motionDifference.x, text->posy + motionDifference.y);
+        text->animations[text->numberOfAnimations].destination = vec2(text->posx, text->posy);
+        text->animations[text->numberOfAnimations].duration = speed;
+        text->animations[text->numberOfAnimations].autoAnimate = true;
+        text->numberOfAnimations++;
 
-    page->uiElements[windowId].dependentTextElements[window->numberOfDependentTextElements] = text;
-    page->uiElements[windowId].numberOfDependentTextElements++;
+        page->uiElements[windowId].dependentTextElements[window->numberOfDependentTextElements] = text;
+        page->uiElements[windowId].numberOfDependentTextElements++;
+    }
+
+    if(button->imageChildId != -1) {
+        UIElement* buttonImage = &page->uiElements[button->imageChildId];
+        buttonImage->animations[buttonImage->numberOfAnimations].start = vec2(buttonImage->posx + motionDifference.x, buttonImage->posy + motionDifference.y);
+        buttonImage->animations[buttonImage->numberOfAnimations].destination = vec2(buttonImage->posx, buttonImage->posy);
+        buttonImage->animations[buttonImage->numberOfAnimations].duration = speed;
+        buttonImage->animations[buttonImage->numberOfAnimations].autoAnimate = true;
+        buttonImage->numberOfAnimations++;
+
+        page->uiElements[windowId].dependentElements[page->uiElements[windowId].numberOfDependentElements] = buttonImage;
+        page->uiElements[windowId].numberOfDependentElements++;
+    }
+
 }
 
 void button_press(UIPage *page, void* ptr) {

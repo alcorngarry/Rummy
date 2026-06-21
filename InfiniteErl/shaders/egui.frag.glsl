@@ -13,6 +13,16 @@ uniform vec2 size;
 uniform vec4 color;
 uniform bool useColorOnly;
 uniform vec2 resolution; // current framebuffer size
+uniform bool hasShadow;
+
+vec4 applyShadow(vec4 c) {
+    if (!hasShadow)
+        return c;
+
+    c.rgb = vec3(0.0);
+    c.a *= 0.45;
+    return c;
+}
 
 void main() {
     vec2 uv = TexCoords;
@@ -75,9 +85,9 @@ void main() {
         if(useColorOnly) {
           FragColor = color;
         } else {
-          FragColor = texture(Texture, uv) * color;
+          FragColor = applyShadow(texture(Texture, uv) * color);
         }
     } else {
-        FragColor = texture(Texture, uv);
+        FragColor = applyShadow(texture(Texture, uv));
     }
 }

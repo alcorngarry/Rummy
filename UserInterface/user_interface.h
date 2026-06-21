@@ -120,6 +120,7 @@ struct UIElement {
   u8 numberOfAnimations = 0;
   i32 id;
   i32 onCompleteActionId = -1;
+  u8 hasShadow = false;
 };
 
 enum TextType {
@@ -216,10 +217,11 @@ void add_tabs_to_window(UIPage *page, i32 windowId, i32 *tabIds, i32 numberOfTab
 void switch_tab(UIPage *page);
 i32 add_element_to_tab(UIPage *page, i32 windowId, i32 tabId, i32 element);
 i32 add_text_element_to_tab(UIPage *page, i32 windowId, i32 tabId, TextElement element);
-i32 add_options_element(UIPage *page, i32 optionId, i32 optionActionId, i32 optionsHandle);
+i32 add_options_element(UIPage *page, i32 optionId, i32 optionActionId, i32 optionsHandle, i32 optionsIconHandle, vec4 color);
 i32 add_radio_element(UIPage *page, u8 enabled, Anchor anchor, vec2 pos, vec2 size, i32 actionId, i32 radioHandle);
   
 i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 scale, vec4 color, i32 actionId);
+i32 add_button(UIPage *page, i32 buttonHandle, i32 imageButtonHandle, vec2 pos, vec2 scale, vec4 color, i32 actionId);
 
 void button_press(UIPage *page, void* ptr);
 void button_release(UIPage *page, void* ptr);

@@ -79,6 +79,7 @@ struct RenderEntryUIImage {
     u8 isPanel;
     vec4 color;
     u8 isHovered;
+    u8 hasShadow;
 };
 
 struct RenderBuffer {
@@ -114,7 +115,7 @@ void load_shaders();
 void draw_platform(mat4 model, mat4 view, mat4 projection, i32 currentSides, bool flippedNormal, u32 vao, u32 vao2, bool scroll, i32 textureId, vec3 color, bool isPlatform, vec2 platformScroll, f32 wallSpeed, vec3 cameraPos, f32 deltaTime);
 void draw_entity(mat4 model, mat4 view, mat4 projection, u32 vao, i32 textureId, vec4 color, i8 useSpriteSheet, i32 frameIndex, u8 tiled, vec2 tileCount, f32 aspect);
 void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 maxWidth, vec3 color, mat4 projection);
-void draw_image_ui(Anchor anchor, i32 textureId, f32 posx, f32 posy, f32 width, f32 height, i32 cols, i32 rows, i32 currentFrame, bool isAnimated, u32 vao, u8 isPanel, vec4 color, u8 isHovered, vec2 windowSize);
+void draw_image_ui(Anchor anchor, i32 textureId, f32 posx, f32 posy, f32 width, f32 height, i32 cols, i32 rows, i32 currentFrame, bool isAnimated, u32 vao, u8 isPanel, vec4 color, u8 isHovered, vec2 windowSize, u8 hasShadow);
 
 void load_texture(i32 id, const char* filePath, bool isMipMapped, bool isFlipped, bool repeated);
 u32 load_platform_buffers(f32* vertices, i32 vertexCount, u32* indices, i32 indexCount);
