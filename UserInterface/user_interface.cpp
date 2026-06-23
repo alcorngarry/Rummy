@@ -691,8 +691,46 @@ i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 s
     return index;
 }
 
+i32 add_static_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 pos, vec4 color1, vec4 color2) {
+    UIElement border = UIElement{ anchor, -1, windowHandle, pos.x, pos.y, scale.x, scale.y, true};
+
+    SheetAnimation panelSheet = SheetAnimation{3, 3};
+    border.sheetAnimation = panelSheet;
+
+    border.isPanel = true;
+    border.color = color1;
+    border.hovered = true;
+
+    border.hasShadow = true;
+
+    UIElement bg = border;
+    //does not handle no image yet
+    bg.anchor = CENTER;
+    vec2 bgStart = get_center(anchor, vec2(border.width, border.height), pos);
+    bg.posx = bgStart.x;
+    bg.posy = bgStart.y;
+    bg.hasShadow = false;
+
+    bg.textureName = -1;
+    bg.width -= 0.005;
+    bg.height -= 0.005;
+    bg.isPanel = false;
+    bg.color = color2;
+
+    i32 index = add_ui_element(page, border);
+    i32 bgIndex = add_ui_element(page, bg);
+
+    UIElement *bg_p = &page->uiElements[bgIndex];
+    UIElement *border_p = &page->uiElements[index];
+
+    border_p->dependentElements[border_p->numberOfDependentElements++] = bg_p; 
+
+    return index;
+}
+
 void add_image_to_window(UIPage *page, i32 windowId, i32 elementId) {
     UIElement *window = &page->uiElements[windowId];
+
     UIElement *image = &page->uiElements[elementId];
     f32 speed = window->animations[window->numberOfAnimations - 1].duration;
     vec2 motionDifference = window->animations[window->numberOfAnimations - 1].start - window->animations[window->numberOfAnimations - 1].destination;
@@ -705,6 +743,18 @@ void add_image_to_window(UIPage *page, i32 windowId, i32 elementId) {
 
     window->dependentElements[page->uiElements[windowId].numberOfDependentElements] = image;
     window->numberOfDependentElements++;
+
+    for(i32 i = 0; i < image->numberOfDependentElements; ++i) {
+        UIElement *childImage = image->dependentElements[i];
+        childImage->animations[image->numberOfAnimations].start = vec2(childImage->posx + motionDifference.x, childImage->posy + motionDifference.y);
+        childImage->animations[image->numberOfAnimations].destination = vec2(childImage->posx, childImage->posy);
+        childImage->animations[image->numberOfAnimations].duration = speed;
+        childImage->animations[image->numberOfAnimations].autoAnimate = true;
+        childImage->numberOfAnimations++;
+
+        window->dependentElements[page->uiElements[windowId].numberOfDependentElements] = image;
+        window->numberOfDependentElements++;
+    }
 }
 
 void add_text_to_window(UIPage *page, i32 windowId, i32 elementId) {

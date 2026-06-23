@@ -61,11 +61,12 @@ ie player 1 (W)  + 12, player 2 (L) -5, player 3 (L) -7
   -(X) Xs for groups
   -()  Xs for set size
 
---PASSIVES
+--ACTIVES
   -() rack tile remover item
   -() tile color changer
   -() pocket bridge
   -() pocket joker
+
 
 --Consumables
   -Discard
@@ -84,12 +85,14 @@ ie player 1 (W)  + 12, player 2 (L) -5, player 3 (L) -7
 - () run only turn bonus --item
 - () group only turn bonus --item
 
-"RELICS"
+"RELICS"/PASSIVES
 - (X) runs with exact number double score
 - (X) odd numbers gain multiplier
 - (X) reward long runs
 - () discard
 - () reroll
+
+--have passive be visible on the right side of screen, and be able to toggle the view?
 
 - () disable run/group for round
 - () tile color = +0 points
@@ -127,4 +130,14 @@ ie player 1 (W)  + 12, player 2 (L) -5, player 3 (L) -7
 
 UI-Animations
 -() RevealWindow animation
+
+
+--ideas for round end actions--
+
+action buffer contains GameObjects that have action function pointer
+buffer is added in order of operation next is ran after the first completes
+
+adding oncomplete could add an action to the buffer
+{would I want to run actions simultaneously? if so this would not work unless they were all chained by oncompletes}
+
 

@@ -187,8 +187,15 @@ enum RelicType {
     TYPE_6 = 6
 };
 
+enum Rarity {
+    COMMON,
+    RARE,
+    EXCEEDINGLY_RARE
+};
+
 struct Relic {
     RelicType type;
+    Rarity rarity;
     const char* name;
     const char* description;
 };

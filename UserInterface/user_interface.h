@@ -226,6 +226,7 @@ i32 add_button(UIPage *page, i32 buttonHandle, i32 imageButtonHandle, vec2 pos, 
 void button_press(UIPage *page, void* ptr);
 void button_release(UIPage *page, void* ptr);
 i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 start, vec2 destination, vec4 color1, vec4 color2);
+i32 add_static_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 pos, vec4 color1, vec4 color2);
 
 TextElement* get_element_by_text(UIPage* page, const char* text);
 UIElement* get_element_by_id(UIPage* page, const char* id);

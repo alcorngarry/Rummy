@@ -7,6 +7,8 @@
 #define R_GREEN vec4(0.527, 0.984, 0.667, 1.0f)
 #define R_GOLDEN vec4(0.8980f, 0.9431f, 0.2137f, 1.0f)
 #define R_GRAY vec4(0.6f, 0.6f, 0.6f, 1.0f)
+#define R_WHITE vec4(1.0f)
+#define R_BLACK vec4(0.0f, 0.0f, 0.0f, 1.0f)
 
 #define R_DARK_GREEN vec4(0.353, 0.549, 0.353, 1.0f)
 #define R_DARK_GRAY vec4(0.2, 0.2, 0.2, 1.0f) 

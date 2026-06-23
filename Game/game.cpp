@@ -239,12 +239,18 @@ void revert_to_round_start() {
 }
 
 Relic RELIC_TABLE[TOTAL_RELICS] = {
-    { TYPE_1, "4 Scores x2", "Every set with exactly four tiles gets double points." },
-    { TYPE_2, "Odd Man", "Every odd tile in a set gets +10 points." },
-    { TYPE_3, "Big Man", "Sets larger than 6 tiles get +50 points." },
-    { TYPE_4, "6 Scores x2", "Every set with exactly 6 tiles gets double points." },
-    { TYPE_5, "Even Man", "Every even tile in a set gets +10 points." },
-    { TYPE_6, "type 6", "this item does this thing! 6" }
+    { TYPE_1, COMMON, "Neophyte 3", "Every set with exactly three tiles gets double the points." },
+    { TYPE_2, COMMON, "Plebian 4", "Every set with exactly four tiles gets double the points." },
+    { TYPE_3, RARE, "Mr 5", "Every set with exactly five tiles gets triple the points." },
+    { TYPE_4, RARE, "Mrs 6", "Every set with exactly six tiles gets triple the points." },
+    { TYPE_5, EXCEEDINGLY_RARE, "Dr 7", "Every set with exactly seven tiles gets quadruple the points." },
+    { TYPE_6, EXCEEDINGLY_RARE, "Ruler 8", "Every set with exactly eight tiles gets eight times the points." }
+//    { TYPE_1, "4 Scores x2", "Every set with exactly four tiles gets double points." },
+//    { TYPE_2, "Odd Man", "Every odd tile in a set gets +10 points." },
+//    { TYPE_3, "Big Man", "Sets larger than 6 tiles get +50 points." },
+//    { TYPE_4, "6 Scores x2", "Every set with exactly 6 tiles gets double points." },
+//    { TYPE_5, "Even Man", "Every even tile in a set gets +10 points." },
+//    { TYPE_6, "type 6", "this item does this thing! 6" }
 };
 
 void create_relics() {
@@ -480,38 +486,32 @@ u8 started = false;
 u8 progressScoreComplete = false;
 u8 moveMadeForSet = false;
 
+i32 add_multiplier_text(Set *set, i32 value) {
+    //need to specify ui type
+      vec2 setPos = world_to_ui(
+          set->object.model,
+          gMemory->renderBuffer->view,
+          gMemory->renderBuffer->projection        
+      );
+      setPos.x *= RENDERING_ASPECT;
+
+      TextElement multiplier = TextElement{ Anchor::CENTER, "", setPos.x + 0.4f, setPos.y - 0.2f, -1, true, DEFAULT_FONT_SCALE * 3.0 };
+      multiplier.color = vec4(1.0f, 0.0f, 0.0f, 1.0f);
+      snprintf(multiplier.text, sizeof(multiplier.text), "x%d", value);
+      multiplierId = add_text_element(gState->uiPage, multiplier);
+      add_move_text_animation(gState->uiPage, multiplierId, vec2(setPos.x, setPos.y - 0.2f), 0.75f);
+      return multiplierId;
+}
+
 void add_set_amount(void *ptr) {
     GameObject* self = (GameObject*)ptr;
     Set* set = (Set*)self;
 
     if(!started) {
         if(set->setType == RUN && gState->player.playerData.runMultipliers > 1) {
-            //need to specify ui type
-            vec2 setPos = world_to_ui(
-                set->object.model,
-                gMemory->renderBuffer->view,
-                gMemory->renderBuffer->projection        
-            );
-            setPos.x *= RENDERING_ASPECT;
-
-            TextElement multiplier = TextElement{ Anchor::CENTER, "", setPos.x + 0.4f, setPos.y - 0.2f, -1, true, DEFAULT_FONT_SCALE * 3.0 };
-            multiplier.color = vec4(1.0f, 0.0f, 0.0f, 1.0f);
-            snprintf(multiplier.text, sizeof(multiplier.text), "x%d", gState->player.playerData.runMultipliers);
-            multiplierId = add_text_element(gState->uiPage, multiplier);
-            add_move_text_animation(gState->uiPage, multiplierId, vec2(setPos.x, setPos.y - 0.2f), 0.75f);
+            multiplierId = add_multiplier_text(set, gState->player.playerData.runMultipliers);
         } else if (set->setType == GROUP && gState->player.playerData.groupMultipliers > 1) {
-            vec2 setPos = world_to_ui(
-                set->object.model,
-                gMemory->renderBuffer->view,
-                gMemory->renderBuffer->projection        
-            );
-            setPos.x *= RENDERING_ASPECT;
-
-            TextElement multiplier = TextElement{ Anchor::CENTER, "", setPos.x + 0.4f, setPos.y - 0.2f, -1, true, DEFAULT_FONT_SCALE * 3.0 };
-            multiplier.color = vec4(1.0f, 0.0f, 0.0f, 1.0f);
-            snprintf(multiplier.text, sizeof(multiplier.text), "x%d", gState->player.playerData.groupMultipliers);
-            multiplierId = add_text_element(gState->uiPage, multiplier);
-            add_move_text_animation(gState->uiPage, multiplierId, vec2(setPos.x, setPos.y - 0.2f), 0.75f);
+            multiplierId = add_multiplier_text(set, gState->player.playerData.groupMultipliers);
         }
     }
 
@@ -1967,12 +1967,12 @@ void add_shop_purchase_menu() {
 
     SheetAnimation panelSheet = SheetAnimation{3, 3};
     
-    UIElement relicBg = UIElement{ Anchor::CENTER, -1, UI_BG_T, 0.26f, 0.55f, 0.5f, 0.225f};
+    UIElement relicBg = UIElement{ Anchor::CENTER, -1, BUTTON_T, 0.26f, 0.525f, 0.5f, 0.225f};
     relicBg.sheetAnimation = panelSheet;
     relicBg.actionId = 11;
 
     relicBg.isPanel = true;
-    relicBg.color = R_PURPLE;
+    relicBg.color = R_BLUE;
     relicBg.hovered = true;
     relicBg.imageChildId = relic1;
 
@@ -1984,13 +1984,11 @@ void add_shop_purchase_menu() {
     relicBg.imageChildId = relic3;
     i32 relicBg3 = add_ui_element(gState->uiPage, relicBg);
 
-    i32 nextRoundId = add_button(gState->uiPage, BUTTON_T, "X", vec2(0.15f, 0.16f), vec2(0.03f), R_GRAY, 0);
-//    i32 groupId = add_button(gState->uiPage, BUTTON_T, "Group X", vec2(0.4f, 0.48f), vec2(0.1f), R_GRAY, 8);
-//    i32 runId = add_button(gState->uiPage, BUTTON_T, "Run X", vec2(0.4f, 0.60f), vec2(0.1f), R_GRAY, 9);
+    i32 nextRoundId = add_button(gState->uiPage, BUTTON_T, "Skip", vec2(0.5f, 0.815f), vec2(0.05f, 0.05f), R_GRAY, 0);
 
     i32 windowIndex = add_window(gState->uiPage, UI_BG_2_T, Anchor::CENTER, vec2(0.75f, 0.75f), vec2(0.5f, 2.0f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE); 
 
-    TextElement relicName = TextElement{ Anchor::CENTER, "", 0.26f, 0.325f, -1, true, DEFAULT_FONT_SCALE, vec3(R_DARK_GRAY)}; 
+    TextElement relicName = TextElement{ Anchor::CENTER, "", 0.26f, 0.325f, -1, true, DEFAULT_FONT_SCALE, vec3(R_WHITE)}; 
     snprintf(relicName.text, sizeof(relicName.text), "%s", gState->relics[relicIds[0]].name);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicName));
     relicName.posx += 0.24f;
@@ -2000,7 +1998,7 @@ void add_shop_purchase_menu() {
     snprintf(relicName.text, sizeof(relicName.text), "%s", gState->relics[relicIds[2]].name);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicName));
 
-    TextElement relicDesc = TextElement{ Anchor::CENTER, "", 0.26f, 0.6f, -1, true, DEFAULT_FONT_SCALE, vec3(R_DARK_GRAY)}; 
+    TextElement relicDesc = TextElement{ Anchor::CENTER, "", 0.26f, 0.6f, -1, true, DEFAULT_FONT_SCALE, vec3(R_WHITE)}; 
     relicDesc.maxWidth = 0.3f;
     snprintf(relicDesc.text, sizeof(relicDesc.text), "%s", gState->relics[relicIds[0]].description);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicDesc));
@@ -2020,16 +2018,7 @@ void add_shop_purchase_menu() {
     add_image_to_window(gState->uiPage, windowIndex, relicBg3);
 
     add_button_to_window(gState->uiPage, windowIndex, nextRoundId);
-//    add_button_to_window(gState->uiPage, windowIndex, groupId);
-//    add_button_to_window(gState->uiPage, windowIndex, runId);
-
-    //TextElement dollarSign = TextElement{ Anchor::CENTER, "$1", 0.6f, 0.48f, -1, true, DEFAULT_FONT_SCALE * 4.0, vec3(1.0f, 0.0f, 0.0f)};
-    //add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, dollarSign));
-
-    //dollarSign.posy += 0.12f;
-    //add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, dollarSign));
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Round Score", 0.3f, 0.175f, -1, true, DEFAULT_FONT_SCALE }));
-
     add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.3f, 0.225f, -1, true, DEFAULT_FONT_SCALE * 3.0f }, 
         "", 0, UINT_64));
 
