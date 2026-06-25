@@ -58,29 +58,18 @@ u8 is_run(Set *set);
 //
 // game_queue.cpp
 void* push(CommandQueue *b, u64 size);
+void* push_command(CommandQueue *q, u32 totalSize, CmdActionFuncPtr executeFn);
 void execute_queue(CommandQueue *b);
-u8 execute_modify_object(void *ptr);
+u8 execute_action(void *ptr);
 void create_queue(CommandQueue *q, u8 *start, u64 size);
 
 u8 execute_wait(void *ptr);
-u8 execute_add_text(void *ptr);
-u8 execute_run_action(void *ptr);
   
 u8 add_text_to_page(void *ptr) {
     TextElement text = *(TextElement *)ptr;
 
     add_text_element(gState->uiPage, text);
     return true;
-}
-
-u8 delete_text_from_page(void *ptr) {
-    i32 textId = *(i32 *)ptr;
-    TextElement text = gState->uiPage->textElements[textId];
-    if(text.numberOfAnimations == 0 || text.animations[text.numberOfAnimations - 1].complete) {
-        delete_text_element(gState->uiPage, textId);
-        return true;
-    }
-    return false;
 }
 
 u8 load_shop_purchase_menu(void *ptr) {
@@ -258,13 +247,10 @@ void revert_to_round_start() {
     for(i32 i = 0; i < gState->playerRack.numberOfTiles; ++i) {
         Tile *tile = gState->playerRack.tiles[i];
         if(tile->object.target != tile->object.model) {
-            ModifyObjectCommand *cmd = PUSH_TYPE(&gState->cmdQueue, ModifyObjectCommand);
-
+            ActionCommand *cmd = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, GameObject *, execute_action);
             if (cmd) {
-                cmd->header.size = sizeof(ModifyObjectCommand);
-                cmd->header.execute = execute_modify_object;
-                cmd->object = &tile->object;
                 cmd->action = move_tile;
+                *COMMAND_PAYLOAD(cmd, GameObject *) = &tile->object;
             }
         }
     }
@@ -409,7 +395,7 @@ void align_rack_tiles() {
 }
 
 u8 move_tile(void* ptr) {
-    GameObject* self = (GameObject*)ptr;
+    GameObject *self = *(GameObject **)ptr;
 
     vec3 current = vec3(
         self->model[3][0],
@@ -453,7 +439,7 @@ u8 move_tile(void* ptr) {
 }
 
 u8 add_tile_amount(void* ptr) {
-    GameObject* self = (GameObject*)ptr;
+    GameObject *self = *(GameObject **)ptr;
     Tile* tile = (Tile*)self;
 
     self->animTimer += gState->deltaTime;
@@ -500,18 +486,15 @@ void add_multiplier_text(Set *set, i32 value) {
     snprintf(multiplier.text, sizeof(multiplier.text), "x%d", value);
     add_move_animation(&multiplier, vec2(setPos.x, setPos.y - 0.2f), 0.75f);
 
-    AddTextElementCommand *cmd = PUSH_TYPE(&gState->cmdQueue, AddTextElementCommand);
-
+    ActionCommand *cmd = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, TextElement, execute_action);
     if (cmd) {
-        cmd->header.size = sizeof(AddTextElementCommand);
-        cmd->header.execute = execute_add_text;
-        cmd->element = multiplier;
         cmd->action = add_text_to_page;
+        *COMMAND_PAYLOAD(cmd, TextElement) = multiplier;
     }
 }
 
 u8 add_set_amount(void *ptr) {
-    GameObject* self = (GameObject*)ptr;
+    GameObject *self = *(GameObject **)ptr;
     Tile* tile = (Tile*)self;
     Set *set = &gState->table.sets[tile->setId];
     set->value += tile->details.tileNumber;
@@ -527,15 +510,11 @@ void add_tile_to_rack(Tile *tile) {
     tile->setId = -1;
     tile->originalPosition = tile->object.model;
 
-    ModifyObjectCommand *cmd = PUSH_TYPE(&gState->cmdQueue, ModifyObjectCommand);
-
+    ActionCommand *cmd = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, GameObject *, execute_action);
     if (cmd) {
-        cmd->header.size = sizeof(ModifyObjectCommand);
-        cmd->header.execute = execute_modify_object;
-        cmd->object = &tile->object;
         cmd->action = move_tile;
+        *COMMAND_PAYLOAD(cmd, GameObject *) = &tile->object;
     }
-
     gState->playerRack.tiles[gState->playerRack.numberOfTiles] = tile;
     gState->playerRack.numberOfTiles++;
 }
@@ -2152,24 +2131,20 @@ void count_table() {
         TextElement setElement = TextElement{ Anchor::CENTER, "", pos.x, pos.y - 0.2f, -1, true, DEFAULT_FONT_SCALE * 3.0 };
         add_value_to_text(gState->uiPage, &setElement, "+", gState->uiPage->numberOfValues - 1, UINT_64);
 
-        AddTextElementCommand *cmd = PUSH_TYPE(&gState->cmdQueue, AddTextElementCommand);
-        if (cmd) {
-            cmd->header.size = sizeof(AddTextElementCommand);
-            cmd->header.execute = execute_add_text;
-            cmd->element = setElement;
-            cmd->action = add_text_to_page;
+        ActionCommand *setText = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, TextElement, execute_action);
+        if (setText) {
+            setText->action = add_text_to_page;
+            *COMMAND_PAYLOAD(setText, TextElement) = setElement;
         }
 
         for(i32 j = 0; j < set->numberOfTiles; ++j) {
             Tile *tile = set->tiles[j];
             tile->object.baseModel = tile->object.model;
-            ModifyObjectCommand *cmd = PUSH_TYPE(&gState->cmdQueue, ModifyObjectCommand);
 
+            ActionCommand *cmd = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, GameObject *, execute_action);
             if (cmd) {
-                cmd->header.size = sizeof(ModifyObjectCommand);
-                cmd->header.execute = execute_modify_object;
-                cmd->object = &tile->object;
                 cmd->action = add_tile_amount;
+                *COMMAND_PAYLOAD(cmd, GameObject *) = &tile->object;
             }
 
             vec3 tilePos = vec3(
@@ -2181,37 +2156,27 @@ void count_table() {
             TextElement bonus = TextElement{ Anchor::CENTER, "", tilePos.x / RENDERING_ASPECT, tilePos.y, -1, true, DEFAULT_FONT_SCALE * 2.0 };
             snprintf(bonus.text, sizeof(bonus.text), "+%d", (i32)tile->details.tileNumber);
             add_move_animation(&bonus, vec2(tilePos.x / RENDERING_ASPECT, tilePos.y - 0.1f), 0.5f);
-            AddTextElementCommand *tileText = PUSH_TYPE(&gState->cmdQueue, AddTextElementCommand);
 
+            ActionCommand *tileText = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, TextElement, execute_action);
             if (tileText) {
-                tileText->header.size = sizeof(AddTextElementCommand);
-                tileText->header.execute = execute_add_text;
-                tileText->element = bonus;
                 tileText->action = add_text_to_page;
+                *COMMAND_PAYLOAD(tileText, TextElement) = bonus;
             }
 
-            WaitCommand *wait = PUSH_TYPE(&gState->cmdQueue, WaitCommand);
-
+            WaitCommand *wait = PUSH_COMMAND(&gState->cmdQueue, WaitCommand, 0, execute_wait);
             if (wait) {
-                wait->header.size = sizeof(WaitCommand);
-                wait->header.execute = execute_wait;
                 wait->duration = 0.5f;
                 wait->elapsed = 0.0f;
             }
 
-            ModifyObjectCommand *setVal = PUSH_TYPE(&gState->cmdQueue, ModifyObjectCommand);
-
+            ActionCommand *setVal = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, GameObject *, execute_action);
             if (setVal) {
-                setVal->header.size = sizeof(ModifyObjectCommand);
-                setVal->header.execute = execute_modify_object;
-                setVal->object = &tile->object;
                 setVal->action = add_set_amount;
+                *COMMAND_PAYLOAD(setVal, GameObject *) = &tile->object;
             }
-            WaitCommand *setwait = PUSH_TYPE(&gState->cmdQueue, WaitCommand);
 
+            WaitCommand *setwait = PUSH_COMMAND(&gState->cmdQueue, WaitCommand, 0, execute_wait);
             if (setwait) {
-                setwait->header.size = sizeof(WaitCommand);
-                setwait->header.execute = execute_wait;
                 setwait->duration = 0.5f;
                 setwait->elapsed = 0.0f;
             }
@@ -2222,27 +2187,10 @@ void count_table() {
         } else if (set->setType == GROUP && gState->player.playerData.groupMultipliers > 1) {
             add_multiplier_text(set, gState->player.playerData.groupMultipliers);
         }
-
-
-//        ModifyTextElementCommand *cmd = PUSH_TYPE(&gState->cmdQueue, ModifyTextElementCommand);
-//
-//        if (cmd) {
-//            cmd->header.size = sizeof(ModifyTextElementCommand);
-//            cmd->header.execute = execute_modify_text;
-//            cmd->textId = gState->uiPage->numberOfTextElements;
-//            cmd->action = delete_text_from_page;
-//        }
-
     }
 
-    RunActionCommand *cmd = PUSH_TYPE(&gState->cmdQueue, RunActionCommand);
-
-    if (cmd) {
-        cmd->header.size = sizeof(RunActionCommand);
-        cmd->header.execute = execute_run_action;
-        cmd->action = load_shop_purchase_menu;
-    }
-
+    ActionCommand *cmd = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, 0, execute_action);
+    if (cmd) cmd->action = load_shop_purchase_menu;
 }
 
 void calculate_round_bonus(GameData *gd, PlayerData pd) {
@@ -2455,7 +2403,7 @@ void add_game_ui_data(UIPage *uiPage) {
     uiPage->values[uiPage->numberOfValues++] = &(i32)gState->pool.numberOfTiles;
     uiPage->values[uiPage->numberOfValues++] = &numTableTiles;
     uiPage->values[uiPage->numberOfValues++] = &gState->gameData.rounds;
-    uiPage->values[uiPage->numberOfValues++] = &gState->player.playerData.score; // this should be round score
+    uiPage->values[uiPage->numberOfValues++] = &gState->gameData.roundScore;
     uiPage->values[uiPage->numberOfValues++] = &hoveredSetValue;
     uiPage->formatters[uiPage->numberOfValues] = gMemory->format_resolution_fn;
     uiPage->values[uiPage->numberOfValues++] = gMemory->supportedResolutions; //9 

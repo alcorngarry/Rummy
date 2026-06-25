@@ -38,33 +38,19 @@ struct GameObject {
     };
 };
 
-#define PUSH_TYPE(buf, type) (type*)push(buf, sizeof(type))
-#define POP_TYPE(buf, type) (type*)pop(buf, sizeof(type))
-#define PEEK_TYPE(buf, type) (type*)peek(buf, sizeof(type))
+#define PUSH_COMMAND(queue, cmdType, payloadType, execFn) \
+    (cmdType *)push_command( \
+        queue, \
+        sizeof(cmdType) + sizeof(payloadType), \
+        execFn)
+#define COMMAND_PAYLOAD(cmd, type) \
+    ((type *)((u8 *)(cmd) + sizeof(*(cmd))))
 struct CommandHeader {
     u64 size;
     u8 (*execute)(void *cmd);
 };
 
-struct AddTextElementCommand {
-    CommandHeader header;
-    CmdActionFuncPtr action;
-    TextElement element;
-};
-
-struct ModifyObjectCommand {
-    CommandHeader header;
-    CmdActionFuncPtr action;
-    GameObject *object;
-};
-
-struct ModifyTextElementCommand {
-    CommandHeader header;
-    CmdActionFuncPtr action;
-    i32 textId;
-};
-
-struct RunActionCommand {
+struct ActionCommand {
     CommandHeader header;
     CmdActionFuncPtr action;
 };
@@ -255,6 +241,7 @@ struct GameData {
     u64 minimumScore;
     u64 dollaBills = 0;
     u64 rounds = 1;
+    u64 roundScore = 0;
 };
 
 struct GameState {

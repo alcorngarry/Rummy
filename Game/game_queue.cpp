@@ -22,6 +22,17 @@ void* push(CommandQueue *b, u64 size) {
     return result;
 }
 
+void* push_command(CommandQueue *q, u32 totalSize, CmdActionFuncPtr executeFn) {
+    CommandHeader *cmd = (CommandHeader *)push(q, totalSize);
+
+    if (!cmd) return nullptr;
+
+    cmd->size = totalSize;
+    cmd->execute = executeFn;
+
+    return cmd;
+}
+
 void* pop(CommandQueue *b, u64 size) {
     if (b->readIndex == b->writeIndex) {
         return nullptr;
@@ -41,28 +52,12 @@ void* peek(CommandQueue *b, u64 size) {
     return b->base + b->readIndex;
 }
 
-u8 execute_add_text(void *ptr) {
-    AddTextElementCommand *cmd = (AddTextElementCommand *)ptr;
+u8 execute_action(void *ptr) {
+    ActionCommand *cmd = (ActionCommand *)ptr;
 
-    return cmd->action(&cmd->element);
-}
+    void *payload = (u8 *)cmd + sizeof(ActionCommand);
 
-u8 execute_modify_text(void *ptr) {
-    ModifyTextElementCommand *cmd = (ModifyTextElementCommand *)ptr;
-
-    return cmd->action(&cmd->textId);
-}
-
-u8 execute_modify_object(void *ptr) {
-    ModifyObjectCommand *cmd = (ModifyObjectCommand *)ptr;
-
-    return cmd->action(cmd->object);
-}
-
-u8 execute_run_action(void *ptr) {
-    RunActionCommand *cmd = (RunActionCommand *)ptr;
-
-    return cmd->action(nullptr);
+    return cmd->action(payload);
 }
 
 u8 execute_wait(void *ptr) {
