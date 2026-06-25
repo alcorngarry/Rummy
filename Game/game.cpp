@@ -4,9 +4,6 @@
 #include <xstring>
 
 #define START_RACK_AMOUNT 4
-#define PUSH_TYPE(buf, type) (type*)push(buf, sizeof(type))
-#define POP_TYPE(buf, type) (type*)pop(buf, sizeof(type))
-#define PEEK_TYPE(buf, type) (type*)peek(buf, sizeof(type))
 
 const f32 TABLE_SCALE = 1.2f;
 const vec3 defaultTileScale = vec3(0.08f);
@@ -19,7 +16,6 @@ mat4 rackSpaces[RACK_SPACES];
 u8 debugMenuOpen = false;
 // terrible but for the ui endgame
 u64 numTableTiles = 0;
-i32 progressScore = 0;
 u64 hoveredSetValue = 100;
 char *videoModes[2] = {"Window", "Fullscreen"};
 
@@ -43,8 +39,7 @@ void add_options_ui();
 void update_set_ui(Set* set);
 Set* get_hovered_set();
 void clear_player_data();
-void* push(ActionBuffer *b, u64 size);
-void move_tile(void* ptr);
+u8 move_tile(void* ptr);
 void add_game_ui_data(UIPage *uiPage);
 vec2 world_to_ui(mat4 model, mat4 view, mat4 projection);
 void add_shop_purchase_menu();
@@ -60,6 +55,40 @@ u8 tile_valid_in_invalid(Set *set, Tile *tile);
 u8 is_tile_playable_in_set(Set *set, Tile *tile);
 u8 is_group(Set *set);
 u8 is_run(Set *set);
+//
+// game_queue.cpp
+void* push(CommandQueue *b, u64 size);
+void execute_queue(CommandQueue *b);
+u8 execute_modify_object(void *ptr);
+void create_queue(CommandQueue *q, u8 *start, u64 size);
+
+u8 execute_wait(void *ptr);
+u8 execute_add_text(void *ptr);
+u8 execute_run_action(void *ptr);
+  
+u8 add_text_to_page(void *ptr) {
+    TextElement text = *(TextElement *)ptr;
+
+    add_text_element(gState->uiPage, text);
+    return true;
+}
+
+u8 delete_text_from_page(void *ptr) {
+    i32 textId = *(i32 *)ptr;
+    TextElement text = gState->uiPage->textElements[textId];
+    if(text.numberOfAnimations == 0 || text.animations[text.numberOfAnimations - 1].complete) {
+        delete_text_element(gState->uiPage, textId);
+        return true;
+    }
+    return false;
+}
+
+u8 load_shop_purchase_menu(void *ptr) {
+    clear_game_ui();
+    add_shop_purchase_menu();
+    return true;
+}
+//
 
 void create_quad() {
     f32 vertices[] = {
@@ -229,9 +258,14 @@ void revert_to_round_start() {
     for(i32 i = 0; i < gState->playerRack.numberOfTiles; ++i) {
         Tile *tile = gState->playerRack.tiles[i];
         if(tile->object.target != tile->object.model) {
-            tile->object.action = move_tile; 
-            GameObject** slot = PUSH_TYPE(&gState->actionBuffer, GameObject*);
-            *slot = &tile->object;
+            ModifyObjectCommand *cmd = PUSH_TYPE(&gState->cmdQueue, ModifyObjectCommand);
+
+            if (cmd) {
+                cmd->header.size = sizeof(ModifyObjectCommand);
+                cmd->header.execute = execute_modify_object;
+                cmd->object = &tile->object;
+                cmd->action = move_tile;
+            }
         }
     }
     
@@ -374,7 +408,7 @@ void align_rack_tiles() {
     };
 }
 
-void move_tile(void* ptr) {
+u8 move_tile(void* ptr) {
     GameObject* self = (GameObject*)ptr;
 
     vec3 current = vec3(
@@ -391,16 +425,15 @@ void move_tile(void* ptr) {
 
     vec3 delta = target - current;
 
-    float speed = 6.0f;
-    float dist = length(delta);
+    f32 speed = 6.0f;
+    f32 dist = length(delta);
 
     if (dist < 0.001f) {
         gMemory->play_audio_fn("./audio/place_tile.wav");
         self->model[3][0] = target.x;
         self->model[3][1] = target.y;
         self->model[3][2] = target.z;
-        self->action = nullptr;
-        return;
+        return true;
     }
 
     vec3 dir = delta / dist;
@@ -415,13 +448,11 @@ void move_tile(void* ptr) {
         self->model[3][1] += step.y;
         self->model[3][2] += step.z;
     }
+
+    return false;
 }
 
-i32 stupidSetId = -1;
-u8 tileStarted = false;
-i32 tileDone = -1;
-
-void add_tile_amount(void* ptr) {
+u8 add_tile_amount(void* ptr) {
     GameObject* self = (GameObject*)ptr;
     Tile* tile = (Tile*)self;
 
@@ -447,111 +478,45 @@ void add_tile_amount(void* ptr) {
     self->model[3][2] = pos.z;
 
     if (t >= 1.0f) {
-        Set *set = &gState->table.sets[tile->setId];
-        if(set->tiles[0] == tile && !tileStarted) {
-            vec2 pos = world_to_ui(
-                set->object.model,
-                gMemory->renderBuffer->view,
-                gMemory->renderBuffer->projection        
-            );
+        self->model = self->baseModel;
+        gMemory->play_audio_fn("./audio/place_tile.wav");
 
-            set->value = 0;
-            gState->uiPage->values[gState->uiPage->numberOfValues++] = &set->value;
-            TextElement setElement = TextElement{ Anchor::CENTER, "", pos.x, pos.y - 0.2f, -1, true, DEFAULT_FONT_SCALE * 3.0 };
-            stupidSetId = add_dynamic_text_element(gState->uiPage, setElement, "+", gState->uiPage->numberOfValues - 1, UINT_64);
-        }
-
-        
-        if(!tileStarted) {
-            TextElement bonus = TextElement{ Anchor::CENTER, "", pos.x / RENDERING_ASPECT, pos.y, -1, true, DEFAULT_FONT_SCALE * 2.0 };
-            snprintf(bonus.text, sizeof(bonus.text), "+%d", (i32)tile->details.tileNumber);
-            tileDone = add_text_element(gState->uiPage, bonus);
-            add_move_text_animation(gState->uiPage, tileDone, vec2(pos.x / RENDERING_ASPECT, pos.y - 0.1f), 0.5f);
-            self->model = self->baseModel;
-            tileStarted = true;
-        }
-                
-        if(gState->uiPage->textElements[tileDone].animations[0].complete) {
-            gMemory->play_audio_fn("./audio/place_tile.wav");
-            set->value += tile->details.tileNumber;
-            self->action = nullptr;
-            tileStarted = false;
-            delete_text_element(gState->uiPage, tileDone);
-        }
+        return true;
     }
+    return false;
 }
 
-i32 multiplierId = -1;
-u8 started = false;
-u8 progressScoreComplete = false;
-u8 moveMadeForSet = false;
-
-i32 add_multiplier_text(Set *set, i32 value) {
+void add_multiplier_text(Set *set, i32 value) {
     //need to specify ui type
-      vec2 setPos = world_to_ui(
-          set->object.model,
-          gMemory->renderBuffer->view,
-          gMemory->renderBuffer->projection        
-      );
-      setPos.x *= RENDERING_ASPECT;
+    vec2 setPos = world_to_ui(
+        set->object.model,
+        gMemory->renderBuffer->view,
+        gMemory->renderBuffer->projection        
+    );
+    setPos.x *= RENDERING_ASPECT;
 
-      TextElement multiplier = TextElement{ Anchor::CENTER, "", setPos.x + 0.4f, setPos.y - 0.2f, -1, true, DEFAULT_FONT_SCALE * 3.0 };
-      multiplier.color = vec4(1.0f, 0.0f, 0.0f, 1.0f);
-      snprintf(multiplier.text, sizeof(multiplier.text), "x%d", value);
-      multiplierId = add_text_element(gState->uiPage, multiplier);
-      add_move_text_animation(gState->uiPage, multiplierId, vec2(setPos.x, setPos.y - 0.2f), 0.75f);
-      return multiplierId;
+    TextElement multiplier = TextElement{ Anchor::CENTER, "", setPos.x + 0.4f, setPos.y - 0.2f, -1, true, DEFAULT_FONT_SCALE * 3.0 };
+    multiplier.color = R_RED;
+    snprintf(multiplier.text, sizeof(multiplier.text), "x%d", value);
+    add_move_animation(&multiplier, vec2(setPos.x, setPos.y - 0.2f), 0.75f);
+
+    AddTextElementCommand *cmd = PUSH_TYPE(&gState->cmdQueue, AddTextElementCommand);
+
+    if (cmd) {
+        cmd->header.size = sizeof(AddTextElementCommand);
+        cmd->header.execute = execute_add_text;
+        cmd->element = multiplier;
+        cmd->action = add_text_to_page;
+    }
 }
 
-void add_set_amount(void *ptr) {
+u8 add_set_amount(void *ptr) {
     GameObject* self = (GameObject*)ptr;
-    Set* set = (Set*)self;
+    Tile* tile = (Tile*)self;
+    Set *set = &gState->table.sets[tile->setId];
+    set->value += tile->details.tileNumber;
 
-    if(!started) {
-        if(set->setType == RUN && gState->player.playerData.runMultipliers > 1) {
-            multiplierId = add_multiplier_text(set, gState->player.playerData.runMultipliers);
-        } else if (set->setType == GROUP && gState->player.playerData.groupMultipliers > 1) {
-            multiplierId = add_multiplier_text(set, gState->player.playerData.groupMultipliers);
-        }
-    }
-
-    if(multiplierId != -1) {
-        if(gState->uiPage->textElements[multiplierId].animations[0].complete) {
-            if(set->setType == GROUP) {
-                set->value *= gState->player.playerData.groupMultipliers;
-            } else {
-                set->value *= gState->player.playerData.runMultipliers;
-            }
-            multiplierId = -1;
-        }
-    } else {
-        if(!moveMadeForSet && gState->uiPage->textElements[stupidSetId].countAnimation.complete) {
-            add_move_text_animation(gState->uiPage, stupidSetId, vec2(0.5, 0.07f), 0.5f);
-            moveMadeForSet = true;
-        }
-        multiplierId = -1;
-    }
-
-    started = true;
-
-    if(progressScoreComplete && gState->uiPage->textElements[1].countAnimation.complete) {
-        moveMadeForSet = false;
-        progressScoreComplete = false;
-        set->object.action = nullptr;
-        started = false;
-
-        if(set->id == gState->table.numberOfSets - 1) {
-            clear_game_ui();
-            add_shop_purchase_menu();
-        }
-    }
-
-    if(!progressScoreComplete && gState->uiPage->textElements[stupidSetId].animations[0].complete) {
-        delete_text_element(gState->uiPage, stupidSetId);
-        progressScore += set->value;
-        progressScoreComplete = true;
-        stupidSetId = -1;
-    } 
+    return true;
 }
 
 void add_tile_to_rack(Tile *tile) {
@@ -562,9 +527,14 @@ void add_tile_to_rack(Tile *tile) {
     tile->setId = -1;
     tile->originalPosition = tile->object.model;
 
-    tile->object.action = move_tile; 
-    GameObject** slot = PUSH_TYPE(&gState->actionBuffer, GameObject*);
-    *slot = &tile->object;
+    ModifyObjectCommand *cmd = PUSH_TYPE(&gState->cmdQueue, ModifyObjectCommand);
+
+    if (cmd) {
+        cmd->header.size = sizeof(ModifyObjectCommand);
+        cmd->header.execute = execute_modify_object;
+        cmd->object = &tile->object;
+        cmd->action = move_tile;
+    }
 
     gState->playerRack.tiles[gState->playerRack.numberOfTiles] = tile;
     gState->playerRack.numberOfTiles++;
@@ -2171,18 +2141,108 @@ void clear_game_ui() {
 void count_table() {
     for(i32 i = 0; i < gState->table.numberOfSets; ++i) {
         Set *set = &gState->table.sets[i];
+        //
+        vec2 pos = world_to_ui(
+            set->object.model,
+            gMemory->renderBuffer->view,
+            gMemory->renderBuffer->projection        
+        );
+        set->value = 0;
+        gState->uiPage->values[gState->uiPage->numberOfValues++] = &set->value;
+        TextElement setElement = TextElement{ Anchor::CENTER, "", pos.x, pos.y - 0.2f, -1, true, DEFAULT_FONT_SCALE * 3.0 };
+        add_value_to_text(gState->uiPage, &setElement, "+", gState->uiPage->numberOfValues - 1, UINT_64);
+
+        AddTextElementCommand *cmd = PUSH_TYPE(&gState->cmdQueue, AddTextElementCommand);
+        if (cmd) {
+            cmd->header.size = sizeof(AddTextElementCommand);
+            cmd->header.execute = execute_add_text;
+            cmd->element = setElement;
+            cmd->action = add_text_to_page;
+        }
+
         for(i32 j = 0; j < set->numberOfTiles; ++j) {
             Tile *tile = set->tiles[j];
             tile->object.baseModel = tile->object.model;
-            tile->object.action = add_tile_amount;
-            GameObject** slot = PUSH_TYPE(&gState->actionBuffer, GameObject*);
-            *slot = &tile->object;
+            ModifyObjectCommand *cmd = PUSH_TYPE(&gState->cmdQueue, ModifyObjectCommand);
+
+            if (cmd) {
+                cmd->header.size = sizeof(ModifyObjectCommand);
+                cmd->header.execute = execute_modify_object;
+                cmd->object = &tile->object;
+                cmd->action = add_tile_amount;
+            }
+
+            vec3 tilePos = vec3(
+                tile->object.baseModel[3][0],
+                tile->object.baseModel[3][1],
+                tile->object.baseModel[3][2]
+            );
+
+            TextElement bonus = TextElement{ Anchor::CENTER, "", tilePos.x / RENDERING_ASPECT, tilePos.y, -1, true, DEFAULT_FONT_SCALE * 2.0 };
+            snprintf(bonus.text, sizeof(bonus.text), "+%d", (i32)tile->details.tileNumber);
+            add_move_animation(&bonus, vec2(tilePos.x / RENDERING_ASPECT, tilePos.y - 0.1f), 0.5f);
+            AddTextElementCommand *tileText = PUSH_TYPE(&gState->cmdQueue, AddTextElementCommand);
+
+            if (tileText) {
+                tileText->header.size = sizeof(AddTextElementCommand);
+                tileText->header.execute = execute_add_text;
+                tileText->element = bonus;
+                tileText->action = add_text_to_page;
+            }
+
+            WaitCommand *wait = PUSH_TYPE(&gState->cmdQueue, WaitCommand);
+
+            if (wait) {
+                wait->header.size = sizeof(WaitCommand);
+                wait->header.execute = execute_wait;
+                wait->duration = 0.5f;
+                wait->elapsed = 0.0f;
+            }
+
+            ModifyObjectCommand *setVal = PUSH_TYPE(&gState->cmdQueue, ModifyObjectCommand);
+
+            if (setVal) {
+                setVal->header.size = sizeof(ModifyObjectCommand);
+                setVal->header.execute = execute_modify_object;
+                setVal->object = &tile->object;
+                setVal->action = add_set_amount;
+            }
+            WaitCommand *setwait = PUSH_TYPE(&gState->cmdQueue, WaitCommand);
+
+            if (setwait) {
+                setwait->header.size = sizeof(WaitCommand);
+                setwait->header.execute = execute_wait;
+                setwait->duration = 0.5f;
+                setwait->elapsed = 0.0f;
+            }
         }
 
-        set->object.action = add_set_amount;
-        GameObject** slot = PUSH_TYPE(&gState->actionBuffer, GameObject*);
-        *slot = &set->object;
+        if(set->setType == RUN && gState->player.playerData.runMultipliers > 1) {
+            add_multiplier_text(set, gState->player.playerData.runMultipliers);
+        } else if (set->setType == GROUP && gState->player.playerData.groupMultipliers > 1) {
+            add_multiplier_text(set, gState->player.playerData.groupMultipliers);
+        }
+
+
+//        ModifyTextElementCommand *cmd = PUSH_TYPE(&gState->cmdQueue, ModifyTextElementCommand);
+//
+//        if (cmd) {
+//            cmd->header.size = sizeof(ModifyTextElementCommand);
+//            cmd->header.execute = execute_modify_text;
+//            cmd->textId = gState->uiPage->numberOfTextElements;
+//            cmd->action = delete_text_from_page;
+//        }
+
     }
+
+    RunActionCommand *cmd = PUSH_TYPE(&gState->cmdQueue, RunActionCommand);
+
+    if (cmd) {
+        cmd->header.size = sizeof(RunActionCommand);
+        cmd->header.execute = execute_run_action;
+        cmd->action = load_shop_purchase_menu;
+    }
+
 }
 
 void calculate_round_bonus(GameData *gd, PlayerData pd) {
@@ -2206,7 +2266,7 @@ void calculate_round_bonus(GameData *gd, PlayerData pd) {
 void complete_round() {
     clear_game_ui();
     GameData gd = gState->gameData;
-    progressScore = 0;
+    //progressScore = 0;
 
     if(gd.turnLimit == 0 && (gState->playerRack.numberOfTiles > 0 || gd.minimumScore > gState->player.playerData.score)) {
         gState->mode = GM_GAME_OVER;
@@ -2324,73 +2384,6 @@ void end_turn() {
     }
 }
 
-u64 next_index(ActionBuffer *b, u64 index, u64 amount) {
-    return (index + amount) % b->size;
-}
-
-void* push(ActionBuffer *b, u64 size) {
-    u64 used = (b->writeIndex >= b->readIndex)
-        ? (b->writeIndex - b->readIndex)
-        : (b->size - (b->readIndex - b->writeIndex));
-
-    u64 freeSpace = b->size - used;
-
-    if (size > freeSpace) {
-        printf("Action buffer full!\n");
-        return nullptr;
-    }
-
-    void* result = b->base + b->writeIndex;
-    b->writeIndex = next_index(b, b->writeIndex, size);
-
-    return result;
-}
-
-void* pop(ActionBuffer *b, u64 size) {
-    if (b->readIndex == b->writeIndex) {
-        return nullptr;
-    }
-
-    void* result = b->base + b->readIndex;
-    b->readIndex = next_index(b, b->readIndex, size);
-
-    return result;
-}
-
-void* peek(ActionBuffer *b, u64 size) {
-    if (b->readIndex == b->writeIndex) {
-        return nullptr;
-    }
-
-    return b->base + b->readIndex;
-}
-
-void update_game_objects() {
-    ActionBuffer *b = &gState->actionBuffer;
-
-    if (b->readIndex == b->writeIndex) {
-        return;
-    }
-
-    GameObject **objPtr = PEEK_TYPE(b, GameObject*);
-
-    if (!objPtr) return;
-
-    GameObject *obj = *objPtr;
-
-    if (!obj) {
-        POP_TYPE(b, GameObject*);
-        return;
-    }
-
-    if (obj->action) {
-        obj->action(obj);
-        return;
-    }
-
-    POP_TYPE(b, GameObject*);
-}
-
 void draw_ui() {
     update(gState->uiPage, gState->deltaTime);
     gMemory->push_ui_page_fn(gMemory->renderBuffer, gState->uiPage);
@@ -2462,7 +2455,7 @@ void add_game_ui_data(UIPage *uiPage) {
     uiPage->values[uiPage->numberOfValues++] = &(i32)gState->pool.numberOfTiles;
     uiPage->values[uiPage->numberOfValues++] = &numTableTiles;
     uiPage->values[uiPage->numberOfValues++] = &gState->gameData.rounds;
-    uiPage->values[uiPage->numberOfValues++] = &progressScore;
+    uiPage->values[uiPage->numberOfValues++] = &gState->player.playerData.score; // this should be round score
     uiPage->values[uiPage->numberOfValues++] = &hoveredSetValue;
     uiPage->formatters[uiPage->numberOfValues] = gMemory->format_resolution_fn;
     uiPage->values[uiPage->numberOfValues++] = gMemory->supportedResolutions; //9 
@@ -2515,11 +2508,8 @@ extern "C" GAME_DLL void game_init(GameMemory* memory, i32 preserveState) {
 
     gMemory->renderBuffer->view = mat4(1.0f);
     
-    gState->actionBuffer.base = memoryCursor;
-    gState->actionBuffer.size = MB;
-    gState->actionBuffer.readIndex = 0;
-    gState->actionBuffer.writeIndex = 0;
-  
+    create_queue(&gState->cmdQueue, memoryCursor, MB);
+
     debug_state_memory(memory, memoryCursor);
 
     create_quad();
@@ -2543,7 +2533,7 @@ extern "C" GAME_DLL void game_update_and_render() {
 
     switch(gState->mode) {
         case GM_PLAYING : {
-            update_game_objects();
+            execute_queue(&gState->cmdQueue);
             draw_table();
             draw_pool();
             draw_player_rack();
@@ -2551,7 +2541,7 @@ extern "C" GAME_DLL void game_update_and_render() {
             break;
         }
         case GM_ROUND_COMPLETE : {
-            update_game_objects();
+            execute_queue(&gState->cmdQueue);
             draw_table();
             draw_player_rack();
             break;

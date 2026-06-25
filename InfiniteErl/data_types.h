@@ -40,6 +40,7 @@ typedef glm::ivec2 ivec2;
 typedef void (*ActionFuncPtr)();
 typedef void (*I64ActionFuncPtr)(i64 val);
 typedef void (*SelfActionFuncPtr)(void* self);
+typedef u8 (*CmdActionFuncPtr)(void* self);
 
 struct Resolution {
     i32 width;

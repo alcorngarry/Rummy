@@ -644,6 +644,13 @@ void add_move_text_animation(UIPage *page, i32 elementId, vec2 destination, f32 
     e->onCompleteActionId = 0;
 }
 
+void add_move_animation(TextElement *e, vec2 destination, f32 speed) {
+    Animation a = Animation{destination, vec2(e->posx, e->posy), true};
+    a.duration = speed;
+    e->animations[e->numberOfAnimations++] = a;
+    e->onCompleteActionId = 0;
+}
+
 vec2 get_center(Anchor anchor, vec2 size, vec2 pos) {
     if(anchor == TOP_LEFT) {
         return vec2(pos.x + (size.x * 0.5f), pos.y + (size.y * 0.5f));
@@ -853,6 +860,14 @@ i32 add_text_element(UIPage* page, TextElement text) {
     page->textElements[page->numberOfTextElements] = text;
     page->numberOfTextElements++;
     return index;
+}
+
+void add_value_to_text(UIPage *page, TextElement *text, const char* label, i32 valueId, TextType t) {
+    text->prefix = label;
+    text->valueId = valueId;
+    text->type = t;
+    text->prevValue = get_converted_text_type(t, page->values[valueId]);
+    set_text_value(text, text->prevValue);
 }
 
 i32 add_dynamic_text_element(UIPage* page, TextElement text, const char* label, i32 valueId, TextType t, f32 mult) {

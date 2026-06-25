@@ -24,7 +24,6 @@ struct GameObject {
     i32 fps = 0;
     f32 animTimer = 0.0f;
     i32 currentFrame = 0;
-    SelfActionFuncPtr action = nullptr;
     mat4 target;
     mat4 baseModel;
 
@@ -39,7 +38,44 @@ struct GameObject {
     };
 };
 
-struct ActionBuffer {
+#define PUSH_TYPE(buf, type) (type*)push(buf, sizeof(type))
+#define POP_TYPE(buf, type) (type*)pop(buf, sizeof(type))
+#define PEEK_TYPE(buf, type) (type*)peek(buf, sizeof(type))
+struct CommandHeader {
+    u64 size;
+    u8 (*execute)(void *cmd);
+};
+
+struct AddTextElementCommand {
+    CommandHeader header;
+    CmdActionFuncPtr action;
+    TextElement element;
+};
+
+struct ModifyObjectCommand {
+    CommandHeader header;
+    CmdActionFuncPtr action;
+    GameObject *object;
+};
+
+struct ModifyTextElementCommand {
+    CommandHeader header;
+    CmdActionFuncPtr action;
+    i32 textId;
+};
+
+struct RunActionCommand {
+    CommandHeader header;
+    CmdActionFuncPtr action;
+};
+
+struct WaitCommand {
+    CommandHeader header;
+    f32 duration;
+    f32 elapsed;
+};
+
+struct CommandQueue {
     u8 *base;
     u64 size;
     u64 readIndex;
@@ -243,7 +279,7 @@ struct GameState {
     Rack playerRack;
     Table table;
 
-    ActionBuffer actionBuffer;
+    CommandQueue cmdQueue;
 };
 
 extern GameState* gState;
