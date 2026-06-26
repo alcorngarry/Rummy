@@ -197,33 +197,50 @@ void set_text_value(TextElement* text, f64 value) {
 }
 
 void move_text_element(UIPage *page, TextElement* element, f32 deltaTime) {
-    for(i32 i = 0; i < element->numberOfAnimations; ++i) {
-        Animation* a = &element->animations[i];
-        if(a->complete) continue;
+    u8 blocking = false;
 
-        a->elapsed += deltaTime;
-        f32 t = a->elapsed / a->duration;
+    for (i32 i = 0; i < element->numberOfAnimations; ++i) {
+        Animation *a = &element->animations[i];
+        if (a->complete) continue;
 
-        if(t >= 1.0f) {
-            t = 1.0f;
-            a->complete = true;
-        }
+        if (blocking && a->animationType != BOB)
+            continue;
 
-        f32 eased = ease(t, a->ease);
-
-        switch(a->animationType) {
+        switch (a->animationType) {
             case MOVE: {
+                blocking = true;
+
+                a->elapsed += deltaTime;
+                f32 t = a->elapsed / a->duration;
+
+                if (t >= 1.0f) {
+                    t = 1.0f;
+                    a->complete = true;
+                }
+
+                f32 eased = ease(t, a->ease);
                 vec2 pos = glm::mix(a->start, a->destination, eased);
 
                 element->posx = pos.x;
                 element->posy = pos.y;
-                break;    
+                break;
+            }
+            case BOB: {
+                a->elapsed += deltaTime;
+
+                if (a->elapsed >= a->duration)
+                    a->elapsed = fmodf(a->elapsed, a->duration);
+
+                f32 t = a->elapsed / a->duration;
+                f32 offset = -1.0f * (sinf(t * 2.0f * PI32) * a->destination.y);
+
+                element->posy += offset;
+                break;
             }
         }
-
-        if(a->complete && element->onCompleteActionId != -1) {
+        if (a->complete && element->onCompleteActionId != -1) {
             RUN_ON_COMPLETE_ACTION(page, element);
-        }
+        } 
     }
 }
 
@@ -483,6 +500,24 @@ void add_cursor(UIPage *page, i32 cursorHandle, vec4 color, CursorType type) {
     } else {
         page->tabCursorId = add_ui_element(page, cursor); 
     }
+}
+
+void add_text_bob(TextElement *element) {
+    f32 amplitude = 0.00001f;
+    f32 duration = 2.0f;
+
+    Animation *a = &element->animations[element->numberOfAnimations++];
+
+    a->animationType = BOB;
+    a->start = vec2(element->posx, element->posy);
+    a->destination = vec2(0.0f, amplitude);
+
+    a->duration = duration;
+    a->elapsed = 0.0f;
+
+    a->loopAnimation = true;
+    a->playOnce = false;
+    a->complete = false;
 }
 
 i32 add_text_element_to_tab(UIPage *page, i32 windowId, i32 tabId, TextElement element) {

@@ -68,6 +68,14 @@ u8 execute_wait(void *ptr) {
     return cmd->elapsed >= cmd->duration;
 }
 
+void push_wait(CommandQueue *q, f32 duration) {
+    WaitCommand *setwait = PUSH_COMMAND(q, WaitCommand, 0, execute_wait);
+    if (setwait) {
+        setwait->duration = duration;
+        setwait->elapsed = 0.0f;
+    }
+}
+
 void execute_queue(CommandQueue *q) {
     if (q->readIndex == q->writeIndex) return;
 

@@ -59,6 +59,7 @@ u8 is_run(Set *set);
 // game_queue.cpp
 void* push(CommandQueue *b, u64 size);
 void* push_command(CommandQueue *q, u32 totalSize, CmdActionFuncPtr executeFn);
+void push_wait(CommandQueue *q, f32 duration);
 void execute_queue(CommandQueue *b);
 u8 execute_action(void *ptr);
 void create_queue(CommandQueue *q, u8 *start, u64 size);
@@ -272,6 +273,42 @@ Relic RELIC_TABLE[TOTAL_RELICS] = {
 //    { TYPE_5, "Even Man", "Every even tile in a set gets +10 points." },
 //    { TYPE_6, "type 6", "this item does this thing! 6" }
 };
+
+u8 relic_1_action(void *ptr) {
+    Set *set = *(Set **)ptr;
+    set->value *= 2;
+    return true;
+}
+
+u8 relic_2_action(void *ptr) {
+    Set *set = *(Set **)ptr;
+    set->value *= 2;
+    return true;
+}
+
+u8 relic_3_action(void *ptr) {
+    Set *set = *(Set **)ptr;
+    set->value *= 3;
+    return true;
+}
+
+u8 relic_4_action(void *ptr) {
+    Set *set = *(Set **)ptr;
+    set->value *= 3;
+    return true;
+}
+
+u8 relic_5_action(void *ptr) {
+    Set *set = *(Set **)ptr;
+    set->value *= 4;
+    return true;
+}
+
+u8 relic_6_action(void *ptr) {
+    Set *set = *(Set **)ptr;
+    set->value *= 8;
+    return true;
+}
 
 void create_relics() {
     memcpy(gState->relics, RELIC_TABLE, sizeof(RELIC_TABLE));
@@ -1675,61 +1712,7 @@ u8 is_table_valid() {
     return true;
 }
 
-
-void add_in_game_ui() {
-//    read_page(gState->uiPage, "in_game.eui");
-  
-    gState->pageState = IN_GAME;
-    UIElement a = UIElement{ Anchor::CENTER, 99, -1, 0, 0, 0.075f, 0.1f};
-
-    //SheetAnimation panelSheet = SheetAnimation {3, 3};
-    //a.sheetAnimation = panelSheet;
-
-    //a.isPanel = true;
-    a.color = R_DARK_GRAY;
-    a.visible = false;
-    add_ui_element(gState->uiPage, a);
-
-    TextElement text = TextElement{ Anchor::CENTER, "", 0, 0, 99, true, DEFAULT_FONT_SCALE * 2.0f, vec3(1.0f)};
-    text.haveCountAnimation = false;
-    text.visible = false;
-    add_dynamic_text_element(gState->uiPage, text, "+", 8, TextType::UINT_64); 
-
-    add_button(gState->uiPage, BUTTON_T, "DRAW", vec2(0.88f, 0.06f), vec2(0.1f), R_BLUE, 4);
-    add_button(gState->uiPage, BUTTON_T, "RESET", vec2(0.77f, 0.06f), vec2(0.1f), R_RED, 5);
-
-    add_button(gState->uiPage, BUTTON_T, "C", vec2(0.9f, 0.835f), vec2(0.09f, 0.06f), R_PURPLE, 6);
-    add_button(gState->uiPage, BUTTON_T, "#", vec2(0.9f, 0.935f), vec2(0.09f, 0.06f), R_GREEN, 7);
-
-    add_button(gState->uiPage, BUTTON_T, BACK_T, vec2(0.035f, 0.05f), vec2(0.04f, 0.035f), R_DARK_GRAY, 2);
-
-    i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::TOP_LEFT, vec2(0.12f, 0.6f), vec2(0.075f, -0.2f), vec2(0.075f, 0.01f), R_SILVER, R_DARK_BLUE); 
-
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Score", 0.2f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}));
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.2f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f)}, 
-        "", 0, TextType::UINT_64));
-
-    // why is this weird??
-    printf("Turn limit %i\n", gState->gameData.turnLimit);
-    TextElement drawsRemaining = TextElement{ Anchor::CENTER, "", 0.88f, 0.135f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
-    drawsRemaining.haveCountAnimation = false;
-    add_dynamic_text_element(gState->uiPage, drawsRemaining, "", 1, TextType::INT_32);
-
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Score Minimum", 0.35f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}));
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.35f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f)}, 
-        "", 2, TextType::UINT_64));
-
-//    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.16f, 0.07f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}, 
-//        "Round: ", &gState->gameData.rounds, TextType::UINT_64));
-//
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Cash", 0.5f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(R_GOLDEN)}));
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_GOLDEN)}, 
-        "$", 3, TextType::UINT_64));
-
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Round", 0.6f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}));
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.6f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f)}, 
-        "", 6, TextType::UINT_64));
-
+void add_relics_ui(u8 animated) {
     i32 relicIds[MAX_RELICS];
     i32 slotIds[MAX_RELICS];
 
@@ -1782,7 +1765,7 @@ void add_in_game_ui() {
         slotIds[i] = add_ui_element(gState->uiPage, slot, false);
     }
 
-    i32 multWindowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::TOP_LEFT, vec2(0.2, 0.2f), vec2(0.075f, 1.2f), vec2(0.075f, 0.78f), R_SILVER, R_DARK_BLUE); 
+    i32 multWindowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::TOP_LEFT, vec2(0.2, 0.2f), animated ? vec2(0.075f, 1.2f) : vec2(0.075f, 0.78f), vec2(0.075f, 0.78f), R_SILVER, R_DARK_BLUE); 
 
     for(i32 i = 0; i < MAX_RELICS; ++i) {
         add_image_to_window(
@@ -1799,23 +1782,81 @@ void add_in_game_ui() {
             );
         }
     }
+}
 
-//    add_text_to_window(gState->uiPage, multWindowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.1f, 0.8f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f, 1.0f, 1.0f)}, 
-//        "Run x", &gState->player.playerData.runMultipliers, TextType::INT_32));
-//    add_text_to_window(gState->uiPage, multWindowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.1f, 0.9f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f, 1.0f, 1.0f)}, 
-//        "Group x", &gState->player.playerData.groupMultipliers, TextType::INT_32));
-//
+
+void add_in_game_ui() {
+    gState->pageState = IN_GAME;
+    UIElement a = UIElement{ Anchor::CENTER, 99, -1, 0, 0, 0.075f, 0.1f};
+
+    //SheetAnimation panelSheet = SheetAnimation {3, 3};
+    //a.sheetAnimation = panelSheet;
+
+    //a.isPanel = true;
+    a.color = R_DARK_GRAY;
+    a.visible = false;
+    add_ui_element(gState->uiPage, a);
+
+    TextElement text = TextElement{ Anchor::CENTER, "", 0, 0, 99, true, DEFAULT_FONT_SCALE * 2.0f, vec3(1.0f)};
+    text.haveCountAnimation = false;
+    text.visible = false;
+    add_dynamic_text_element(gState->uiPage, text, "+", 8, TextType::UINT_64); 
+
+    add_button(gState->uiPage, BUTTON_T, "DRAW", vec2(0.88f, 0.06f), vec2(0.1f), R_BLUE, 4);
+    add_button(gState->uiPage, BUTTON_T, "RESET", vec2(0.77f, 0.06f), vec2(0.1f), R_RED, 5);
+
+    add_button(gState->uiPage, BUTTON_T, "C", vec2(0.9f, 0.835f), vec2(0.09f, 0.06f), R_PURPLE, 6);
+    add_button(gState->uiPage, BUTTON_T, "#", vec2(0.9f, 0.935f), vec2(0.09f, 0.06f), R_GREEN, 7);
+
+    add_button(gState->uiPage, BUTTON_T, BACK_T, vec2(0.035f, 0.05f), vec2(0.04f, 0.035f), R_DARK_GRAY, 2);
+
+    i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::TOP_LEFT, vec2(0.12f, 0.6f), vec2(0.075f, -0.2f), vec2(0.075f, 0.01f), R_SILVER, R_DARK_BLUE); 
+
+    TextElement score = TextElement{ Anchor::CENTER, "Score", 0.2f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+    add_text_bob(&score);
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, score));
+
+    TextElement scoreVal = TextElement{ Anchor::CENTER, "", 0.2f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f)};
+    add_text_bob(&scoreVal);
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, scoreVal,"", 0, TextType::UINT_64));
+
+    TextElement drawsRemaining = TextElement{ Anchor::CENTER, "", 0.88f, 0.135f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+    drawsRemaining.haveCountAnimation = false;
+    add_text_bob(&drawsRemaining);
+    drawsRemaining.animations[drawsRemaining.numberOfAnimations - 1].autoAnimate = true;
+    add_dynamic_text_element(gState->uiPage, drawsRemaining, "", 1, TextType::INT_32);
+
+    TextElement scoreMin = TextElement{ Anchor::CENTER, "Score Minimum", 0.35f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+    add_text_bob(&scoreMin);
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, scoreMin));
+
+    TextElement scoreMinVal = TextElement{ Anchor::CENTER, "", 0.35f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f)};
+    add_text_bob(&scoreMinVal);
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, scoreMinVal,"", 2, TextType::UINT_64));
+
+    TextElement cash = TextElement{ Anchor::CENTER, "Cash", 0.5f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(R_GOLDEN)};
+    add_text_bob(&cash);
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, cash));
+
+    TextElement cashVal = TextElement{ Anchor::CENTER, "", 0.5f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_GOLDEN)};
+    add_text_bob(&cashVal);
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, cashVal, "$", 3, TextType::UINT_64));
+
+    TextElement round = TextElement{ Anchor::CENTER, "Round", 0.6f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+    add_text_bob(&round);
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, round));
+
+    TextElement roundVal = TextElement{ Anchor::CENTER, "", 0.6f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f)};
+    add_text_bob(&roundVal);
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, roundVal,"", 6, TextType::UINT_64));
+
+    add_relics_ui(true);
+
     TextElement poolTiles = TextElement{ Anchor::CENTER, "", 0.8f, 0.98f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
     poolTiles.haveCountAnimation = false;
+    add_text_bob(&poolTiles);
+    poolTiles.animations[poolTiles.numberOfAnimations - 1].autoAnimate = true;
     add_dynamic_text_element(gState->uiPage, poolTiles, "", 4, TextType::INT_32);
-
-    //add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.63f, 0.03f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}, 
-    //    "Table Status: ", &(i32)gState->table.isValid, TextType::INT_32);
-    //add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.33f, 0.03f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f) }, 
-    //    "Draws: ", &gState->player.playerData.timesDrawn, TextType::INT_32);
-
-
-  //write_page(gState->uiPage, "in_game.eui");
 }
 
 void add_end_game_ui() {
@@ -1992,6 +2033,7 @@ void add_shop_ui() {
     i32 progressIndex = add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_GOLDEN)}, 
         "", 7, INT_32);
     add_text_to_window(gState->uiPage, windowIndex, progressIndex);
+    add_relics_ui(false);
 }
 
 void add_main_menu_ui() {
@@ -2117,6 +2159,72 @@ void clear_game_ui() {
     add_game_ui_data(gState->uiPage);
 }
 
+u8 add_set_value_total(void *ptr) {
+    Set *set = *(Set **)ptr;
+    gState->gameData.roundScore += set->value;
+    return true;
+}
+
+void push_set_bonus(Set *set, i32 value, CmdActionFuncPtr relicFn) {
+    vec2 setPos = world_to_ui(
+        set->object.model,
+        gMemory->renderBuffer->view,
+        gMemory->renderBuffer->projection        
+    );
+
+    TextElement multiplier = TextElement{ Anchor::CENTER, "", setPos.x, setPos.y - 1.0f, -1, true, DEFAULT_FONT_SCALE * 3.0 };
+    multiplier.color = R_RED;
+    snprintf(multiplier.text, sizeof(multiplier.text), "x%d", value);
+    add_move_animation(&multiplier, vec2(setPos.x, setPos.y - 0.2f), 0.75f);
+
+    ActionCommand *setText = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, TextElement, execute_action);
+    if (setText) {
+        setText->action = add_text_to_page;
+        *COMMAND_PAYLOAD(setText, TextElement) = multiplier;
+    }
+
+    push_wait(&gState->cmdQueue, 0.75f);
+
+    ActionCommand *setVal = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, Set *, execute_action);
+    if (setVal) { 
+        *COMMAND_PAYLOAD(setVal, Set *) = set;
+        setVal->action = relicFn;
+    } 
+}
+
+void calculate_set_bonuses(Set *set) {
+    for(i32 i = 0; i < gState->player.numberOfRelics; ++i) {
+        switch(gState->player.relics[i]) {
+            case TYPE_1 : {
+                if(set->numberOfTiles == 3) {
+                    push_set_bonus(set, 2, &relic_1_action);
+                }
+                break;
+            }
+            case TYPE_2 : {
+                if(set->numberOfTiles == 4) push_set_bonus(set, 2, &relic_2_action);
+                break;
+            }
+            case TYPE_3 : {
+                if(set->numberOfTiles == 5) push_set_bonus(set, 3, &relic_3_action);
+                break;
+            }
+            case TYPE_4 : {
+                if(set->numberOfTiles == 6) push_set_bonus(set, 3, &relic_4_action);
+                break;
+            }
+            case TYPE_5 : {
+                if(set->numberOfTiles == 7) push_set_bonus(set, 4, &relic_5_action);
+                break;
+            }
+            case TYPE_6 : {
+                if(set->numberOfTiles == 8) push_set_bonus(set, 8, &relic_6_action);
+                break;
+            }
+        }
+    } 
+}
+
 void count_table() {
     for(i32 i = 0; i < gState->table.numberOfSets; ++i) {
         Set *set = &gState->table.sets[i];
@@ -2128,7 +2236,8 @@ void count_table() {
         );
         set->value = 0;
         gState->uiPage->values[gState->uiPage->numberOfValues++] = &set->value;
-        TextElement setElement = TextElement{ Anchor::CENTER, "", pos.x, pos.y - 0.2f, -1, true, DEFAULT_FONT_SCALE * 3.0 };
+        TextElement setElement = TextElement{ Anchor::CENTER, "", pos.x, pos.y - 0.15f, -1, true, DEFAULT_FONT_SCALE * 3.0 };
+        setElement.color = R_BLACK;
         add_value_to_text(gState->uiPage, &setElement, "+", gState->uiPage->numberOfValues - 1, UINT_64);
 
         ActionCommand *setText = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, TextElement, execute_action);
@@ -2156,6 +2265,7 @@ void count_table() {
             TextElement bonus = TextElement{ Anchor::CENTER, "", tilePos.x / RENDERING_ASPECT, tilePos.y, -1, true, DEFAULT_FONT_SCALE * 2.0 };
             snprintf(bonus.text, sizeof(bonus.text), "+%d", (i32)tile->details.tileNumber);
             add_move_animation(&bonus, vec2(tilePos.x / RENDERING_ASPECT, tilePos.y - 0.1f), 0.5f);
+            bonus.color = R_BLACK;
 
             ActionCommand *tileText = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, TextElement, execute_action);
             if (tileText) {
@@ -2163,11 +2273,7 @@ void count_table() {
                 *COMMAND_PAYLOAD(tileText, TextElement) = bonus;
             }
 
-            WaitCommand *wait = PUSH_COMMAND(&gState->cmdQueue, WaitCommand, 0, execute_wait);
-            if (wait) {
-                wait->duration = 0.5f;
-                wait->elapsed = 0.0f;
-            }
+            push_wait(&gState->cmdQueue, 0.5f);
 
             ActionCommand *setVal = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, GameObject *, execute_action);
             if (setVal) {
@@ -2175,19 +2281,25 @@ void count_table() {
                 *COMMAND_PAYLOAD(setVal, GameObject *) = &tile->object;
             }
 
-            WaitCommand *setwait = PUSH_COMMAND(&gState->cmdQueue, WaitCommand, 0, execute_wait);
-            if (setwait) {
-                setwait->duration = 0.5f;
-                setwait->elapsed = 0.0f;
-            }
+            push_wait(&gState->cmdQueue, 0.5f);
         }
 
-        if(set->setType == RUN && gState->player.playerData.runMultipliers > 1) {
-            add_multiplier_text(set, gState->player.playerData.runMultipliers);
-        } else if (set->setType == GROUP && gState->player.playerData.groupMultipliers > 1) {
-            add_multiplier_text(set, gState->player.playerData.groupMultipliers);
+        calculate_set_bonuses(set);
+
+        //if(set->setType == RUN && gState->player.playerData.runMultipliers > 1) {
+        //    add_multiplier_text(set, gState->player.playerData.runMultipliers);
+        //} else if (set->setType == GROUP && gState->player.playerData.groupMultipliers > 1) {
+        //    add_multiplier_text(set, gState->player.playerData.groupMultipliers);
+        //}
+
+        ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, Set *, execute_action);
+        if (total) {
+            total->action = add_set_value_total;
+            *COMMAND_PAYLOAD(total, Set *) = set;
         }
     }
+
+    push_wait(&gState->cmdQueue, 1.75f);
 
     ActionCommand *cmd = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, 0, execute_action);
     if (cmd) cmd->action = load_shop_purchase_menu;
@@ -2214,7 +2326,6 @@ void calculate_round_bonus(GameData *gd, PlayerData pd) {
 void complete_round() {
     clear_game_ui();
     GameData gd = gState->gameData;
-    //progressScore = 0;
 
     if(gd.turnLimit == 0 && (gState->playerRack.numberOfTiles > 0 || gd.minimumScore > gState->player.playerData.score)) {
         gState->mode = GM_GAME_OVER;
