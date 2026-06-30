@@ -140,4 +140,9 @@ buffer is added in order of operation next is ran after the first completes
 adding oncomplete could add an action to the buffer
 {would I want to run actions simultaneously? if so this would not work unless they were all chained by oncompletes}
 
-
+--SMASH the table?!?!?!? lol
+--() really need to add apply button to video settings
+--() show the players current relics in the shop screen or atleast have and option
+--() add relic hover 
+--() add confirmation on exit page
+--() add multiplier during game running!!!

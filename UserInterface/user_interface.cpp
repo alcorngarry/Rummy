@@ -694,7 +694,33 @@ vec2 get_center(Anchor anchor, vec2 size, vec2 pos) {
     }
 }
 
-i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 start, vec2 destination, vec4 color1, vec4 color2) {
+vec2 get_top_left(Anchor anchor, vec2 size, vec2 pos) {
+    switch (anchor) {
+        case TOP_LEFT:     return pos;
+        case TOP_RIGHT:    return vec2(pos.x - size.x, pos.y);
+        case CENTER:       return pos - size * 0.5f;
+        default: return pos;
+    }
+}
+
+void layout_grid(vec2 *slots, i32 rows, i32 cols, Anchor anchor, vec2 pos, vec2 windowSize, vec2 slotSize) {
+    vec2 topLeft = get_top_left(anchor, windowSize, vec2(pos.y, pos.x));
+
+    f32 spacingX = (windowSize.x - cols * slotSize.x) / (cols + 1);
+    f32 spacingY = (windowSize.y - rows * slotSize.y) / (rows + 1);
+
+    i32 i = 0;
+    for (i32 y = 0; y < rows; y++) {
+        for (i32 x = 0; x < cols; x++) {
+            slots[i++] = get_center(TOP_LEFT, slotSize, vec2(
+                topLeft.x + spacingX + x * (slotSize.x + spacingX),
+                topLeft.y + spacingY + y * (slotSize.y + spacingY)
+            ));
+        }
+    }
+}
+
+i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 start, vec2 destination, vec4 color1, vec4 color2, f32 duration) {
     UIElement border = UIElement{ anchor, -1, windowHandle, start.x, start.y, scale.x, scale.y, true};
 
     SheetAnimation panelSheet = SheetAnimation{3, 3};
@@ -706,7 +732,7 @@ i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 s
 
     Animation moveWindow = Animation{destination, start};
     moveWindow.autoAnimate = true;
-    moveWindow.duration = 1.0f;
+    moveWindow.duration = duration;
     border.animations[border.numberOfAnimations++] = moveWindow; 
     border.hasShadow = true;
 

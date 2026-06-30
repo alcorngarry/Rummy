@@ -7,7 +7,7 @@
 
 #define TOTAL_TILES 60
 #define TOTAL_RELICS 6
-#define MAX_RELICS 6
+#define MAX_RELICS 50
 
 const i32 TABLE_ROWS = 6;
 const i32 TABLE_COLUMNS = 16;
@@ -88,7 +88,8 @@ enum PAGE_STATE {
     SHOP,
     MAIN_MENU,
     PROFILE,
-    OPTIONS
+    OPTIONS,
+    RELIC
 };
 
 enum SET_TYPE {
@@ -195,7 +196,7 @@ struct Table {
 
 struct PlayerData {
     i32 timesDrawn = 0;
-    u64 score = 0;
+    //u64 score = 0;
     i32 runMultipliers = 1;
     i32 groupMultipliers = 1;
 };
@@ -220,12 +221,13 @@ struct Relic {
     Rarity rarity;
     const char* name;
     const char* description;
+    u8 price;
 };
 
 struct Player {
     PlayerData playerData;
     Tile* heldTile;
-    RelicType relics[6];
+    RelicType relics[MAX_RELICS];
     u8 numberOfRelics = 0;
 };
 

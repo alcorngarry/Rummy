@@ -108,7 +108,7 @@ struct UIElement {
 	u8 visible = true;
   i32 actionId = -1;
 	u8 hovered = false;
-	UIElement* dependentElements[50];
+	UIElement* dependentElements[100];
   i32 numberOfDependentElements = 0;
   u32 meshHandle;
   u8 isPanel = false;
@@ -223,13 +223,14 @@ i32 add_element_to_tab(UIPage *page, i32 windowId, i32 tabId, i32 element);
 i32 add_text_element_to_tab(UIPage *page, i32 windowId, i32 tabId, TextElement element);
 i32 add_options_element(UIPage *page, i32 optionId, i32 optionActionId, i32 optionsHandle, i32 optionsIconHandle, vec4 color);
 i32 add_radio_element(UIPage *page, u8 enabled, Anchor anchor, vec2 pos, vec2 size, i32 actionId, i32 radioHandle);
+void layout_grid(vec2 *slots, i32 rows, i32 cols, Anchor anchor, vec2 pos, vec2 windowSize, vec2 slotSize);
   
 i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 scale, vec4 color, i32 actionId);
 i32 add_button(UIPage *page, i32 buttonHandle, i32 imageButtonHandle, vec2 pos, vec2 scale, vec4 color, i32 actionId);
 
 void button_press(UIPage *page, void* ptr);
 void button_release(UIPage *page, void* ptr);
-i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 start, vec2 destination, vec4 color1, vec4 color2);
+i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 start, vec2 destination, vec4 color1, vec4 color2, f32 duration = 1.0f);
 i32 add_static_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 pos, vec4 color1, vec4 color2);
 
 TextElement* get_element_by_text(UIPage* page, const char* text);

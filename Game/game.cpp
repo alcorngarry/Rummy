@@ -1,5 +1,6 @@
 ﻿#include "game.h"
 #include "rummy_colors.h"
+#include <cstdio>
 #include <cstring>
 #include <xstring>
 
@@ -43,6 +44,8 @@ u8 move_tile(void* ptr);
 void add_game_ui_data(UIPage *uiPage);
 vec2 world_to_ui(mat4 model, mat4 view, mat4 projection);
 void add_shop_purchase_menu();
+void calculate_set_bonuses(Set *set);
+u8 add_table_value_total(void *ptr);
 
 // validations.cpp
 i32 get_joker_array(Set *set, Tile** jokerArray);
@@ -70,6 +73,13 @@ u8 add_text_to_page(void *ptr) {
     TextElement text = *(TextElement *)ptr;
 
     add_text_element(gState->uiPage, text);
+    return true;
+}
+
+u8 add_image_to_page(void *ptr) {
+    UIElement element = *(UIElement *)ptr;
+
+    add_ui_element(gState->uiPage, element);
     return true;
 }
 
@@ -259,13 +269,31 @@ void revert_to_round_start() {
     gState->player.heldTile = nullptr;
 }
 
+const char* rarity_to_string(Rarity rarity) {
+    switch (rarity) {
+        case COMMON:            return "Common";
+        case RARE:              return "Rare";
+        case EXCEEDINGLY_RARE:  return "Exceedingly Rare";
+        default:                return "GNAR";
+    }
+}
+
+vec4 rarity_to_color(Rarity rarity) {
+    switch (rarity) {
+        case COMMON:            return R_WHITE;
+        case RARE:              return R_DARK_BLUE;
+        case EXCEEDINGLY_RARE:  return R_PURPLE;
+        default:                return R_RED;
+    }
+}
+
 Relic RELIC_TABLE[TOTAL_RELICS] = {
-    { TYPE_1, COMMON, "Neophyte 3", "Every set with exactly three tiles gets double the points." },
-    { TYPE_2, COMMON, "Plebian 4", "Every set with exactly four tiles gets double the points." },
-    { TYPE_3, RARE, "Mr 5", "Every set with exactly five tiles gets triple the points." },
-    { TYPE_4, RARE, "Mrs 6", "Every set with exactly six tiles gets triple the points." },
-    { TYPE_5, EXCEEDINGLY_RARE, "Dr 7", "Every set with exactly seven tiles gets quadruple the points." },
-    { TYPE_6, EXCEEDINGLY_RARE, "Ruler 8", "Every set with exactly eight tiles gets eight times the points." }
+    { TYPE_1, COMMON, "Neophyte 3", "Every set with exactly three tiles gets double the points.", 1 },
+    { TYPE_2, COMMON, "Plebian 4", "Every set with exactly four tiles gets double the points.", 1 },
+    { TYPE_3, RARE, "Mr 5", "Every set with exactly five tiles gets triple the points.", 2 },
+    { TYPE_4, RARE, "Mrs 6", "Every set with exactly six tiles gets triple the points.", 2 },
+    { TYPE_5, EXCEEDINGLY_RARE, "Dr 7", "Every set with exactly seven tiles gets quadruple the points.", 3 },
+    { TYPE_6, EXCEEDINGLY_RARE, "Ruler 8", "Every set with exactly eight tiles gets eight times the points.", 3 }
 //    { TYPE_1, "4 Scores x2", "Every set with exactly four tiles gets double points." },
 //    { TYPE_2, "Odd Man", "Every odd tile in a set gets +10 points." },
 //    { TYPE_3, "Big Man", "Sets larger than 6 tiles get +50 points." },
@@ -1039,7 +1067,7 @@ void check_set_hovered(f64 xpos, f64 ypos) {
 
         vec3 boundsMin = vec3(F32_MAX);
         vec3 boundsMax = vec3(-F32_MAX);
-        bool hasAnyTile = false;
+        u8 hasAnyTile = false;
 
         for (i32 j = 0; j < set->numberOfTiles; j++) {
             Tile* t = set->tiles[j];
@@ -1090,6 +1118,40 @@ void check_set_hovered(f64 xpos, f64 ypos) {
             if(a && !set) a->visible = false;
             if(b && !set) b->visible = false;
         }
+    }
+}
+
+void check_relic_hovered(f64 xpos, f64 ypos) {
+    if(gState->player.heldTile) {
+        clear_all_hover();
+        return;
+    }
+
+    TextElement* text = get_text_element_by_parent_id(gState->uiPage, 99);
+    UIElement* bg = get_element_by_parent_id(gState->uiPage, 99);
+    if(!bg || !text) return;
+
+    if(gState->uiPage->elementHovered != -1) {
+        UIElement *relic = &gState->uiPage->uiElements[gState->uiPage->elementHovered];
+        i32 frame = relic->sheetAnimation.currentFrame;
+        if(relic->textureName == RELICS_T) {
+            text->posx = relic->posx + 0.15f;
+            text->posy = relic->posy + 0.0125f;
+
+            snprintf(text->text, sizeof(text->text), "%s", gState->relics[frame].name);
+
+            bg->posx = relic->posx + 0.15f;
+            bg->posy = relic->posy + 0.0125f;
+
+            bg->visible = true;
+            text->visible = true;
+        } else {
+            bg->visible = false;
+            text->visible = false;
+        }
+    } else {
+        bg->visible = false;
+        text->visible = false;
     }
 }
 
@@ -1419,10 +1481,7 @@ void update_set_ui(Set *set) {
     bg->posx = pos.x;
     bg->posy = pos.y - 0.1f;
 
-    //HARDCODED! THIS IS BROKEN FIX IT, ENTIRE STRUCTURE PROBABLY JUST SUCKS.
-    //gState->uiPage->values[19] = &set->value;
     hoveredSetValue = set->value;
-    printf("hoveredSet %i\n", (i32)hoveredSetValue);
 }
 
 void add_tile_to_table_space(Tile* tile, vec2 tableSpace) {
@@ -1493,7 +1552,6 @@ void order_set_tiles(Set* set) {
         left++;
         bridgeIndex++;
     }
-
 }
 
 u8 add_tile_to_set(Set *set, Tile *tile) {
@@ -1521,7 +1579,7 @@ u8 add_tile_to_set(Set *set, Tile *tile) {
       set->setType = RUN;
       order_set_tiles(set);
     }
-   
+
     return true;
 }
 
@@ -1663,6 +1721,7 @@ void release_tile() {
         }
         gMemory->play_audio_fn("./audio/place_tile.wav");
     }
+    //maybe add set value calculation with relics here?
 
     validate_rack();
     gState->player.heldTile = nullptr;
@@ -1697,31 +1756,28 @@ void remove_empty_sets() {
 
 u8 is_table_valid() {
     remove_empty_sets();
-    u64 tableValue = 0;
 
     for(i32 i = 0; i < gState->table.numberOfSets; i++) {
-        if(gState->table.sets[i].numberOfTiles < 3) return false;
-        u64 val = gState->table.sets[i].setType == GROUP ? 
-          gState->table.sets[i].value * gState->player.playerData.groupMultipliers : 
-          gState->table.sets[i].value * gState->player.playerData.runMultipliers;
-
-        tableValue += val;
+        Set *set = &gState->table.sets[i];
+        if(set->numberOfTiles < 3) return false;
+        calculate_set_bonuses(set);
     }
 
-    gState->table.value += tableValue - gState->table.value;
+    add_table_value_total(nullptr);
+
     return true;
 }
 
-void add_relics_ui(u8 animated) {
-    i32 relicIds[MAX_RELICS];
-    i32 slotIds[MAX_RELICS];
+void add_actives_ui(u8 animated) {
+    i32 relicIds[6];
+    i32 slotIds[6];
 
-    for(i32 i = 0; i < MAX_RELICS; ++i) {
+    for(i32 i = 0; i < 6; ++i) {
         relicIds[i] = -1;
         slotIds[i] = -1;
     }
 
-    vec2 relicSlotPositions[MAX_RELICS] = {
+    vec2 relicSlotPositions[6] = {
         {0.115f, 0.835f},
         {0.1750f, 0.835f},
         {0.235f, 0.835f},
@@ -1731,27 +1787,27 @@ void add_relics_ui(u8 animated) {
     };
 
 
-    for(i32 i = 0; i < MAX_RELICS; ++i) {
-        if(gState->player.relics[i] <= 0)
-            continue;
+ //   for(i32 i = 0; i < 6; ++i) {
+ //       if(gState->player.relics[i] <= 0)
+ //           continue;
 
-        UIElement relic = {
-            Anchor::CENTER,
-            -1,
-            RELICS_T,
-            relicSlotPositions[i].x,
-            relicSlotPositions[i].y,
-            0.045f * RENDERING_ASPECT,
-            0.045f
-        };
+ //       UIElement relic = {
+ //           Anchor::CENTER,
+ //           -1,
+ //           RELICS_T,
+ //           relicSlotPositions[i].x,
+ //           relicSlotPositions[i].y,
+ //           0.045f * RENDERING_ASPECT,
+ //           0.045f
+ //       };
 
-        relic.sheetAnimation = {3, 2};
-        relic.sheetAnimation.currentFrame = gState->player.relics[i] - 1;
+ //       relic.sheetAnimation = {3, 2};
+ //       relic.sheetAnimation.currentFrame = gState->player.relics[i] - 1;
 
-        relicIds[i] = add_ui_element(gState->uiPage, relic);
-    }
+ //       relicIds[i] = add_ui_element(gState->uiPage, relic);
+ //   }
 
-    for(i32 i = 0; i < MAX_RELICS; ++i) {
+    for(i32 i = 0; i < 6; ++i) {
         UIElement slot = {
             Anchor::CENTER,
             -1,
@@ -1767,7 +1823,7 @@ void add_relics_ui(u8 animated) {
 
     i32 multWindowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::TOP_LEFT, vec2(0.2, 0.2f), animated ? vec2(0.075f, 1.2f) : vec2(0.075f, 0.78f), vec2(0.075f, 0.78f), R_SILVER, R_DARK_BLUE); 
 
-    for(i32 i = 0; i < MAX_RELICS; ++i) {
+    for(i32 i = 0; i < 6; ++i) {
         add_image_to_window(
             gState->uiPage,
             multWindowIndex,
@@ -1783,7 +1839,6 @@ void add_relics_ui(u8 animated) {
         }
     }
 }
-
 
 void add_in_game_ui() {
     gState->pageState = IN_GAME;
@@ -1850,7 +1905,7 @@ void add_in_game_ui() {
     add_text_bob(&roundVal);
     add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, roundVal,"", 6, TextType::UINT_64));
 
-    add_relics_ui(true);
+    add_actives_ui(true);
 
     TextElement poolTiles = TextElement{ Anchor::CENTER, "", 0.8f, 0.98f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
     poolTiles.haveCountAnimation = false;
@@ -1903,13 +1958,19 @@ void add_run_multiplier() {
 void add_relic() {
     // gross, there has to be a way to make is better for yourself to transfer info between
     i32 frame = gState->uiPage->uiElements[gState->uiPage->uiElements[gState->uiPage->elementHovered].imageChildId].sheetAnimation.currentFrame;
-    if(gState->player.numberOfRelics > 5) {
+    if(RELIC_TABLE[frame].price > gState->gameData.dollaBills) return;
+    if(gState->player.numberOfRelics == MAX_RELICS) {
         printf("number of relics %i\n", gState->player.numberOfRelics);
         return;
     } // quick fix for now, will fix in the shop ui
 
+
     gState->player.relics[gState->player.numberOfRelics] = (RelicType)(frame + 1);
-    if(gState->player.numberOfRelics <= 4) gState->player.numberOfRelics++;
+
+    //charge the player
+    gState->gameData.dollaBills -= RELIC_TABLE[frame].price;
+
+    if(gState->player.numberOfRelics <= MAX_RELICS - 2) gState->player.numberOfRelics++;
 }
 
 void populate_relics_in_shop(i32 *arr) {
@@ -1988,7 +2049,20 @@ void add_shop_purchase_menu() {
     snprintf(relicName.text, sizeof(relicName.text), "%s", gState->relics[relicIds[2]].name);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicName));
 
-    TextElement relicDesc = TextElement{ Anchor::CENTER, "", 0.26f, 0.6f, -1, true, DEFAULT_FONT_SCALE, vec3(R_WHITE)}; 
+    TextElement relicRarity = TextElement{ Anchor::CENTER, "", 0.26f, 0.5f, -1, true, DEFAULT_FONT_SCALE * 2.0f, vec3(R_WHITE)}; 
+    snprintf(relicRarity.text, sizeof(relicRarity.text), "%s", rarity_to_string(gState->relics[relicIds[0]].rarity));
+    relicRarity.color = rarity_to_color(gState->relics[relicIds[0]].rarity);
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicRarity));
+    relicRarity.posx += 0.24f;
+    snprintf(relicRarity.text, sizeof(relicRarity.text), "%s", rarity_to_string(gState->relics[relicIds[1]].rarity));
+    relicRarity.color = rarity_to_color(gState->relics[relicIds[1]].rarity);
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicRarity));
+    relicRarity.posx += 0.24f;
+    snprintf(relicRarity.text, sizeof(relicRarity.text), "%s", rarity_to_string(gState->relics[relicIds[2]].rarity));
+    relicRarity.color = rarity_to_color(gState->relics[relicIds[2]].rarity);
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicRarity));
+
+    TextElement relicDesc = TextElement{ Anchor::CENTER, "", 0.26f, 0.575f, -1, true, DEFAULT_FONT_SCALE, vec3(R_WHITE)}; 
     relicDesc.maxWidth = 0.3f;
     snprintf(relicDesc.text, sizeof(relicDesc.text), "%s", gState->relics[relicIds[0]].description);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicDesc));
@@ -1998,6 +2072,18 @@ void add_shop_purchase_menu() {
     relicDesc.posx += 0.24f;
     snprintf(relicDesc.text, sizeof(relicDesc.text), "%s", gState->relics[relicIds[2]].description);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicDesc));
+
+    TextElement relicPrice = TextElement{ Anchor::CENTER, "", 0.26f, 0.725f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_YELLOW)}; 
+    relicPrice.maxWidth = 0.3f;
+    snprintf(relicPrice.text, sizeof(relicPrice.text), "$%d", (i32)gState->relics[relicIds[0]].price);
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicPrice));
+    relicPrice.posx += 0.24f;
+    snprintf(relicPrice.text, sizeof(relicPrice.text), "$%d", (i32)gState->relics[relicIds[1]].price);
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicPrice));
+    relicPrice.posx += 0.24f;
+    snprintf(relicPrice.text, sizeof(relicPrice.text), "$%d", (i32)gState->relics[relicIds[2]].price);
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicPrice));
+
 
     add_image_to_window(gState->uiPage, windowIndex, relic1);
     add_image_to_window(gState->uiPage, windowIndex, relic2);
@@ -2033,7 +2119,7 @@ void add_shop_ui() {
     i32 progressIndex = add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_GOLDEN)}, 
         "", 7, INT_32);
     add_text_to_window(gState->uiPage, windowIndex, progressIndex);
-    add_relics_ui(false);
+    add_actives_ui(false);
 }
 
 void add_main_menu_ui() {
@@ -2129,6 +2215,84 @@ void add_options_ui() {
     add_element_to_tab(gState->uiPage, windowIndex, video, vsyncRadio);
 }
 
+void add_relics_ui() {
+    gState->pageState = RELIC;
+
+    UIElement relicDesc = UIElement{ Anchor::CENTER, 99, -1, 0, 0, 0.3f, 0.2f};
+    relicDesc.color = R_DARK_GRAY;
+    relicDesc.visible = false;
+    add_ui_element(gState->uiPage, relicDesc);
+
+    TextElement text = TextElement{ Anchor::CENTER, "Test Text", 0, 0, 99, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+    text.haveCountAnimation = false;
+    text.visible = false;
+    add_text_element(gState->uiPage, text); 
+
+    i32 relicIds[MAX_RELICS];
+    i32 slotIds[MAX_RELICS];
+
+    for(i32 i = 0; i < MAX_RELICS; ++i) {
+        relicIds[i] = -1;
+        slotIds[i] = -1;
+    }
+
+    vec2 relicSlotPositions[MAX_RELICS] = {}; 
+    layout_grid(relicSlotPositions, MAX_RELICS / 10, MAX_RELICS / 5, CENTER, vec2(0.5f), vec2(0.75f, 0.9f), vec2(0.05f));
+
+    for(i32 i = 0; i < MAX_RELICS; ++i) {
+        if(gState->player.relics[i] <= 0)
+            continue;
+
+        UIElement relic = {
+            CENTER,
+            -1,
+            RELICS_T,
+            relicSlotPositions[i].x,
+            relicSlotPositions[i].y,
+            0.045f * RENDERING_ASPECT,
+            0.045f
+        };
+        relic.actionId = 12;//nothing
+
+        relic.sheetAnimation = {3, 2};
+        relic.sheetAnimation.currentFrame = gState->player.relics[i] - 1;
+
+        relicIds[i] = add_ui_element(gState->uiPage, relic);
+    }
+
+    for(i32 i = 0; i < MAX_RELICS; ++i) {
+        UIElement slot = {
+            CENTER,
+            -1,
+            TILE_SLOT_T,
+            relicSlotPositions[i].x,
+            relicSlotPositions[i].y,
+            0.05f * RENDERING_ASPECT,
+            0.05f
+        };
+
+        slotIds[i] = add_ui_element(gState->uiPage, slot, false);
+    }
+
+    i32 multWindowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::CENTER, vec2(0.9f, 0.75f), vec2(0.5f, 1.2f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE, 0.5f); 
+
+    for(i32 i = 0; i < MAX_RELICS; ++i) {
+        add_image_to_window(
+            gState->uiPage,
+            multWindowIndex,
+            slotIds[i]
+        );
+
+        if(relicIds[i] != -1) {
+            add_image_to_window(
+                gState->uiPage,
+                multWindowIndex,
+                relicIds[i]
+            );
+        }
+    }
+}
+
 void init_game() {
     create_tiles();
     create_relics();
@@ -2165,25 +2329,36 @@ u8 add_set_value_total(void *ptr) {
     return true;
 }
 
-void push_set_bonus(Set *set, i32 value, CmdActionFuncPtr relicFn) {
-    vec2 setPos = world_to_ui(
-        set->object.model,
-        gMemory->renderBuffer->view,
-        gMemory->renderBuffer->projection        
-    );
-
-    TextElement multiplier = TextElement{ Anchor::CENTER, "", setPos.x, setPos.y - 1.0f, -1, true, DEFAULT_FONT_SCALE * 3.0 };
-    multiplier.color = R_RED;
-    snprintf(multiplier.text, sizeof(multiplier.text), "x%d", value);
-    add_move_animation(&multiplier, vec2(setPos.x, setPos.y - 0.2f), 0.75f);
-
-    ActionCommand *setText = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, TextElement, execute_action);
-    if (setText) {
-        setText->action = add_text_to_page;
-        *COMMAND_PAYLOAD(setText, TextElement) = multiplier;
+u8 add_table_value_total(void *ptr) {
+    gState->gameData.roundScore = 0; //zero it out first 
+    for(i32 i = 0; i < gState->table.numberOfSets; i++) {
+        Set *set = &gState->table.sets[i];
+        gState->gameData.roundScore += set->value;
     }
+    return true;
+}
 
-    push_wait(&gState->cmdQueue, 0.75f);
+void push_set_bonus(Set *set, i32 value, CmdActionFuncPtr relicFn) {
+    if(gState->pageState == SHOP) {
+        vec2 setPos = world_to_ui(
+            set->object.model,
+            gMemory->renderBuffer->view,
+            gMemory->renderBuffer->projection        
+        );
+
+        TextElement multiplier = TextElement{ Anchor::CENTER, "", setPos.x, setPos.y - 1.0f, -1, true, DEFAULT_FONT_SCALE * 3.0 };
+        multiplier.color = R_RED;
+        snprintf(multiplier.text, sizeof(multiplier.text), "x%d", value);
+        add_move_animation(&multiplier, vec2(setPos.x, setPos.y - 0.2f), 0.75f);
+
+        ActionCommand *setText = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, TextElement, execute_action);
+        if (setText) {
+            setText->action = add_text_to_page;
+            *COMMAND_PAYLOAD(setText, TextElement) = multiplier;
+        }
+
+        push_wait(&gState->cmdQueue, 0.75f);
+    }
 
     ActionCommand *setVal = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, Set *, execute_action);
     if (setVal) { 
@@ -2197,32 +2372,94 @@ void calculate_set_bonuses(Set *set) {
         switch(gState->player.relics[i]) {
             case TYPE_1 : {
                 if(set->numberOfTiles == 3) {
-                    push_set_bonus(set, 2, &relic_1_action);
-                }
+                    if(gState->pageState == SHOP) {
+                        push_set_bonus(set, 2, &relic_1_action);
+                        printf("bonus shop\n");
+                    } else {
+                        relic_1_action(&set);
+                        printf("bonus no shop\n");
+                    }
+                } 
                 break;
             }
             case TYPE_2 : {
-                if(set->numberOfTiles == 4) push_set_bonus(set, 2, &relic_2_action);
+                if(set->numberOfTiles == 4) {
+                    if(gState->pageState == SHOP) {
+                        push_set_bonus(set, 2, &relic_2_action);
+                    } else {
+                        relic_2_action(&set);
+                    }
+                }
                 break;
             }
             case TYPE_3 : {
-                if(set->numberOfTiles == 5) push_set_bonus(set, 3, &relic_3_action);
+                if(set->numberOfTiles == 5) {
+                    if(gState->pageState == SHOP) {
+                        push_set_bonus(set, 3, &relic_3_action);
+                    } else {
+                        relic_3_action(&set);
+                    }
+                }
                 break;
             }
             case TYPE_4 : {
-                if(set->numberOfTiles == 6) push_set_bonus(set, 3, &relic_4_action);
+                if(set->numberOfTiles == 6) {
+                    if(gState->pageState == SHOP) {
+                        push_set_bonus(set, 3, &relic_4_action);
+                    } else {
+                        relic_4_action(&set);
+                    }
+                }
                 break;
             }
             case TYPE_5 : {
-                if(set->numberOfTiles == 7) push_set_bonus(set, 4, &relic_5_action);
+                if(set->numberOfTiles == 7) { 
+                    if(gState->pageState == SHOP) {
+                        push_set_bonus(set, 4, &relic_5_action);
+                    } else {
+                        relic_5_action(&set);
+                    }
+                }
                 break;
             }
             case TYPE_6 : {
-                if(set->numberOfTiles == 8) push_set_bonus(set, 8, &relic_6_action);
+                if(set->numberOfTiles == 8)  {
+                    if(gState->pageState == SHOP) {
+                        push_set_bonus(set, 8, &relic_6_action);
+                    } else {
+                        relic_6_action(&set);
+                    }
+                }
                 break;
             }
         }
     } 
+}
+
+f32 timeLeft = 0.25f;
+
+u8 screen_shake(void *ptr) {
+    mat4 *camera = *(mat4 **)ptr;
+
+    f32 duration  = 0.25f;
+    f32 magnitude = 0.01f;
+
+    if (timeLeft <= 0.0f) {
+        timeLeft = 0.25f;
+        return true;
+    }
+
+    timeLeft -= gState->deltaTime;
+
+    f32 t = timeLeft / duration;
+    f32 strength = magnitude * t;
+
+    f32 x = (rng_range(0, 1) * 2.0f - 1.0f) * strength;
+    f32 y = (rng_range(0, 1) * 2.0f - 1.0f) * strength;
+
+    *camera = glm::translate(*camera, vec3(x, y, 0.0f));
+
+    return false;
 }
 
 void count_table() {
@@ -2307,41 +2544,28 @@ void count_table() {
 
 void calculate_round_bonus(GameData *gd, PlayerData pd) {
     count_table();
-
     gd->dollaBills += gd->rounds * 2;
-
-    i32 extraDollas = 0;
-    if(gd->minimumScore > pd.score) {
-      //add bonus for board clear
-      extraDollas += 5;
-
-      TextElement bonus = TextElement{ Anchor::CENTER, "+5", 0.5f, 0.05f, -1, true, DEFAULT_FONT_SCALE * 5.0 };
-      add_move_text_animation(gState->uiPage, add_text_element(gState->uiPage, bonus), vec2(0.5f, 0.25f));
-
-    }
-
-    gd->dollaBills += extraDollas;
 }
 
 void complete_round() {
     clear_game_ui();
     GameData gd = gState->gameData;
 
-    if(gd.turnLimit == 0 && (gState->playerRack.numberOfTiles > 0 || gd.minimumScore > gState->player.playerData.score)) {
+    if(gd.turnLimit == 0 && (gState->playerRack.numberOfTiles > 0 || gd.minimumScore > gd.roundScore)) {
         gState->mode = GM_GAME_OVER;
         gState->gameData = GameData{20, 1};
         clear_player_data();
         add_end_game_ui();
     } else {
+        add_shop_ui();
         gState->mode = GM_ROUND_COMPLETE;
         calculate_round_bonus(&gState->gameData, gState->player.playerData);
         gState->gameData.turnLimit = 20; 
         gState->gameData.rounds++;
         gState->gameData.minimumScore *= gState->gameData.rounds;
+        gState->gameData.roundScore = 0;
         //should be clear_player_data without updating the runMultipliers
         gState->player.playerData.timesDrawn = 0;
-        gState->player.playerData.score = 0;
-        add_shop_ui();
     }
 }
 
@@ -2418,14 +2642,14 @@ void reset_board() {
 }
 
 u8 check_endgame_condition(GameData gd) {
-    return (gState->playerRack.numberOfTiles == 0 || gd.turnLimit == 0 || gd.minimumScore <= gState->player.playerData.score); 
+    return (gState->playerRack.numberOfTiles == 0 || gd.turnLimit == 0 || gd.minimumScore <= gd.roundScore); 
 }
 
 void end_turn() {
     if(gState->mode == GM_PLAYING) {
         // can still end turn when round complete...
         if(is_table_valid()) {
-            gState->player.playerData.score = gState->table.value;
+            //gState->player.playerData.score = gState->table.value;
             
             if(check_endgame_condition(gState->gameData)) {
                 complete_round();
@@ -2455,7 +2679,7 @@ void init_player() {
 
 void clear_player_data() {
     gState->player.playerData.timesDrawn = 0;
-    gState->player.playerData.score = 0;
+    //gState->player.playerData.score = 0;
     gState->player.playerData.runMultipliers = 1;
     gState->player.playerData.groupMultipliers = 1;
 }
@@ -2507,7 +2731,7 @@ void add_game_ui_data(UIPage *uiPage) {
     uiPage->actions[uiPage->numberOfActions++] = &set_video_format; // 14
     uiPage->actions[uiPage->numberOfActions++] = &toggle_vsync; // 15
     
-    uiPage->values[uiPage->numberOfValues++] = &gState->player.playerData.score;
+    uiPage->values[uiPage->numberOfValues++] = &gState->gameData.roundScore;//&gState->player.playerData.score;
     uiPage->values[uiPage->numberOfValues++] = &gState->gameData.turnLimit;
     uiPage->values[uiPage->numberOfValues++] = &gState->gameData.minimumScore;
     uiPage->values[uiPage->numberOfValues++] = &gState->gameData.dollaBills;
@@ -2555,6 +2779,10 @@ void reinit_page_state() {
             add_options_ui();
             break;
         }
+        case RELIC: {
+            add_relics_ui();
+            break;
+        }
         default: printf("Error rebuilding ui\n");
     }
 }
@@ -2589,10 +2817,10 @@ extern "C" GAME_DLL void game_init(GameMemory* memory, i32 preserveState) {
 
 extern "C" GAME_DLL void game_update_and_render() {
     gState->deltaTime = gMemory->renderBuffer->deltaTime;
+    execute_queue(&gState->cmdQueue);
 
     switch(gState->mode) {
         case GM_PLAYING : {
-            execute_queue(&gState->cmdQueue);
             draw_table();
             draw_pool();
             draw_player_rack();
@@ -2600,7 +2828,6 @@ extern "C" GAME_DLL void game_update_and_render() {
             break;
         }
         case GM_ROUND_COMPLETE : {
-            execute_queue(&gState->cmdQueue);
             draw_table();
             draw_player_rack();
             break;
@@ -2621,6 +2848,7 @@ extern "C" GAME_DLL void game_update_and_render() {
 extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 ypos) {
     // the projection matrix for ui is different!
     check_elements_hovered(gState->uiPage, xpos * (1.0f / RENDERING_ASPECT), ypos);
+    check_relic_hovered(xpos, ypos);
     check_set_hovered(xpos, ypos);
     check_table_space_hovered(xpos, ypos);
 
@@ -2647,22 +2875,35 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
         add_in_game_ui();
     }
 
-    if (key == 296 && action == 1) {
-      TextElement bonus = TextElement{ Anchor::CENTER, "+5", 0.5f, 0.05f, -1, true, DEFAULT_FONT_SCALE * 5.0 };
-      add_move_text_animation(gState->uiPage, add_text_element(gState->uiPage, bonus), vec2(0.5f, 0.25f));
+    if (key == 78 && action == 1) {
+        gMemory->play_audio_fn("./audio/place_tile.wav");
+        sort_rack_by_number();
     }
 
-    if (key == 295 && action == 1) {
-        calculate_round_bonus(&gState->gameData, gState->player.playerData);
+    if (key == 67 && action == 1) {
+        gMemory->play_audio_fn("./audio/place_tile.wav");
+        sort_rack_by_color();
     }
 
     if (key == 294 && action == 1) {
-        __debugbreak();
+        ActionCommand *shake = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, mat4*, execute_action);
+        if (shake) {
+            shake->action = screen_shake;
+            *COMMAND_PAYLOAD(shake, mat4*) = &gMemory->renderBuffer->projection;
+        } 
     }
 
     if(key == 258 && action == 1) {
         //tabs
-        switch_tab(gState->uiPage);
+        if(gState->pageState == OPTIONS) {
+            switch_tab(gState->uiPage);
+        } else if(gState->pageState == RELIC){
+            gState->pageState = IN_GAME; 
+            reinit_page_state();
+        } else {
+            gState->pageState = RELIC;
+            reinit_page_state();
+        }
     }
 
     if(key == 0) {
