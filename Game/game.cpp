@@ -1127,31 +1127,48 @@ void check_relic_hovered(f64 xpos, f64 ypos) {
         return;
     }
 
-    TextElement* text = get_text_element_by_parent_id(gState->uiPage, 99);
-    UIElement* bg = get_element_by_parent_id(gState->uiPage, 99);
-    if(!bg || !text) return;
+    UIElement* bg = get_element_by_parent_id(gState->uiPage, 98);
+    if(!bg) return;
+    TextElement *name = bg->dependentTextElements[0];
+    TextElement *rarity = bg->dependentTextElements[1];
+    TextElement *desc = bg->dependentTextElements[2];
 
     if(gState->uiPage->elementHovered != -1) {
         UIElement *relic = &gState->uiPage->uiElements[gState->uiPage->elementHovered];
         i32 frame = relic->sheetAnimation.currentFrame;
         if(relic->textureName == RELICS_T) {
-            text->posx = relic->posx + 0.15f;
-            text->posy = relic->posy + 0.0125f;
+            name->posx = relic->posx + 0.15f;
+            name->posy = relic->posy - 0.1f;
+            snprintf(name->text, sizeof(name->text), "%s", gState->relics[frame].name);
 
-            snprintf(text->text, sizeof(text->text), "%s", gState->relics[frame].name);
+            rarity->posx = relic->posx + 0.15f;
+            rarity->posy = relic->posy - 0.05f;
+            snprintf(rarity->text, sizeof(rarity->text), "%s", rarity_to_string(gState->relics[frame].rarity)); 
+            rarity->color = rarity_to_color(gState->relics[frame].rarity);
+
+            desc->posx = relic->posx + 0.15f;
+            desc->posy = relic->posy;
+            desc->maxWidth = bg->width * RENDERING_ASPECT;
+            snprintf(desc->text, sizeof(desc->text), "%s", gState->relics[frame].description);
 
             bg->posx = relic->posx + 0.15f;
             bg->posy = relic->posy + 0.0125f;
 
             bg->visible = true;
-            text->visible = true;
+            name->visible = true;
+            rarity->visible = true;
+            desc->visible = true;
         } else {
             bg->visible = false;
-            text->visible = false;
+            name->visible = false;
+            rarity->visible = false;
+            desc->visible = false;
         }
     } else {
         bg->visible = false;
-        text->visible = false;
+        name->visible = false;
+        rarity->visible = false;
+        desc->visible = false;
     }
 }
 
@@ -1821,7 +1838,7 @@ void add_actives_ui(u8 animated) {
         slotIds[i] = add_ui_element(gState->uiPage, slot, false);
     }
 
-    i32 multWindowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::TOP_LEFT, vec2(0.2, 0.2f), animated ? vec2(0.075f, 1.2f) : vec2(0.075f, 0.78f), vec2(0.075f, 0.78f), R_SILVER, R_DARK_BLUE); 
+    i32 multWindowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::TOP_LEFT, vec2(0.2, 0.2f), animated ? vec2(0.075f, 1.2f) : vec2(0.075f, 0.78f), vec2(0.075f, 0.78f), R_SILVER, R_DARK_BLUE, 0.5f); 
 
     for(i32 i = 0; i < 6; ++i) {
         add_image_to_window(
@@ -1865,7 +1882,7 @@ void add_in_game_ui() {
 
     add_button(gState->uiPage, BUTTON_T, BACK_T, vec2(0.035f, 0.05f), vec2(0.04f, 0.035f), R_DARK_GRAY, 2);
 
-    i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::TOP_LEFT, vec2(0.12f, 0.6f), vec2(0.075f, -0.2f), vec2(0.075f, 0.01f), R_SILVER, R_DARK_BLUE); 
+    i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::TOP_LEFT, vec2(0.12f, 0.6f), vec2(0.075f, -0.2f), vec2(0.075f, 0.01f), R_SILVER, R_DARK_BLUE, 0.5f); 
 
     TextElement score = TextElement{ Anchor::CENTER, "Score", 0.2f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
     add_text_bob(&score);
@@ -2147,8 +2164,6 @@ void add_profile_ui() {
     add_button(gState->uiPage, BUTTON_T, "TEST", vec2(0,0), vec2(0.1f), vec4(1.0f), 3);
 }
 
-i32 resOptionId;
-
 void add_options_ui() {
     gState->pageState = OPTIONS;
     clear_game_ui();
@@ -2156,7 +2171,7 @@ void add_options_ui() {
     //should be auto added when adding tabs, but color
     add_cursor(gState->uiPage, BUTTON_SELECT_T, R_YELLOW, TAB);
 
-    //i32 back = add_button(gState->uiPage, BUTTON_T, "X", vec2(0.225f, 0.075f), vec2(0.04f, 0.035f), vec4(0.0f, 0.0f, 0.0f, 1.0f), 2);
+    i32 applyChanges = add_button(gState->uiPage, BUTTON_T, "Apply Changes", vec2(0.5f, 0.915f), vec2(0.075f, 0.1f), R_RED, 13);
     i32 back = add_button(gState->uiPage, BUTTON_T, BACK_T, vec2(0.24f, 0.075f), vec2(0.04f, 0.035f), R_DARK_GRAY, 2);
     //i32 general = add_tab(gState->uiPage, BUTTON_T, "General", R_SILVER);
     i32 video = add_tab(gState->uiPage, BUTTON_T, "Video", R_DARK_GRAY);
@@ -2179,9 +2194,8 @@ void add_options_ui() {
     snprintf(resolutionEntry.text, sizeof(resolutionEntry.text), "%4d x %-4d @ %dHz", 
         gMemory->supportedResolutions[gMemory->resolutionId].width, gMemory->supportedResolutions[gMemory->resolutionId].height, gMemory->supportedResolutions[gMemory->resolutionId].refreshRate);
     i32 resolutionOptionId = add_text_element(gState->uiPage, resolutionEntry);
-    resOptionId = add_options_element(gState->uiPage, resolutionOptionId, 13, BUTTON_T, OPTION_T, R_DARK_GRAY);
+    i32 resOptionId = add_options_element(gState->uiPage, resolutionOptionId, 12, BUTTON_T, OPTION_T, R_DARK_GRAY);
     //
-
 
     //
     TextElement videoMode = TextElement{ Anchor::CENTER, "Video mode", 0.5f, 0.5f, -1, false, DEFAULT_FONT_SCALE * 3, vec3(1.0f)};
@@ -2192,19 +2206,20 @@ void add_options_ui() {
     videoModeEntry.activeValueId = gMemory->is_full_screen_fn();
     //need to track the status of video mode in the engine
     snprintf(videoModeEntry.text, sizeof(videoModeEntry.text), "%s", videoModes[gMemory->is_full_screen_fn()]);
-    i32 videoModeId = add_options_element(gState->uiPage, add_text_element(gState->uiPage, videoModeEntry), 14, BUTTON_T, OPTION_T, R_DARK_GRAY);
+    i32 videoModeId = add_options_element(gState->uiPage, add_text_element(gState->uiPage, videoModeEntry), 12, BUTTON_T, OPTION_T, R_DARK_GRAY);
     //
 
     //always false, pull from the engine
-    i32 vsyncRadio = add_radio_element(gState->uiPage, gMemory->is_vsync_on_fn(), CENTER, vec2(0.5f, 0.85f), vec2(0.05f), 15, RADIO_T); 
+    i32 vsyncRadio = add_radio_element(gState->uiPage, gMemory->is_vsync_on_fn(), CENTER, vec2(0.5f, 0.825f), vec2(0.05f), 12, RADIO_T); 
 
     // window create
     i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::CENTER, vec2(0.95f, 0.6f), vec2(0.5f, 2.0f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE); 
     add_button_to_window(gState->uiPage, windowIndex, back);
+    add_button_to_window(gState->uiPage, windowIndex, applyChanges);
     //
 
     add_tabs_to_window(gState->uiPage, windowIndex, tabs, 2);
-    TextElement vsync = TextElement{ Anchor::CENTER, "Vsync", 0.5f, 0.75f, -1, false, DEFAULT_FONT_SCALE * 3, vec3(1.0f)};
+    TextElement vsync = TextElement{ Anchor::CENTER, "Vsync", 0.5f, 0.725f, -1, false, DEFAULT_FONT_SCALE * 3, vec3(1.0f)};
 
 
     add_text_element_to_tab(gState->uiPage, windowIndex, video, resolution);
@@ -2218,15 +2233,22 @@ void add_options_ui() {
 void add_relics_ui() {
     gState->pageState = RELIC;
 
-    UIElement relicDesc = UIElement{ Anchor::CENTER, 99, -1, 0, 0, 0.3f, 0.2f};
+    UIElement relicDesc = UIElement{ Anchor::CENTER, 98, -1, 0, 0, 0.3f, 0.2f};
     relicDesc.color = R_DARK_GRAY;
     relicDesc.visible = false;
-    add_ui_element(gState->uiPage, relicDesc);
+    i32 relicDescId = add_ui_element(gState->uiPage, relicDesc);
 
-    TextElement text = TextElement{ Anchor::CENTER, "Test Text", 0, 0, 99, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
-    text.haveCountAnimation = false;
-    text.visible = false;
-    add_text_element(gState->uiPage, text); 
+    TextElement relicDetails = TextElement{ Anchor::CENTER, "", 0, 0, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+    relicDetails.haveCountAnimation = false;
+    relicDetails.visible = false;
+
+    //name
+    add_dependent_text_element(gState->uiPage, relicDescId, add_text_element(gState->uiPage, relicDetails)); 
+    //rarity
+    add_dependent_text_element(gState->uiPage, relicDescId, add_text_element(gState->uiPage, relicDetails)); 
+    //description
+    add_dependent_text_element(gState->uiPage, relicDescId, add_text_element(gState->uiPage, relicDetails)); 
+    
 
     i32 relicIds[MAX_RELICS];
     i32 slotIds[MAX_RELICS];
@@ -2274,7 +2296,7 @@ void add_relics_ui() {
         slotIds[i] = add_ui_element(gState->uiPage, slot, false);
     }
 
-    i32 multWindowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::CENTER, vec2(0.9f, 0.75f), vec2(0.5f, 1.2f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE, 0.5f); 
+    i32 multWindowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::CENTER, vec2(0.9f, 0.75f), vec2(0.5f, 1.2f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE, 0.25f); 
 
     for(i32 i = 0; i < MAX_RELICS; ++i) {
         add_image_to_window(
@@ -2307,7 +2329,7 @@ void init_game() {
 }
 
 void init_main_menu() {
-    gState->gameData = GameData{20, 1};
+    gState->gameData = GameData{20, 100};
     clear_player_data();
     gState->mode = GM_START_MENU;
     clear_game_ui();
@@ -2553,7 +2575,7 @@ void complete_round() {
 
     if(gd.turnLimit == 0 && (gState->playerRack.numberOfTiles > 0 || gd.minimumScore > gd.roundScore)) {
         gState->mode = GM_GAME_OVER;
-        gState->gameData = GameData{20, 1};
+        gState->gameData = GameData{20, 100};
         clear_player_data();
         add_end_game_ui();
     } else {
@@ -2698,19 +2720,32 @@ void debug_state_memory(GameMemory* memory, u8* cursor) {
 
 void nothing() {}
 
-void set_resolution() {
-    TextElement *optionsText = gState->uiPage->uiElements[resOptionId].textChild;
-    //passing gmemory unneccesary, this function will be moved to self action.
+void apply_video_settings() {
+    TextElement *optionsText = nullptr;
+    TextElement *videoMode = nullptr;
+    UIElement *vsync = nullptr;
+    for(i32 i = 0; i < gState->uiPage->numberOfTextElements; ++i) {
+        if(gState->uiPage->textElements[i].valueId == 9) {
+            optionsText = &gState->uiPage->textElements[i];
+        } 
+        if(gState->uiPage->textElements[i].valueId == 10) {
+            videoMode = &gState->uiPage->textElements[i];
+        } 
+    }
+
+    for(i32 i = 0; i < gState->uiPage->numberOfImageElements; ++i) {
+        if(gState->uiPage->uiElements[i].textureName == RADIO_T) {
+            vsync = &gState->uiPage->uiElements[i];
+        }
+    }
+
+    if(!optionsText || !videoMode) return;
+
     gMemory->resolutionId = optionsText->activeValueId;
     gMemory->set_resolution_fn(optionsText->activeValueId);
-}
-
-void set_video_format() {
-    gMemory->toggleFullScreen = true;
-}
-
-void toggle_vsync() {
-    gMemory->toggleVsync = true;
+    
+    gMemory->toggleFullScreen = videoMode->activeValueId != gMemory->is_full_screen_fn();
+    gMemory->toggleVsync = vsync->sheetAnimation.currentFrame != gMemory->is_vsync_on_fn();
 }
 
 void add_game_ui_data(UIPage *uiPage) {
@@ -2727,9 +2762,7 @@ void add_game_ui_data(UIPage *uiPage) {
     uiPage->actions[uiPage->numberOfActions++] = &add_shop_purchase_menu;
     uiPage->actions[uiPage->numberOfActions++] = &add_relic;
     uiPage->actions[uiPage->numberOfActions++] = &nothing;
-    uiPage->actions[uiPage->numberOfActions++] = &set_resolution; // 13
-    uiPage->actions[uiPage->numberOfActions++] = &set_video_format; // 14
-    uiPage->actions[uiPage->numberOfActions++] = &toggle_vsync; // 15
+    uiPage->actions[uiPage->numberOfActions++] = &apply_video_settings; // 13
     
     uiPage->values[uiPage->numberOfValues++] = &gState->gameData.roundScore;//&gState->player.playerData.score;
     uiPage->values[uiPage->numberOfValues++] = &gState->gameData.turnLimit;
@@ -2858,6 +2891,10 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
 
     if (key == 300 && action == 1) {
         gMemory->toggleFullScreen = true;
+    }
+
+    if (key == 301 && action == 1) {
+        gState->gameData.minimumScore = 1;
     }
 
     if (key == 299 && action == 1) {

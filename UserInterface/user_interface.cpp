@@ -405,7 +405,6 @@ i32 add_ui_element(UIPage* page, UIElement element, bool actionable) {
 }
 
 void next_option(UIPage *page, void *ptr) {
-    printf("NEXT\n");
     UIElement *self = (UIElement *)ptr;
     TextElement *text = self->textChild;
 
@@ -418,7 +417,6 @@ void next_option(UIPage *page, void *ptr) {
 }
 
 void previous_option(UIPage *page, void *ptr) {
-    printf("PREV\n");
     UIElement *self = (UIElement *)ptr;
     TextElement *text = self->textChild;
 
@@ -943,9 +941,13 @@ i32 add_dynamic_text_element(UIPage* page, TextElement text, const char* label, 
     return page->numberOfTextElements - 1;
 }
 
-void clear_image_elements(UIElement element) {
-    //element.id = nullptr;
+void add_dependent_text_element(UIPage *page, i32 elementId, i32 textId) {
+    TextElement *text = &page->textElements[textId];
+    UIElement *e = &page->uiElements[elementId];
+    e->dependentTextElements[e->numberOfDependentTextElements++] = text;
+}
 
+void clear_image_elements(UIElement element) {
     for(i32 i = 0; i < 3; i++) {
         element.dependentElements[i] = nullptr;
     }
