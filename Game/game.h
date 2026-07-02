@@ -85,7 +85,7 @@ enum PAGE_STATE {
     IN_GAME,
     END_GAME,
     SHOP_PURCHASE,
-    SHOP,
+    ROUND_COMPLETE,
     MAIN_MENU,
     PROFILE,
     OPTIONS,
@@ -149,22 +149,21 @@ struct Item {
 };
 
 struct Set {
-  GameObject object;
-  i32 id;
-  SET_TYPE setType;
-  Tile* tiles[13];
-  u8 numberOfTiles = 0;
+    GameObject object;
+    i32 id;
+    SET_TYPE setType;
+    Tile* tiles[13];
+    u8 numberOfTiles = 0;
 
-  u8 highTileNumber = 1;
-  u8 lowTileNumber = 13;
+    u8 highTileNumber = 1;
+    u8 lowTileNumber = 13;
 
-  u8 lowTileIndex = 0;
-  u8 highTileIndex = 0;
+    u8 lowTileIndex = 0;
+    u8 highTileIndex = 0;
 
-  u8 isComplete = false;
-  u8 isHovered = false;
-
-  u64 value = 0;
+    u8 isComplete = false;
+    u8 isHovered = false;
+    u8 relicIds[MAX_RELICS];
 };
 
 struct Pool {

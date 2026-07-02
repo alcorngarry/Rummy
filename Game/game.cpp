@@ -13,11 +13,10 @@ const i32 RACK_SPACES = 20;
 GameState* gState = nullptr;
 GameMemory* gMemory = nullptr;
 mat4 rackSpaces[RACK_SPACES];
-//mat4 tableSpaces[TABLE_ROWS][TABLE_COLUMNS];
 u8 debugMenuOpen = false;
 // terrible but for the ui endgame
-u64 numTableTiles = 0;
-u64 hoveredSetValue = 100;
+u64 numTableTiles = 0; //move this to table value
+u64 hoveredSetValue = 0;
 char *videoModes[2] = {"Window", "Fullscreen"};
 
 void get_playable_tiles(Set *set);
@@ -44,7 +43,7 @@ u8 move_tile(void* ptr);
 void add_game_ui_data(UIPage *uiPage);
 vec2 world_to_ui(mat4 model, mat4 view, mat4 projection);
 void add_shop_purchase_menu();
-void calculate_set_bonuses(Set *set);
+u64 calculate_set_bonuses(Set *set, u8 uiAnimation);
 u8 add_table_value_total(void *ptr);
 
 // validations.cpp
@@ -209,7 +208,6 @@ void clear_table() {
         s->numberOfTiles = 0;
         s->id = -1;
         s->setType = SET_TYPE::INVALID;
-        s->value = 0;
         s->lowTileNumber = 20;
         s->highTileNumber = 0;
         s->isComplete = false;
@@ -302,39 +300,47 @@ Relic RELIC_TABLE[TOTAL_RELICS] = {
 //    { TYPE_6, "type 6", "this item does this thing! 6" }
 };
 
+u64 get_set_value(Set *set) {
+    u64 value = 0; 
+    for(i32 i = 0; i < set->numberOfTiles; ++i) {
+        value += set->tiles[i]->details.tileNumber;
+    }
+    return value;
+};
+
 u8 relic_1_action(void *ptr) {
     Set *set = *(Set **)ptr;
-    set->value *= 2;
+    hoveredSetValue *= 2;
     return true;
 }
 
 u8 relic_2_action(void *ptr) {
     Set *set = *(Set **)ptr;
-    set->value *= 2;
+    hoveredSetValue *= 2;
     return true;
 }
 
 u8 relic_3_action(void *ptr) {
     Set *set = *(Set **)ptr;
-    set->value *= 3;
+    hoveredSetValue *= 3;
     return true;
 }
 
 u8 relic_4_action(void *ptr) {
     Set *set = *(Set **)ptr;
-    set->value *= 3;
+    hoveredSetValue *= 3;
     return true;
 }
 
 u8 relic_5_action(void *ptr) {
     Set *set = *(Set **)ptr;
-    set->value *= 4;
+    hoveredSetValue *= 4;
     return true;
 }
 
 u8 relic_6_action(void *ptr) {
     Set *set = *(Set **)ptr;
-    set->value *= 8;
+    hoveredSetValue *= 8;
     return true;
 }
 
@@ -346,7 +352,7 @@ void create_tiles() {
     GameObject obj = GameObject{};
 
     i32 tileIndex = 0;
-    for(u8 color = 0; color < 4; color++) {
+    for(u8 color = 0; color < 4; ++color) {
         for(u8 number = 1; number <= 14; number++) {
           obj.currentFrame = number - 1;
           Tile tile = Tile{
@@ -561,9 +567,8 @@ void add_multiplier_text(Set *set, i32 value) {
 u8 add_set_amount(void *ptr) {
     GameObject *self = *(GameObject **)ptr;
     Tile* tile = (Tile*)self;
-    Set *set = &gState->table.sets[tile->setId];
-    set->value += tile->details.tileNumber;
-
+    //Set *set = &gState->table.sets[tile->setId];
+    hoveredSetValue += tile->details.tileNumber;
     return true;
 }
 
@@ -1479,7 +1484,8 @@ vec2 world_to_ui(mat4 model, mat4 view, mat4 projection) {
 }
 
 void update_set_ui(Set *set) {
-    if(hoveredSetValue == set->value) return;
+    //if(hoveredSetValue == set->value) return;
+    //something better..
 
     vec2 pos = world_to_ui(
         set->object.model,
@@ -1498,7 +1504,7 @@ void update_set_ui(Set *set) {
     bg->posx = pos.x;
     bg->posy = pos.y - 0.1f;
 
-    hoveredSetValue = set->value;
+    hoveredSetValue = calculate_set_bonuses(set, false);
 }
 
 void add_tile_to_table_space(Tile* tile, vec2 tableSpace) {
@@ -1581,7 +1587,7 @@ u8 add_tile_to_set(Set *set, Tile *tile) {
         assert(set->numberOfTiles <= 12);
     }
     set->tiles[set->numberOfTiles++] = tile;
-    set->value += tile->details.tileNumber;
+    //set->value += tile->details.tileNumber;
 
     create_new_set_model(set);
 
@@ -1603,7 +1609,7 @@ u8 add_tile_to_set(Set *set, Tile *tile) {
 void remove_tile_from_set(Set *set, Tile *tile) {
     set->tiles[tile->locationIndex] = nullptr;
     set->numberOfTiles--;
-    set->value -= tile->details.tileNumber;
+    //set->value -= tile->details.tileNumber;
 
     if(set->numberOfTiles != 0) {
         get_high_tile_number(set);
@@ -1777,7 +1783,6 @@ u8 is_table_valid() {
     for(i32 i = 0; i < gState->table.numberOfSets; i++) {
         Set *set = &gState->table.sets[i];
         if(set->numberOfTiles < 3) return false;
-        calculate_set_bonuses(set);
     }
 
     add_table_value_total(nullptr);
@@ -2128,14 +2133,29 @@ void add_shop_purchase_menu() {
         "$", 3, TextType::UINT_64));
 }
 
-void add_shop_ui() {
-    gState->pageState = SHOP;
+void add_round_complete_ui() {
+    // 8 hoveredsetvalue
+    gState->pageState = ROUND_COMPLETE;
     i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::CENTER, vec2(0.12f, 0.85f), vec2(0.5f, 0.0f), vec2(0.5f, 0.07f), R_SILVER, R_DARK_BLUE); 
-
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Round Score", 0.5f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(R_GOLDEN)}));
+    
+    gState->gameData.roundScore = 0;
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Round Score", 0.5f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(R_WHITE)}));
     i32 progressIndex = add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_GOLDEN)}, 
         "", 7, INT_32);
+    
+    hoveredSetValue = 0;
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Set Value", 0.25f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(R_WHITE)}));
+    i32 setIndex = add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.25f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_GOLDEN)}, 
+        "", 8, INT_32);
+    
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Cash", 0.75f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(R_GOLDEN)}));
+    i32 cashIndex = add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.75f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_GOLDEN)}, 
+        "$", 3, TextType::UINT_64); 
+
+    add_text_to_window(gState->uiPage, windowIndex, setIndex);
+    add_text_to_window(gState->uiPage, windowIndex, cashIndex);
     add_text_to_window(gState->uiPage, windowIndex, progressIndex);
+
     add_actives_ui(false);
 }
 
@@ -2155,7 +2175,7 @@ void add_main_menu_ui() {
 
     //add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.0f, 0.0f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}, "", &gState->deltaTime, TextType::FLOAT_32);
 
-    add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "???", 0.5f, 0.5f, -1, true, DEFAULT_FONT_SCALE * 5.0 });
+    add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Tile Taction", 0.5f, 0.5f, -1, true, DEFAULT_FONT_SCALE * 5.0 });
 //    write_page(gState->uiPage, "main_menu.eui");
 }
 
@@ -2316,6 +2336,7 @@ void add_relics_ui() {
 }
 
 void init_game() {
+    gState->gameData.roundScore = 0;
     create_tiles();
     create_relics();
     init_pool();
@@ -2347,7 +2368,8 @@ void clear_game_ui() {
 
 u8 add_set_value_total(void *ptr) {
     Set *set = *(Set **)ptr;
-    gState->gameData.roundScore += set->value;
+    gState->gameData.roundScore += hoveredSetValue;
+    hoveredSetValue = 0;
     return true;
 }
 
@@ -2355,13 +2377,13 @@ u8 add_table_value_total(void *ptr) {
     gState->gameData.roundScore = 0; //zero it out first 
     for(i32 i = 0; i < gState->table.numberOfSets; i++) {
         Set *set = &gState->table.sets[i];
-        gState->gameData.roundScore += set->value;
+        gState->gameData.roundScore += calculate_set_bonuses(set, false); 
     }
     return true;
 }
 
 void push_set_bonus(Set *set, i32 value, CmdActionFuncPtr relicFn) {
-    if(gState->pageState == SHOP) {
+    if(gState->pageState == ROUND_COMPLETE) {
         vec2 setPos = world_to_ui(
             set->object.model,
             gMemory->renderBuffer->view,
@@ -2371,7 +2393,7 @@ void push_set_bonus(Set *set, i32 value, CmdActionFuncPtr relicFn) {
         TextElement multiplier = TextElement{ Anchor::CENTER, "", setPos.x, setPos.y - 1.0f, -1, true, DEFAULT_FONT_SCALE * 3.0 };
         multiplier.color = R_RED;
         snprintf(multiplier.text, sizeof(multiplier.text), "x%d", value);
-        add_move_animation(&multiplier, vec2(setPos.x, setPos.y - 0.2f), 0.75f);
+        add_move_animation(&multiplier, vec2(setPos.x, setPos.y - 0.2f), 0.5f);
 
         ActionCommand *setText = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, TextElement, execute_action);
         if (setText) {
@@ -2379,7 +2401,7 @@ void push_set_bonus(Set *set, i32 value, CmdActionFuncPtr relicFn) {
             *COMMAND_PAYLOAD(setText, TextElement) = multiplier;
         }
 
-        push_wait(&gState->cmdQueue, 0.75f);
+        push_wait(&gState->cmdQueue, 0.5f);
     }
 
     ActionCommand *setVal = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, Set *, execute_action);
@@ -2389,73 +2411,73 @@ void push_set_bonus(Set *set, i32 value, CmdActionFuncPtr relicFn) {
     } 
 }
 
-void calculate_set_bonuses(Set *set) {
+u64 calculate_set_bonuses(Set *set, u8 uiAnimation) {
+    u64 multiplier = 1;
     for(i32 i = 0; i < gState->player.numberOfRelics; ++i) {
         switch(gState->player.relics[i]) {
             case TYPE_1 : {
                 if(set->numberOfTiles == 3) {
-                    if(gState->pageState == SHOP) {
+                    if(uiAnimation) {
                         push_set_bonus(set, 2, &relic_1_action);
-                        printf("bonus shop\n");
                     } else {
-                        relic_1_action(&set);
-                        printf("bonus no shop\n");
+                        multiplier *= 2;
                     }
                 } 
                 break;
             }
             case TYPE_2 : {
                 if(set->numberOfTiles == 4) {
-                    if(gState->pageState == SHOP) {
+                    if(uiAnimation) {
                         push_set_bonus(set, 2, &relic_2_action);
                     } else {
-                        relic_2_action(&set);
+                        multiplier *= 2;
                     }
                 }
                 break;
             }
             case TYPE_3 : {
                 if(set->numberOfTiles == 5) {
-                    if(gState->pageState == SHOP) {
+                    if(uiAnimation) {
                         push_set_bonus(set, 3, &relic_3_action);
                     } else {
-                        relic_3_action(&set);
+                        multiplier *= 3;
                     }
                 }
                 break;
             }
             case TYPE_4 : {
                 if(set->numberOfTiles == 6) {
-                    if(gState->pageState == SHOP) {
+                    if(uiAnimation) {
                         push_set_bonus(set, 3, &relic_4_action);
                     } else {
-                        relic_4_action(&set);
+                        multiplier *= 3;
                     }
                 }
                 break;
             }
             case TYPE_5 : {
                 if(set->numberOfTiles == 7) { 
-                    if(gState->pageState == SHOP) {
+                    if(uiAnimation) {
                         push_set_bonus(set, 4, &relic_5_action);
                     } else {
-                        relic_5_action(&set);
+                        multiplier *= 4;
                     }
                 }
                 break;
             }
             case TYPE_6 : {
                 if(set->numberOfTiles == 8)  {
-                    if(gState->pageState == SHOP) {
+                    if(uiAnimation) {
                         push_set_bonus(set, 8, &relic_6_action);
                     } else {
-                        relic_6_action(&set);
+                        multiplier *= 8;
                     }
                 }
                 break;
             }
         }
     } 
+    return get_set_value(set) * multiplier;
 }
 
 f32 timeLeft = 0.25f;
@@ -2484,6 +2506,20 @@ u8 screen_shake(void *ptr) {
     return false;
 }
 
+u8 add_cash(void *ptr) {
+    u64 cash = *(u64 *)ptr;
+    gState->gameData.dollaBills += cash;
+    return true;
+}
+
+void calculate_round_cash(GameData *gd) {
+    ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u64, execute_action);
+    if (total) {
+        total->action = add_cash;
+        *COMMAND_PAYLOAD(total, u64) = gd->rounds * 2;
+    }
+}
+
 void count_table() {
     for(i32 i = 0; i < gState->table.numberOfSets; ++i) {
         Set *set = &gState->table.sets[i];
@@ -2493,22 +2529,13 @@ void count_table() {
             gMemory->renderBuffer->view,
             gMemory->renderBuffer->projection        
         );
-        set->value = 0;
-        gState->uiPage->values[gState->uiPage->numberOfValues++] = &set->value;
-        TextElement setElement = TextElement{ Anchor::CENTER, "", pos.x, pos.y - 0.15f, -1, true, DEFAULT_FONT_SCALE * 3.0 };
-        setElement.color = R_BLACK;
-        add_value_to_text(gState->uiPage, &setElement, "+", gState->uiPage->numberOfValues - 1, UINT_64);
 
-        ActionCommand *setText = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, TextElement, execute_action);
-        if (setText) {
-            setText->action = add_text_to_page;
-            *COMMAND_PAYLOAD(setText, TextElement) = setElement;
-        }
-
+        // add the set total to the roundScore, then add multiplier to the roundScore 
         for(i32 j = 0; j < set->numberOfTiles; ++j) {
             Tile *tile = set->tiles[j];
             tile->object.baseModel = tile->object.model;
 
+            //animates tile
             ActionCommand *cmd = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, GameObject *, execute_action);
             if (cmd) {
                 cmd->action = add_tile_amount;
@@ -2532,33 +2559,41 @@ void count_table() {
                 *COMMAND_PAYLOAD(tileText, TextElement) = bonus;
             }
 
-            push_wait(&gState->cmdQueue, 0.5f);
-
+            push_wait(&gState->cmdQueue, 0.1f);
+            
+            //adds tile number to hoveredset
             ActionCommand *setVal = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, GameObject *, execute_action);
             if (setVal) {
                 setVal->action = add_set_amount;
                 *COMMAND_PAYLOAD(setVal, GameObject *) = &tile->object;
             }
 
-            push_wait(&gState->cmdQueue, 0.5f);
+            push_wait(&gState->cmdQueue, 0.1f);
         }
 
-        calculate_set_bonuses(set);
+        calculate_set_bonuses(set, true);
 
         //if(set->setType == RUN && gState->player.playerData.runMultipliers > 1) {
         //    add_multiplier_text(set, gState->player.playerData.runMultipliers);
         //} else if (set->setType == GROUP && gState->player.playerData.groupMultipliers > 1) {
         //    add_multiplier_text(set, gState->player.playerData.groupMultipliers);
         //}
+        push_wait(&gState->cmdQueue, 1.0f);
 
+        //adds hovered set to total, clears hovered set
         ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, Set *, execute_action);
         if (total) {
             total->action = add_set_value_total;
             *COMMAND_PAYLOAD(total, Set *) = set;
         }
+        push_wait(&gState->cmdQueue, 1.0f);
     }
 
-    push_wait(&gState->cmdQueue, 1.75f);
+    push_wait(&gState->cmdQueue, 1.0f);
+
+    calculate_round_cash(&gState->gameData);
+
+    push_wait(&gState->cmdQueue, 1.0f);
 
     ActionCommand *cmd = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, 0, execute_action);
     if (cmd) cmd->action = load_shop_purchase_menu;
@@ -2566,7 +2601,6 @@ void count_table() {
 
 void calculate_round_bonus(GameData *gd, PlayerData pd) {
     count_table();
-    gd->dollaBills += gd->rounds * 2;
 }
 
 void complete_round() {
@@ -2579,7 +2613,7 @@ void complete_round() {
         clear_player_data();
         add_end_game_ui();
     } else {
-        add_shop_ui();
+        add_round_complete_ui();
         gState->mode = GM_ROUND_COMPLETE;
         calculate_round_bonus(&gState->gameData, gState->player.playerData);
         gState->gameData.turnLimit = 20; 
@@ -2777,7 +2811,6 @@ void add_game_ui_data(UIPage *uiPage) {
     uiPage->values[uiPage->numberOfValues++] = gMemory->supportedResolutions; //9 
     uiPage->formatters[uiPage->numberOfValues] = &format_string_array;
     uiPage->values[uiPage->numberOfValues++] = &videoModes; //10 
-
 }
 
 void reinit_page_state() {
@@ -2792,8 +2825,8 @@ void reinit_page_state() {
             add_end_game_ui();
             break;
         }
-        case SHOP: {
-            add_shop_ui();
+        case ROUND_COMPLETE: {
+            add_round_complete_ui();
             break;
         }
         case SHOP_PURCHASE: {
@@ -2904,7 +2937,7 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
 
     if (key == 298 && action == 1) {
         clear_game_ui();
-        add_shop_ui();
+        add_round_complete_ui();
     }
 
     if(key == 297 && action == 1) {
