@@ -427,7 +427,6 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
 
                 if (lineWidth > 0.0f && lineWidth + wordWidth > maxWidth)
                     break;
-glEnable(GL_DEPTH_TEST);
 
                 lineWidth += wordWidth;
 

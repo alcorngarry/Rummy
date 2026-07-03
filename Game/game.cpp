@@ -1904,7 +1904,7 @@ void add_in_game_ui() {
     i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::TOP_LEFT, vec2(0.12f, 0.6f), vec2(0.075f, -0.2f), vec2(0.075f, 0.01f), R_SILVER, R_DARK_BLUE, 0.5f); 
 
     TextElement score = TextElement{ Anchor::CENTER, "Score", 0.2f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
-    add_text_bob(&score);
+    //add_text_bob(&score);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, score));
 
     TextElement scoreVal = TextElement{ Anchor::CENTER, "", 0.2f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f)};
@@ -1918,7 +1918,7 @@ void add_in_game_ui() {
     add_dynamic_text_element(gState->uiPage, drawsRemaining, "", 1, TextType::INT_32);
 
     TextElement scoreMin = TextElement{ Anchor::CENTER, "Score Minimum", 0.35f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
-    add_text_bob(&scoreMin);
+    //add_text_bob(&scoreMin);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, scoreMin));
 
     TextElement scoreMinVal = TextElement{ Anchor::CENTER, "", 0.35f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f)};
@@ -1926,7 +1926,7 @@ void add_in_game_ui() {
     add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, scoreMinVal,"", 2, TextType::UINT_64));
 
     TextElement cash = TextElement{ Anchor::CENTER, "Cash", 0.5f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(R_GOLDEN)};
-    add_text_bob(&cash);
+    //add_text_bob(&cash);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, cash));
 
     TextElement cashVal = TextElement{ Anchor::CENTER, "", 0.5f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_GOLDEN)};
@@ -1934,7 +1934,7 @@ void add_in_game_ui() {
     add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, cashVal, "$", 3, TextType::UINT_64));
 
     TextElement round = TextElement{ Anchor::CENTER, "Round", 0.6f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
-    add_text_bob(&round);
+    //add_text_bob(&round);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, round));
 
     TextElement roundVal = TextElement{ Anchor::CENTER, "", 0.6f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f)};

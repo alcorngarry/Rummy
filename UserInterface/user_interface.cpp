@@ -503,9 +503,12 @@ void add_cursor(UIPage *page, i32 cursorHandle, vec4 color, CursorType type) {
     }
 }
 
+//terrible
+f32 randomBob = 0.0f;
+
 void add_text_bob(TextElement *element) {
-    f32 amplitude = 0.00001f;
-    f32 duration = 2.0f;
+    f32 amplitude = 0.000005f;
+    f32 duration = 5.0f;
 
     Animation *a = &element->animations[element->numberOfAnimations++];
 
@@ -514,7 +517,8 @@ void add_text_bob(TextElement *element) {
     a->destination = vec2(0.0f, amplitude);
 
     a->duration = duration;
-    a->elapsed = 0.0f;
+    a->elapsed = randomBob;
+    randomBob = randomBob >= duration ? 0.0f : randomBob + 2.0f;
 
     a->loopAnimation = true;
     a->playOnce = false;
