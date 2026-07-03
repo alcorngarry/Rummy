@@ -158,6 +158,7 @@ struct TextElement {
   f64 prevValue;
   u8 haveCountAnimation = true;
   f32 maxWidth = 16777216.0f; //max f32
+  u8 hasShadow = true;
 };
 
 struct UIPage {

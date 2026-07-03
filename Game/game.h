@@ -72,6 +72,7 @@ struct RNG {
   u64 state;
 };
 
+//phase this out...
 enum GAME_MODE {
     GM_START_MENU,
     GM_PLAYING,
@@ -259,6 +260,7 @@ struct GameState {
 
     GAME_MODE mode;
     PAGE_STATE pageState;
+    PAGE_STATE prevState;
 
     Player player;
     GameData gameData;

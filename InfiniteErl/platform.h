@@ -28,6 +28,8 @@
 #define RADIO_T 20
 #define BACK_T 21
 #define OPTION_T 22
+#define SETTINGS_T 23
+#define EXIT_T 24
 
 #ifdef BUILD_DLL
 #define GAME_DLL __declspec(dllexport)

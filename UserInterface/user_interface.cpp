@@ -447,6 +447,7 @@ i32 add_options_element(UIPage *page, i32 optionId, i32 optionActionId, i32 opti
     rightArrowIcon.sheetAnimation = iconSheet;
     rightArrowIcon.onCompleteActionId = 1;
     rightArrowIcon.textChild = option;
+    rightArrowIcon.visible = false;
     //
 
     UIElement rightArrow = UIElement{ option->anchor, -1, optionsHandle, option->posx + 0.2f, option->posy, 0.05f, 0.05f, false, 12};
@@ -460,6 +461,7 @@ i32 add_options_element(UIPage *page, i32 optionId, i32 optionActionId, i32 opti
     leftArrowIcon.sheetAnimation.currentFrame = 0;
     leftArrowIcon.posx -= 0.4f;
     leftArrowIcon.onCompleteActionId = 2;
+    leftArrowIcon.visible = false;
     //
 
     UIElement leftArrow = rightArrow;
@@ -492,6 +494,7 @@ void add_cursor(UIPage *page, i32 cursorHandle, vec4 color, CursorType type) {
     UIElement cursor = UIElement{ Anchor::CENTER, -1, cursorHandle, 0.0f, 0.0f, 0.09f, 0.09f};
     cursor.color = color;
     cursor.visible = false;
+    cursor.isPanel = true;
 
     if(type == ELEMENT) {
         page->elementCursorId = add_ui_element(page, cursor); 
@@ -530,16 +533,21 @@ i32 add_text_element_to_tab(UIPage *page, i32 windowId, i32 tabId, TextElement e
 
 i32 add_element_to_tab(UIPage *page, i32 windowId, i32 tabId, i32 element) {
     UIElement *tab = &page->uiElements[tabId];
-    tab->dependentElements[tab->numberOfDependentElements++] = &page->uiElements[element];
+    UIElement *e = &page->uiElements[element];
+    e->visible = false;
 
-    if(page->uiElements[element].textChild) {
-        tab->dependentTextElements[tab->numberOfDependentTextElements++] = page->uiElements[element].textChild;
-        add_text_to_window(page, windowId, page->uiElements[element].textChild->id);
+    tab->dependentElements[tab->numberOfDependentElements++] = e;
+
+    if(e->textChild) {
+        tab->dependentTextElements[tab->numberOfDependentTextElements++] = e->textChild;
+        e->textChild->visible = false;
+        add_text_to_window(page, windowId, e->textChild->id);
     }
 
-    i32 childId = page->uiElements[element].imageChildId;
+    i32 childId = e->imageChildId;
     while(childId != -1) {
         UIElement *child = &page->uiElements[childId];
+        child->visible = false;
         tab->dependentElements[tab->numberOfDependentElements++] = child;
         add_image_to_window(page, windowId, child->id);
         childId = child->imageChildId;
@@ -619,9 +627,11 @@ i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 
     i32 buttonId = page->numberOfImageElements;
     i32 textId = page->numberOfTextElements;
 
+
     UIElement button = UIElement{ Anchor::CENTER, -1, buttonHandle, pos.x, pos.y, scale.x, scale.y, true, actionId};
     button.color = color;
     button.hasShadow = true;
+    button.isPanel = true;
 
     Animation buttonClick = Animation{vec2(button.posx, button.posy + 0.01f), pos};
     button.animations[button.numberOfAnimations++] = buttonClick;

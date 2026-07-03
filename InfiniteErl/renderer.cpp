@@ -154,7 +154,8 @@ void push_ui_page(RenderBuffer* buffer, UIPage* uiPage) {
                 element.posy,
                 element.scale,
                 element.maxWidth,
-                element.color
+                element.color,
+                element.hasShadow
             };
             //ugly
             strcpy_s(text.text, element.text);
@@ -269,7 +270,8 @@ void render_buffer(RenderBuffer* buffer) {
                 entry->scale,
                 entry->maxWidth,
                 entry->color,
-                buffer->projection
+                buffer->projection,
+                entry->hasShadow
               );
               break;
           }
@@ -348,142 +350,155 @@ void draw_entity(mat4 model, mat4 view, mat4 projection, u32 vao, i32 textureId,
     glDepthMask(GL_TRUE);
 }
 
-void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 maxWidth, vec3 color, mat4 projection) {
+void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 maxWidth, vec3 color, mat4 projection, u8 hasShadow) {
     if (!text) return;
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDisable(GL_DEPTH_TEST);
 
     textShader->use();
     textShader->setMat4("projection", projection);
-    textShader->setVec3("textColor", color);
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindVertexArray(textVAO);
-
-    f32 pixelScale = scale;
-    f32 lineHeight = characters['T']->Size.y * pixelScale * 1.25f;
-
-    f32 startX = posx * RENDERING_ASPECT;
-    f32 y = posy + fontAscent * pixelScale;
-
-    if (anchor == Anchor::CENTER) {
-        f32 lineWidth = 0.0f;
-
-        const char* c = text;
-        while (*c) {
-            const char* wordEnd = c;
-            while (*wordEnd && *wordEnd != ' ')
-                wordEnd++;
-
-            f32 wordWidth = 0.0f;
-            for (const char* w = c; w < wordEnd; ++w) {
-                Character* ch = characters[*w];
-                wordWidth += (ch->Advance >> 6) * pixelScale;
-            }
-
-            if (lineWidth > 0.0f && lineWidth + wordWidth > maxWidth)
-                break;
-
-            lineWidth += wordWidth;
-
-            if (*wordEnd == ' ') {
-                lineWidth += (characters[' ']->Advance >> 6) * pixelScale;
-                wordEnd++;
-            }
-
-            c = wordEnd;
-        }
-
-        startX -= lineWidth * 0.5f;
-        y -= (characters['T']->Size.y * pixelScale) * 0.5f;
-    }
-    else if (anchor == Anchor::TOP_RIGHT) {
-        f32 lineWidth = 0.0f;
-
-        const char* c = text;
-        while (*c) {
-            const char* wordEnd = c;
-            while (*wordEnd && *wordEnd != ' ')
-                wordEnd++;
-
-            f32 wordWidth = 0.0f;
-            for (const char* w = c; w < wordEnd; ++w) {
-                Character* ch = characters[*w];
-                wordWidth += (ch->Advance >> 6) * pixelScale;
-            }
-
-            if (lineWidth > 0.0f && lineWidth + wordWidth > maxWidth)
-                break;
-
-            lineWidth += wordWidth;
-
-            if (*wordEnd == ' ') {
-                lineWidth += (characters[' ']->Advance >> 6) * pixelScale;
-                wordEnd++;
-            }
-
-            c = wordEnd;
-        }
-
-        startX -= lineWidth;
-    }
-
-    f32 x = startX;    
-    const char* wordStart = text;
     
-    while (*wordStart) {
-        const char* wordEnd = wordStart;
-        while (*wordEnd && *wordEnd != ' ')
-            wordEnd++;
+    f32 shadowOffset = 0.002f;
 
-        f32 wordWidth = 0.0f;
-        for (const char* c = wordStart; c < wordEnd; c++) {
-            Character* ch = characters[*c];
-            wordWidth += (ch->Advance >> 6) * pixelScale;
+    for (i32 pass = hasShadow ? 0 : 1; pass < 2; ++pass) {
+        u8 shadowPass = (pass == 0);
+        vec4 color4 = vec4(color, 1.0f);
+
+        textShader->setVec4("textColor", shadowPass ? vec4(0.0f, 0.0f, 0.0f, 0.2f) : color4);
+        f32 drawPosX = posx + (shadowPass ? shadowOffset : 0.0f);
+        f32 drawPosY = posy + (shadowPass ? shadowOffset : 0.0f); 
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindVertexArray(textVAO);
+
+        f32 pixelScale = scale;
+        f32 lineHeight = characters['T']->Size.y * pixelScale * 1.25f;
+
+        f32 startX = drawPosX * RENDERING_ASPECT;
+        f32 y = drawPosY + fontAscent * pixelScale;
+        
+        if (anchor == Anchor::CENTER) {
+            f32 lineWidth = 0.0f;
+
+            const char* c = text;
+            while (*c) {
+                const char* wordEnd = c;
+                while (*wordEnd && *wordEnd != ' ')
+                    wordEnd++;
+
+                f32 wordWidth = 0.0f;
+                for (const char* w = c; w < wordEnd; ++w) {
+                    Character* ch = characters[*w];
+                    wordWidth += (ch->Advance >> 6) * pixelScale;
+                }
+
+                if (lineWidth > 0.0f && lineWidth + wordWidth > maxWidth)
+                    break;
+
+                lineWidth += wordWidth;
+
+                if (*wordEnd == ' ') {
+                    lineWidth += (characters[' ']->Advance >> 6) * pixelScale;
+                    wordEnd++;
+                }
+
+                c = wordEnd;
+            }
+
+            startX -= lineWidth * 0.5f;
+            y -= (characters['T']->Size.y * pixelScale) * 0.5f;
+        }
+        else if (anchor == Anchor::TOP_RIGHT) {
+            f32 lineWidth = 0.0f;
+
+            const char* c = text;
+            while (*c) {
+                const char* wordEnd = c;
+                while (*wordEnd && *wordEnd != ' ')
+                    wordEnd++;
+
+                f32 wordWidth = 0.0f;
+                for (const char* w = c; w < wordEnd; ++w) {
+                    Character* ch = characters[*w];
+                    wordWidth += (ch->Advance >> 6) * pixelScale;
+                }
+
+                if (lineWidth > 0.0f && lineWidth + wordWidth > maxWidth)
+                    break;
+glEnable(GL_DEPTH_TEST);
+
+                lineWidth += wordWidth;
+
+                if (*wordEnd == ' ') {
+                    lineWidth += (characters[' ']->Advance >> 6) * pixelScale;
+                    wordEnd++;
+                }
+
+                c = wordEnd;
+            }
+
+            startX -= lineWidth;
         }
 
-        if (x > startX && (x - startX + wordWidth) > maxWidth) {
-            x = startX;
-            y += lineHeight;
+        f32 x = startX;    
+        const char* wordStart = text;
+        
+        while (*wordStart) {
+            const char* wordEnd = wordStart;
+            while (*wordEnd && *wordEnd != ' ')
+                wordEnd++;
+
+            f32 wordWidth = 0.0f;
+            for (const char* c = wordStart; c < wordEnd; c++) {
+                Character* ch = characters[*c];
+                wordWidth += (ch->Advance >> 6) * pixelScale;
+            }
+
+            if (x > startX && (x - startX + wordWidth) > maxWidth) {
+                x = startX;
+                y += lineHeight;
+            }
+
+            for (const char* c = wordStart; c < wordEnd; c++) {
+                Character* ch = characters[*c];
+
+                f32 xpos = x + ch->Bearing.x * pixelScale;
+                f32 ypos = y - ch->Bearing.y * pixelScale;
+
+                f32 w = ch->Size.x * pixelScale;
+                f32 h = ch->Size.y * pixelScale;
+
+                f32 vertices[6][4] = {
+                    { xpos,     ypos + h,   0.0f, 0.0f },
+                    { xpos,     ypos,       0.0f, 1.0f },
+                    { xpos + w, ypos,       1.0f, 1.0f },
+
+                    { xpos,     ypos + h,   0.0f, 0.0f },
+                    { xpos + w, ypos,       1.0f, 1.0f },
+                    { xpos + w, ypos + h,   1.0f, 0.0f }
+                };
+
+                glBindTexture(GL_TEXTURE_2D, ch->TextureID);
+                glBindBuffer(GL_ARRAY_BUFFER, textVBO);
+                glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+                glDrawArrays(GL_TRIANGLES, 0, 6);
+
+                x += (ch->Advance >> 6) * pixelScale;
+            }
+
+            if (*wordEnd == ' ') {
+                Character* space = characters[' '];
+                x += (space->Advance >> 6) * pixelScale;
+                wordEnd++;
+            }
+
+            wordStart = wordEnd;
         }
-
-        for (const char* c = wordStart; c < wordEnd; c++) {
-            Character* ch = characters[*c];
-
-            f32 xpos = x + ch->Bearing.x * pixelScale;
-            f32 ypos = y - ch->Bearing.y * pixelScale;
-
-            f32 w = ch->Size.x * pixelScale;
-            f32 h = ch->Size.y * pixelScale;
-
-            f32 vertices[6][4] = {
-                { xpos,     ypos + h,   0.0f, 0.0f },
-                { xpos,     ypos,       0.0f, 1.0f },
-                { xpos + w, ypos,       1.0f, 1.0f },
-
-                { xpos,     ypos + h,   0.0f, 0.0f },
-                { xpos + w, ypos,       1.0f, 1.0f },
-                { xpos + w, ypos + h,   1.0f, 0.0f }
-            };
-
-            glBindTexture(GL_TEXTURE_2D, ch->TextureID);
-            glBindBuffer(GL_ARRAY_BUFFER, textVBO);
-            glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
-            glDrawArrays(GL_TRIANGLES, 0, 6);
-
-            x += (ch->Advance >> 6) * pixelScale;
-        }
-
-        if (*wordEnd == ' ') {
-            Character* space = characters[' '];
-            x += (space->Advance >> 6) * pixelScale;
-            wordEnd++;
-        }
-
-        wordStart = wordEnd;
     }
 
+    glEnable(GL_DEPTH_TEST);
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
     glDisable(GL_BLEND);

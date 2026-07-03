@@ -479,6 +479,8 @@ void load_textures() {
     load_texture(RADIO_T, "./res/radio-sheet.png", true, true, false);
     load_texture(BACK_T, "./res/back-icon.png", true, true, false);
     load_texture(OPTION_T, "./res/option-button.png", true, false, false);
+    load_texture(SETTINGS_T, "./res/settings.png", true, false, false);
+    load_texture(EXIT_T, "./res/exit.png", true, false, false);
 }
 
 VideoSettings load_video_settings() {
