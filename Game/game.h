@@ -6,7 +6,7 @@
 #include "rummy_colors.h"
 
 #define TOTAL_TILES 60
-#define TOTAL_RELICS 6
+#define TOTAL_RELICS 8
 #define MAX_RELICS 50
 
 const i32 TABLE_ROWS = 6;
@@ -207,7 +207,9 @@ enum RelicType {
     TYPE_3 = 3,
     TYPE_4 = 4,
     TYPE_5 = 5,
-    TYPE_6 = 6
+    TYPE_6 = 6,
+    TYPE_7 = 7,
+    TYPE_8 = 8
 };
 
 enum Rarity {

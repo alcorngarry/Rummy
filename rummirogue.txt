@@ -57,19 +57,17 @@ ie player 1 (W)  + 12, player 2 (L) -5, player 3 (L) -7
   -() locked tile can only use in run or group
 
 --MULTIPLIERS
-  -(X) Xs for runs
-  -(X) Xs for groups
-  -()  Xs for set size
+  -() Xs for runs
+  -() Xs for groups
+  -(X)  Xs for set size
 
 --ACTIVES
   -() rack tile remover item
   -() tile color changer
   -() pocket bridge
   -() pocket joker
-
-
---Consumables
-  -Discard
+  -() discard
+  -() reroll
 
 --[TO-HAVES]--
 - () loading game screen when init game starts
@@ -89,8 +87,7 @@ ie player 1 (W)  + 12, player 2 (L) -5, player 3 (L) -7
 - (X) runs with exact number double score
 - (X) odd numbers gain multiplier
 - (X) reward long runs
-- () discard
-- () reroll
+
 
 --have passive be visible on the right side of screen, and be able to toggle the view?
 

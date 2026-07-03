@@ -304,8 +304,9 @@ Relic RELIC_TABLE[TOTAL_RELICS] = {
     { TYPE_3, RARE, "Mr 5", "Every set with exactly five tiles gets triple the points.", 2 },
     { TYPE_4, RARE, "Mrs 6", "Every set with exactly six tiles gets triple the points.", 2 },
     { TYPE_5, EXCEEDINGLY_RARE, "Dr 7", "Every set with exactly seven tiles gets quadruple the points.", 3 },
-    { TYPE_6, EXCEEDINGLY_RARE, "Ruler 8", "Every set with exactly eight tiles gets eight times the points.", 3 }
-//    { TYPE_1, "4 Scores x2", "Every set with exactly four tiles gets double points." },
+    { TYPE_6, EXCEEDINGLY_RARE, "Ruler 8", "Every set with exactly eight tiles gets eight times the points.", 3 },
+    { TYPE_7, RARE, "Even Steven", "Every even set gets +20.", 2 },
+    { TYPE_8, RARE, "Odd Tod", "Every odd set gets +20.", 2 }
 //    { TYPE_2, "Odd Man", "Every odd tile in a set gets +10 points." },
 //    { TYPE_3, "Big Man", "Sets larger than 6 tiles get +50 points." },
 //    { TYPE_4, "6 Scores x2", "Every set with exactly 6 tiles gets double points." },
@@ -354,6 +355,18 @@ u8 relic_5_action(void *ptr) {
 u8 relic_6_action(void *ptr) {
     Set *set = *(Set **)ptr;
     hoveredSetValue *= 8;
+    return true;
+}
+
+u8 relic_7_action(void *ptr) {
+    Set *set = *(Set **)ptr;
+    hoveredSetValue += 20;
+    return true;
+}
+
+u8 relic_8_action(void *ptr) {
+    Set *set = *(Set **)ptr;
+    hoveredSetValue += 20;
     return true;
 }
 
@@ -2014,7 +2027,7 @@ void populate_relics_in_shop(i32 *arr) {
         u8 unique = false;
 
         while(!unique) {
-            i32 value = rng_range(0, 5);
+            i32 value = rng_range(0, TOTAL_RELICS - 1);
             unique = true;
 
             for(i32 j = 0; j < i; ++j) {
@@ -2039,7 +2052,7 @@ void add_shop_purchase_menu() {
     i32 relicIds[3];
     populate_relics_in_shop(relicIds);
 
-    SheetAnimation relicSheet = SheetAnimation {3, 2};
+    SheetAnimation relicSheet = SheetAnimation {3, 3};
     relic.sheetAnimation = relicSheet;
     relic.sheetAnimation.currentFrame = relicIds[0];
 
@@ -2354,7 +2367,7 @@ void add_relics_ui() {
         };
         relic.actionId = 12;//nothing
 
-        relic.sheetAnimation = {3, 2};
+        relic.sheetAnimation = {3, 3};
         relic.sheetAnimation.currentFrame = gState->player.relics[i] - 1;
 
         relicIds[i] = add_ui_element(gState->uiPage, relic);
@@ -2473,6 +2486,7 @@ void push_set_bonus(Set *set, i32 value, CmdActionFuncPtr relicFn) {
 
 u64 calculate_set_bonuses(Set *set, u8 uiAnimation) {
     u64 multiplier = 1;
+    u64 addition = 0;
     for(i32 i = 0; i < gState->player.numberOfRelics; ++i) {
         switch(gState->player.relics[i]) {
             case TYPE_1 : {
@@ -2535,9 +2549,29 @@ u64 calculate_set_bonuses(Set *set, u8 uiAnimation) {
                 }
                 break;
             }
+            case TYPE_7 : {
+                if(set->numberOfTiles % 2 == 0)  {
+                    if(uiAnimation) {
+                        push_set_bonus(set, 20, &relic_7_action);
+                    } else {
+                        addition += 20;
+                    }
+                }
+                break;
+            }
+            case TYPE_8 : {
+                if(set->numberOfTiles % 2 != 0)  {
+                    if(uiAnimation) {
+                        push_set_bonus(set, 20, &relic_8_action);
+                    } else {
+                        addition += 20;
+                    }
+                }
+                break;
+            }
         }
     } 
-    return get_set_value(set) * multiplier;
+    return (get_set_value(set) + addition) * multiplier;
 }
 
 f32 timeLeft = 0.25f;
