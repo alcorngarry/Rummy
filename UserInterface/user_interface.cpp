@@ -228,13 +228,26 @@ void move_text_element(UIPage *page, TextElement* element, f32 deltaTime) {
             case BOB: {
                 a->elapsed += deltaTime;
 
-                if (a->elapsed >= a->duration)
-                    a->elapsed = fmodf(a->elapsed, a->duration);
+                if (a->elapsed >= a->duration) a->elapsed = fmodf(a->elapsed, a->duration);
 
                 f32 t = a->elapsed / a->duration;
                 f32 offset = -1.0f * (sinf(t * 2.0f * PI32) * a->destination.y);
 
                 element->posy += offset;
+                break;
+            }
+            case POP: {
+                a->elapsed += deltaTime;
+
+                f32 t = glm::clamp(a->elapsed / a->duration, 0.0f, 1.0f);
+                f32 pop = sinf(t * PI32);
+                f32 amplitude = 1.5f;
+
+                element->scale = a->start.x * (1.0f + pop * amplitude);
+
+                if (t >= 1.0f) {
+                    a->complete = true;
+                }
                 break;
             }
         }
@@ -694,6 +707,16 @@ void add_move_text_animation(UIPage *page, i32 elementId, vec2 destination, f32 
 void add_move_animation(TextElement *e, vec2 destination, f32 speed) {
     Animation a = Animation{destination, vec2(e->posx, e->posy), true};
     a.duration = speed;
+    e->animations[e->numberOfAnimations++] = a;
+    e->onCompleteActionId = 0;
+}
+
+void add_pop_animation(TextElement *e, f32 duration) {
+    Animation a = {};
+    a.duration = duration;
+    a.animationType = POP;
+    a.start = vec2(e->scale);
+    a.autoAnimate = true;
     e->animations[e->numberOfAnimations++] = a;
     e->onCompleteActionId = 0;
 }

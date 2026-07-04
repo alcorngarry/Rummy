@@ -64,7 +64,8 @@ enum Anchor {
 enum AnimationType {
   MOVE,
   COUNT,
-  BOB
+  BOB,
+  POP
 };
 
 enum CursorType {
@@ -215,6 +216,8 @@ void add_image_to_window(UIPage *page, i32 windowId, i32 elementId);
 void add_move_animation(UIPage *page, i32 elementId, vec2 destination);
 void add_move_animation(TextElement *e, vec2 destination, f32 speed);
 void add_move_text_animation(UIPage *page, i32 elementId, vec2 destination, f32 speed = 10.0f);
+void add_pop_animation(TextElement *e, f32 duration);
+void add_pop_animation(UIElement *e, f32 duration);
 void add_text_bob(TextElement *element);
 void add_cursor(UIPage *page, i32 cursorHandle, vec4 color, CursorType type);
 i32 add_tab(UIPage *page, i32 tabHandle, const char* text, vec4 color);

@@ -132,6 +132,32 @@ inline i32 rng_range(i32 min, i32 max) {
     return (i32)(r % range) + min;        
 }
 
+f32 timeLeft = 0.25f;
+
+u8 screen_shake(void *ptr) {
+    mat4 *camera = *(mat4 **)ptr;
+
+    f32 duration  = 0.3f;
+    f32 magnitude = 0.005f;
+
+    if (timeLeft <= 0.0f) {
+        timeLeft = 0.25f;
+        return true;
+    }
+
+    timeLeft -= gState->deltaTime;
+
+    f32 t = timeLeft / duration;
+    f32 strength = magnitude * t;
+
+    f32 x = (rng_range(0, 1) * 2.0f - 1.0f) * strength;
+    f32 y = (rng_range(0, 1) * 2.0f - 1.0f) * strength;
+
+    *camera = glm::translate(*camera, vec3(x, y, 0.0f));
+
+    return false;
+}
+
 void shuffle_tiles(Tile** tiles, i32 count) {
     for (i32 i = count - 1; i > 0; i--) {
         i32 j = rng_range(0, i);
@@ -306,7 +332,7 @@ Relic RELIC_TABLE[TOTAL_RELICS] = {
     { TYPE_5, EXCEEDINGLY_RARE, "Dr 7", "Every set with exactly seven tiles gets quadruple the points.", 3 },
     { TYPE_6, EXCEEDINGLY_RARE, "Ruler 8", "Every set with exactly eight tiles gets eight times the points.", 3 },
     { TYPE_7, RARE, "Even Steven", "Every even set gets +20.", 2 },
-    { TYPE_8, RARE, "Odd Tod", "Every odd set gets +20.", 2 }
+    { TYPE_8, RARE, "Odd Todd", "Every odd set gets +20.", 2 }
 //    { TYPE_2, "Odd Man", "Every odd tile in a set gets +10 points." },
 //    { TYPE_3, "Big Man", "Sets larger than 6 tiles get +50 points." },
 //    { TYPE_4, "6 Scores x2", "Every set with exactly 6 tiles gets double points." },
@@ -644,17 +670,14 @@ void init_player_rack() {
 vec3 get_tile_color(i32 colorId) {
     switch(colorId) {
       case 0: {
-          //return vec3(1.0f, 0.0f, 0.0f);
           return vec3(0.95, 0.288, 0.288);
           break;
       }
       case 1: {
-          //return vec3(0.0f, 0.0f, 1.0f);
           return vec3(0.388, 0.506, 0.85);
           break;
       }
       case 2: {
-          //return vec3(0.0f, 0.3f, 0.0f);
           return vec3(0.353, 0.549, 0.353);
           break;
       }
@@ -768,9 +791,6 @@ void draw_player_rack() {
         if(tile == gState->player.heldTile) continue;
 
         vec4 color = vec4(1.0f);
-        //if(tile->isHovered) color = vec3(1.0f, 0.0f, 0.0f);
-        //if(gState->player.heldTile == tile) color = vec3(0.0f, 1.0f, 0.0f);
-
         create_tile_render_entry(tile, color);
     }
 }
@@ -822,7 +842,7 @@ void draw_table() {
         }
     }
 
-    vec3 setColor;
+    vec3 setColor = vec3(R_YELLOW);
 
     RenderEntryEntity X = RenderEntryEntity{
         gState->table.object.model,
@@ -830,28 +850,8 @@ void draw_table() {
         -1,
         vec4(1.0f, 0.0f, 1.0f, 0.1f)
     };
-    // the tables boundary
-    //gMemory->push_entity_fn(gMemory->renderBuffer, &X);
 
     for(i32 i = 0; i < gState->table.numberOfSets; i++) {
-        //RenderEntryEntity set = RenderEntryEntity{
-        //    gState->table.sets[i].object.model,
-        //    gState->quadMesh,
-        //    gState->table.object.textureName,
-        //    vec4(0.2f, 0.0f, 0.0f, 1.0f)
-        //};
-
-        switch(i % 6) {
-            case 0: setColor = vec3(0.2f,0,0); break; // red
-            case 1: setColor = vec3(0,1,0); break; // green
-            case 2: setColor = vec3(0,0,0.2f); break; // blue
-            case 3: setColor = vec3(1,1,0); break; // yellow
-            case 4: setColor = vec3(1,0,1); break; // magenta
-            default:setColor = vec3(0,1,1); break; // cyan
-        }
-
-        //gMemory->push_entity_fn(gMemory->renderBuffer, &set);
-
         for(i32 j = 0; j < gState->table.sets[i].numberOfTiles; j++) {
             vec3 color = gState->table.sets[i].isHovered && gState->player.heldTile ? setColor : vec3(1.0f); 
             Tile *tile = gState->table.sets[i].tiles[j];
@@ -874,7 +874,7 @@ void draw_held_tile() {
     shadow.object.model = glm::translate(shadow.object.model, vec3(0.0f, 0.2f, 0.0f));
 
     create_tile_render_entry(&shadow, vec4(0.0f, 0.0f, 0.0f, 0.4f), true);
-    create_tile_render_entry(tile, color);
+    create_tile_render_entry(tile, R_WHITE);
 }
 
 // TODO(garry) this is horrible.
@@ -889,7 +889,7 @@ void check_tile_hovered(f64 xpos, f64 ypos) {
         vec3 pos = vec3(tile->object.model[3]);
         f32 half = defaultTileScale.x * 0.5f;
 
-        bool inside = xpos > pos.x - half && xpos < pos.x + half &&
+        u8 inside = xpos > pos.x - half && xpos < pos.x + half &&
                       ypos > pos.y - half && ypos < pos.y + half;
 
         if (inside) {
@@ -918,8 +918,7 @@ void check_tile_hovered(f64 xpos, f64 ypos) {
             tilt = glm::rotate(tilt, glm::radians(rotY), vec3(0, 1, 0));
 
             tile->object.model = tile->originalPosition * tilt;
-        }
-        else if (tile->isHovered) {
+        } else if (tile->isHovered) {
             tile->isHovered = false;
             tile->object.model = tile->originalPosition;
         }
@@ -934,21 +933,11 @@ void check_tile_hovered(f64 xpos, f64 ypos) {
             vec3 pos = vec3(tile->object.model[3]);
             f32 half = defaultTileScale.x * 0.5f;
 
-            bool inside = xpos > pos.x - half && xpos < pos.x + half &&
+            u8 inside = xpos > pos.x - half && xpos < pos.x + half &&
                           ypos > pos.y - half && ypos < pos.y + half;
 
             if(inside && !tile->isHovered) {
                 tile->isHovered = true;
-                Message msg;
-                msg.messageCode = 1;
-                msg.duration = 2.0f;
-
-                snprintf(msg.messageText, sizeof(msg.messageText),
-                    "TableSpace: (%i, %i), setId: %i", 
-                    (i32)tile->tableSpace.x, (i32)tile->tableSpace.y, tile->setId 
-                );
-
-                //push_message(&msg);
             } else if(!inside && tile->isHovered) {
                 tile->isHovered = false;
             }
@@ -989,14 +978,14 @@ void grab_tile(f64 xpos, f64 ypos) {
     }
 }
 
+//gross
+vec2 lastPos;
+u8 initialized = false;
+
 void drag_tile(f64 xpos, f64 ypos) {
     if (!gState->player.heldTile) return;
 
     vec2 pos = vec2(xpos, ypos) + gState->player.heldTile->grabOffset;
-
-    vec2 lastPos = pos;
-
-    u8 initialized = false;
 
     if (!initialized) {
         lastPos = pos;
@@ -1011,6 +1000,7 @@ void drag_tile(f64 xpos, f64 ypos) {
 
     mat4 model = make_tile_model(vec3(pos, 0.0f));
     model = glm::rotate(model, tilt, vec3(0, 0, 1));
+    model = glm::scale(model, vec3(1.25f, 1.25f, 1.0f));
 
     gState->player.heldTile->object.model = model;
 }
@@ -1122,22 +1112,6 @@ void check_set_hovered(f64 xpos, f64 ypos) {
 
         if (xpos > boundsMin.x - 0.1f && xpos < boundsMax.x + 0.1f &&
             ypos > boundsMin.y - 0.1f && ypos < boundsMax.y + 0.1f) {
-            Message msg;
-            msg.messageCode = 0;
-            msg.duration = 2.0f;
-
-            const char* type;
-
-            if(set->setType == GROUP) type = "GROUP";
-            if(set->setType == INVALID) type = "INVALID";
-            if(set->setType == RUN) type = "RUN";
-
-            snprintf(msg.messageText, sizeof(msg.messageText),
-                "Set: %i, type: %s, #: %i, lowTile: %i, highTile: %i", 
-                (i32)set->id, type, (i32)set->numberOfTiles, (i32)set->lowTileNumber, (i32)set->highTileNumber 
-            );
-
-            push_message(&msg);
             set->isHovered = true;
             update_set_ui(set);
             if(a) a->visible = true;
@@ -1916,6 +1890,7 @@ void add_in_game_ui() {
 
     i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::TOP_LEFT, vec2(0.12f, 0.6f), vec2(0.075f, -0.2f), vec2(0.075f, 0.01f), R_SILVER, R_DARK_BLUE, 0.5f); 
 
+
     TextElement score = TextElement{ Anchor::CENTER, "Score", 0.2f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
     //add_text_bob(&score);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, score));
@@ -2416,6 +2391,7 @@ void init_game() {
     init_table();
     snapshot_round_start();
     gState->prevState = MAIN_MENU;
+    //gState->player.numberOfRelics = 0;
 
     gState->mode = GM_PLAYING;
     clear_game_ui();
@@ -2456,26 +2432,24 @@ u8 add_table_value_total(void *ptr) {
 }
 
 void push_set_bonus(Set *set, i32 value, CmdActionFuncPtr relicFn) {
-    if(gState->pageState == ROUND_COMPLETE) {
-        vec2 setPos = world_to_ui(
-            set->object.model,
-            gMemory->renderBuffer->view,
-            gMemory->renderBuffer->projection        
-        );
+    vec2 setPos = world_to_ui(
+        set->object.model,
+        gMemory->renderBuffer->view,
+        gMemory->renderBuffer->projection        
+    );
 
-        TextElement multiplier = TextElement{ Anchor::CENTER, "", setPos.x, setPos.y - 1.0f, -1, true, DEFAULT_FONT_SCALE * 3.0 };
-        multiplier.color = R_RED;
-        snprintf(multiplier.text, sizeof(multiplier.text), "x%d", value);
-        add_move_animation(&multiplier, vec2(setPos.x, setPos.y - 0.2f), 0.5f);
+    TextElement multiplier = TextElement{ Anchor::CENTER, "", setPos.x, setPos.y - 0.1f, -1, true, DEFAULT_FONT_SCALE * 3.0 };
+    multiplier.color = R_RED;
+    snprintf(multiplier.text, sizeof(multiplier.text), "x%d", value);
+    add_pop_animation(&multiplier, 0.4f);
 
-        ActionCommand *setText = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, TextElement, execute_action);
-        if (setText) {
-            setText->action = add_text_to_page;
-            *COMMAND_PAYLOAD(setText, TextElement) = multiplier;
-        }
-
-        push_wait(&gState->cmdQueue, 0.75f);
+    ActionCommand *setText = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, TextElement, execute_action);
+    if (setText) {
+        setText->action = add_text_to_page;
+        *COMMAND_PAYLOAD(setText, TextElement) = multiplier;
     }
+
+    push_wait(&gState->cmdQueue, 0.75f);
 
     ActionCommand *setVal = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, Set *, execute_action);
     if (setVal) { 
@@ -2574,31 +2548,7 @@ u64 calculate_set_bonuses(Set *set, u8 uiAnimation) {
     return (get_set_value(set) + addition) * multiplier;
 }
 
-f32 timeLeft = 0.25f;
 
-u8 screen_shake(void *ptr) {
-    mat4 *camera = *(mat4 **)ptr;
-
-    f32 duration  = 0.25f;
-    f32 magnitude = 0.01f;
-
-    if (timeLeft <= 0.0f) {
-        timeLeft = 0.25f;
-        return true;
-    }
-
-    timeLeft -= gState->deltaTime;
-
-    f32 t = timeLeft / duration;
-    f32 strength = magnitude * t;
-
-    f32 x = (rng_range(0, 1) * 2.0f - 1.0f) * strength;
-    f32 y = (rng_range(0, 1) * 2.0f - 1.0f) * strength;
-
-    *camera = glm::translate(*camera, vec3(x, y, 0.0f));
-
-    return false;
-}
 
 u8 add_cash(void *ptr) {
     u64 cash = *(u64 *)ptr;
@@ -3047,6 +2997,11 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
     if(key == 297 && action == 1) {
         clear_game_ui();
         add_in_game_ui();
+    }
+
+    if(key == 268 && action == 1) {//home key
+        gState->player.relics[gState->player.numberOfRelics++] = TYPE_1;
+        //__debugbreak();
     }
 
     if (key == 78 && action == 1) {

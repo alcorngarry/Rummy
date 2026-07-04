@@ -69,7 +69,7 @@ struct CommandQueue {
 };
 
 struct RNG {
-  u64 state;
+    u64 state;
 };
 
 //phase this out...
