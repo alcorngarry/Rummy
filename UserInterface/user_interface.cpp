@@ -131,28 +131,41 @@ void move_element(UIElement* element, f32 deltaTime) {
     for(i32 i = 0; i < element->numberOfAnimations; ++i) {
         Animation* a = &element->animations[i];
 
-        if(a->complete) continue;
+        if(a->animationType == BOB) {
+          a->elapsed += deltaTime;
 
-        a->elapsed += deltaTime;
+          if (a->elapsed >= a->duration) a->elapsed = fmodf(a->elapsed, a->duration);
 
-        f32 t = a->elapsed / a->duration;
+          f32 t = a->elapsed / a->duration;
+          f32 offset = -1.0f * (sinf(t * 2.0f * PI32) * a->destination.y);
 
-        if(t >= 1.0f) {
-            t = 1.0f;
+          element->posy += offset;
 
-            if(a->playOnce) {
-                a->complete = true;
-            } else {
-                a->elapsed = 0.0f;
+        } else {
+            if(a->complete) continue;
+
+            a->elapsed += deltaTime;
+
+            f32 t = a->elapsed / a->duration;
+
+            if(t >= 1.0f) {
+                t = 1.0f;
+
+                if(a->playOnce) {
+                    a->complete = true;
+                } else {
+                    a->elapsed = 0.0f;
+                }
             }
+
+            f32 eased = ease(t, a->ease);
+
+            vec2 pos = glm::mix(a->start, a->destination, eased);
+
+            element->posx = pos.x;
+            element->posy = pos.y;
+ 
         }
-
-        f32 eased = ease(t, a->ease);
-
-        vec2 pos = glm::mix(a->start, a->destination, eased);
-
-        element->posx = pos.x;
-        element->posy = pos.y;
     }
 }
 
@@ -538,6 +551,26 @@ void add_text_bob(TextElement *element) {
     a->complete = false;
 }
 
+void add_bob(UIElement *element, u8 tied) {
+    f32 amplitude = 0.000005f;
+    f32 duration = 5.0f;
+
+    Animation *a = &element->animations[element->numberOfAnimations++];
+
+    a->animationType = BOB;
+    a->start = vec2(element->posx, element->posy);
+    a->destination = vec2(0.0f, amplitude);
+    a->duration = duration;
+
+    if(!tied) randomBob = randomBob >= duration ? 0.0f : randomBob + 2.0f;
+    a->elapsed = randomBob;
+
+    a->autoAnimate = true;
+    a->loopAnimation = true;
+    a->playOnce = false;
+    a->complete = false;
+}
+
 i32 add_text_element_to_tab(UIPage *page, i32 windowId, i32 tabId, TextElement element) {
     i32 elementId = add_text_element(page, element);
 
@@ -785,8 +818,8 @@ i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 s
     bg.animations[0].start = bgStart;
 
     bg.textureName = -1;
-    bg.width -= 0.005;
-    bg.height -= 0.005;
+    bg.width -= 0.007;
+    bg.height -= 0.007;
     bg.isPanel = false;
     bg.color = color2;
     add_ui_element(page, bg);

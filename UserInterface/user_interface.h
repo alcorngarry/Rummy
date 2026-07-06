@@ -219,6 +219,7 @@ void add_move_text_animation(UIPage *page, i32 elementId, vec2 destination, f32 
 void add_pop_animation(TextElement *e, f32 duration);
 void add_pop_animation(UIElement *e, f32 duration);
 void add_text_bob(TextElement *element);
+void add_bob(UIElement *element, u8 tied = false);
 void add_cursor(UIPage *page, i32 cursorHandle, vec4 color, CursorType type);
 i32 add_tab(UIPage *page, i32 tabHandle, const char* text, vec4 color);
 void add_tabs_to_window(UIPage *page, i32 windowId, i32 *tabIds, i32 numberOfTabs);

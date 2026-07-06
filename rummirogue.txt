@@ -151,3 +151,6 @@ tile trace
 tile taction?
 tile tactics?
 tac-tile?
+
+
+CROC JOCK -- split sets get reward for each of those sets..

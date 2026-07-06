@@ -30,6 +30,8 @@
 #define OPTION_T 22
 #define SETTINGS_T 23
 #define EXIT_T 24
+#define UI_TILE_T 25
+#define TITLE_T 26
 
 #ifdef BUILD_DLL
 #define GAME_DLL __declspec(dllexport)

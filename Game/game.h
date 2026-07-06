@@ -6,8 +6,10 @@
 #include "rummy_colors.h"
 
 #define TOTAL_TILES 60
-#define TOTAL_RELICS 8
+#define TOTAL_RELICS 10
 #define MAX_RELICS 50
+#define RELIC_ROWS 4
+#define RELIC_COLUMNS 3
 
 const i32 TABLE_ROWS = 6;
 const i32 TABLE_COLUMNS = 16;
@@ -201,6 +203,7 @@ struct PlayerData {
     i32 groupMultipliers = 1;
 };
 
+//probable phase this out
 enum RelicType {
     TYPE_1 = 1,
     TYPE_2 = 2,
@@ -209,7 +212,9 @@ enum RelicType {
     TYPE_5 = 5,
     TYPE_6 = 6,
     TYPE_7 = 7,
-    TYPE_8 = 8
+    TYPE_8 = 8,
+    TYPE_9 = 9,
+    TYPE_10 = 10
 };
 
 enum Rarity {

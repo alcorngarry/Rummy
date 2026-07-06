@@ -46,6 +46,7 @@ void add_shop_purchase_menu();
 u64 calculate_set_bonuses(Set *set, u8 uiAnimation);
 u8 add_table_value_total(void *ptr);
 void reinit_page_state();
+u8 start_round(void *ptr);
 
 // validations.cpp
 i32 get_joker_array(Set *set, Tile** jokerArray);
@@ -331,8 +332,10 @@ Relic RELIC_TABLE[TOTAL_RELICS] = {
     { TYPE_4, RARE, "Mrs 6", "Every set with exactly six tiles gets triple the points.", 2 },
     { TYPE_5, EXCEEDINGLY_RARE, "Dr 7", "Every set with exactly seven tiles gets quadruple the points.", 3 },
     { TYPE_6, EXCEEDINGLY_RARE, "Ruler 8", "Every set with exactly eight tiles gets eight times the points.", 3 },
-    { TYPE_7, RARE, "Even Steven", "Every even set gets +20.", 2 },
-    { TYPE_8, RARE, "Odd Todd", "Every odd set gets +20.", 2 }
+    { TYPE_7, COMMON, "Even Steven", "Every even set gets +20.", 1 },
+    { TYPE_8, COMMON, "Odd Todd", "Every odd set gets +20.", 1 },
+    { TYPE_9, RARE, "SkullDuggery", "TO DO ADD HERE", 2 },
+    { TYPE_10, RARE, "Crok Jock", "TO DO ADD HERE", 2 }
 //    { TYPE_2, "Odd Man", "Every odd tile in a set gets +10 points." },
 //    { TYPE_3, "Big Man", "Sets larger than 6 tiles get +50 points." },
 //    { TYPE_4, "6 Scores x2", "Every set with exactly 6 tiles gets double points." },
@@ -670,19 +673,19 @@ void init_player_rack() {
 vec3 get_tile_color(i32 colorId) {
     switch(colorId) {
       case 0: {
-          return vec3(0.95, 0.288, 0.288);
+          return vec3(R_RED);//vec3(0.95, 0.288, 0.288);
           break;
       }
       case 1: {
-          return vec3(0.388, 0.506, 0.85);
+          return vec3(R_BLUE);//vec3(0.388, 0.506, 0.85);
           break;
       }
       case 2: {
-          return vec3(0.353, 0.549, 0.353);
+          return vec3(R_GREEN);//vec3(0.353, 0.549, 0.353);
           break;
       }
       case 3: {
-          return vec3(0.0f, 0.0f, 0.0f);
+          return vec3(R_BLACK);
           break;
       }
     }
@@ -1911,9 +1914,10 @@ void add_in_game_ui() {
 
     TextElement scoreMinVal = TextElement{ Anchor::CENTER, "", 0.35f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f)};
     add_text_bob(&scoreMinVal);
+    scoreMinVal.color = R_RED;
     add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, scoreMinVal,"", 2, TextType::UINT_64));
 
-    TextElement cash = TextElement{ Anchor::CENTER, "Cash", 0.5f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(R_GOLDEN)};
+    TextElement cash = TextElement{ Anchor::CENTER, "Cash", 0.5f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(R_WHITE)};
     //add_text_bob(&cash);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, cash));
 
@@ -1921,11 +1925,11 @@ void add_in_game_ui() {
     add_text_bob(&cashVal);
     add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, cashVal, "$", 3, TextType::UINT_64));
 
-    TextElement round = TextElement{ Anchor::CENTER, "Round", 0.6f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+    TextElement round = TextElement{ Anchor::CENTER, "Round", 0.6f, 0.035f, -1, true, DEFAULT_FONT_SCALE};
     //add_text_bob(&round);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, round));
 
-    TextElement roundVal = TextElement{ Anchor::CENTER, "", 0.6f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f)};
+    TextElement roundVal = TextElement{ Anchor::CENTER, "", 0.6f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_PURPLE)};
     add_text_bob(&roundVal);
     add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, roundVal,"", 6, TextType::UINT_64));
 
@@ -1940,7 +1944,7 @@ void add_in_game_ui() {
 
 void add_end_game_ui() {
     set_page_state(END_GAME);
-    TextElement gameOver = TextElement{ Anchor::CENTER, "Game Over!", 0.5f, 0.06f, -1, true, DEFAULT_FONT_SCALE * 5.0 };
+    TextElement gameOver = TextElement{ Anchor::CENTER, "Game Over!", 0.5f, 0.06f, -1, true, DEFAULT_FONT_SCALE * 5.0, vec3(R_RED) };
     gameOver.color = vec3(1.0f, 0.0f, 0.0f);
 
     i32 gameOverText = add_text_element(gState->uiPage, gameOver);
@@ -1948,7 +1952,7 @@ void add_end_game_ui() {
     i32 newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.4f, 0.75f), vec2(0.1f), vec4(0.6f, 0.6f, 0.6f, 6.0f), 0);
     i32 mainMenu = add_button(gState->uiPage, BUTTON_T, "Main menu", vec2(0.6f, 0.75f), vec2(0.1f), vec4(0.6f, 0.6f, 0.6f, 6.0f), 2);
 
-    i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::CENTER, vec2(0.75f, 0.5f), vec2(0.5f, 2.0f), vec2(0.5f, 0.5f), R_YELLOW, R_BLUE);
+    i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::CENTER, vec2(0.75f, 0.5f), vec2(0.5f, 2.0f), vec2(0.5f, 0.5f), R_RED, R_RED);
     add_text_to_window(gState->uiPage, windowIndex, gameOverText);
     add_button_to_window(gState->uiPage, windowIndex, newGame);
     add_button_to_window(gState->uiPage, windowIndex, mainMenu);
@@ -1995,6 +1999,13 @@ void add_relic() {
     gState->gameData.dollaBills -= RELIC_TABLE[frame].price;
 
     if(gState->player.numberOfRelics <= MAX_RELICS - 2) gState->player.numberOfRelics++;
+
+    push_wait(&gState->cmdQueue, 1.0f);
+
+    ActionCommand *nextRound = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, 0, execute_action);
+    if (nextRound) { 
+        nextRound->action = start_round;
+    } 
 }
 
 void populate_relics_in_shop(i32 *arr) {
@@ -2022,12 +2033,12 @@ void populate_relics_in_shop(i32 *arr) {
 void add_shop_purchase_menu() {
     set_page_state(SHOP_PURCHASE);
     clear_game_ui();
-    UIElement relic = UIElement{ Anchor::CENTER, -1, RELICS_T, 0.26f, 0.4f, 0.1f, 0.1f};
+    UIElement relic = UIElement{ Anchor::CENTER, -1, RELICS_T, 0.26f, 0.4f, 0.08f * RENDERING_ASPECT, 0.08f};
 
     i32 relicIds[3];
     populate_relics_in_shop(relicIds);
 
-    SheetAnimation relicSheet = SheetAnimation {3, 3};
+    SheetAnimation relicSheet = SheetAnimation{RELIC_COLUMNS, RELIC_ROWS};
     relic.sheetAnimation = relicSheet;
     relic.sheetAnimation.currentFrame = relicIds[0];
 
@@ -2063,7 +2074,7 @@ void add_shop_purchase_menu() {
 
     i32 windowIndex = add_window(gState->uiPage, UI_BG_2_T, Anchor::CENTER, vec2(0.75f, 0.75f), vec2(0.5f, 2.0f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE); 
 
-    TextElement relicName = TextElement{ Anchor::CENTER, "", 0.26f, 0.325f, -1, true, DEFAULT_FONT_SCALE, vec3(R_WHITE)}; 
+    TextElement relicName = TextElement{ Anchor::CENTER, "", 0.26f, 0.3f, -1, true, DEFAULT_FONT_SCALE, vec3(R_WHITE)}; 
     snprintf(relicName.text, sizeof(relicName.text), "%s", gState->relics[relicIds[0]].name);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicName));
     relicName.posx += 0.24f;
@@ -2118,19 +2129,19 @@ void add_shop_purchase_menu() {
     add_image_to_window(gState->uiPage, windowIndex, relicBg3);
 
     add_button_to_window(gState->uiPage, windowIndex, nextRoundId);
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Round Score", 0.3f, 0.175f, -1, true, DEFAULT_FONT_SCALE }));
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.3f, 0.225f, -1, true, DEFAULT_FONT_SCALE * 3.0f }, 
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Round Score", 0.26f, 0.175f, -1, true, DEFAULT_FONT_SCALE }));
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.26f, 0.225f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_PURPLE) }, 
         "", 0, UINT_64));
 
     for(i32 i = 0; i < gState->table.numberOfSets; i++) {
         numTableTiles += gState->table.sets[i].numberOfTiles;
     }
 
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Tiles Used", 0.7f, 0.175f, -1, true, DEFAULT_FONT_SCALE }));
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.7f, 0.225f, -1, true, DEFAULT_FONT_SCALE * 3.0f}, 
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Tiles Used", 0.74f, 0.175f, -1, true, DEFAULT_FONT_SCALE }));
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.74f, 0.225f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_RED)}, 
         "", 5, UINT_64));
 
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Cash", 0.5f, 0.175f, -1, true, DEFAULT_FONT_SCALE, vec3(R_GOLDEN) }));
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Cash", 0.5f, 0.175f, -1, true, DEFAULT_FONT_SCALE, vec3(R_WHITE) }));
     add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f, 0.225f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_GOLDEN)}, 
         "$", 3, TextType::UINT_64));
 }
@@ -2142,17 +2153,17 @@ void add_round_complete_ui() {
     
     gState->gameData.roundScore = 0;
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Round Score", 0.5f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(R_WHITE)}));
-    i32 progressIndex = add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_GOLDEN)}, 
-        "", 7, INT_32);
+    i32 progressIndex = add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_PURPLE)}, 
+        "", 7, UINT_64);
     
     hoveredSetValue = 0;
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Set Value", 0.25f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(R_WHITE)}));
-    i32 setIndex = add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.25f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_GOLDEN)}, 
-        "", 8, INT_32);
+    i32 setIndex = add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.25f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_BLUE)}, 
+        "", 8, UINT_64);
     
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Cash", 0.75f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(R_GOLDEN)}));
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Cash", 0.75f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(R_WHITE)}));
     i32 cashIndex = add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.75f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_GOLDEN)}, 
-        "$", 3, TextType::UINT_64); 
+        "$", 3, UINT_64); 
 
     add_text_to_window(gState->uiPage, windowIndex, setIndex);
     add_text_to_window(gState->uiPage, windowIndex, cashIndex);
@@ -2176,8 +2187,45 @@ void add_main_menu_ui() {
     add_button_to_window(gState->uiPage, windowIndex, profile);
 
     //add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.0f, 0.0f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}, "", &gState->deltaTime, TextType::FLOAT_32);
+    vec2 tPos[8] = {
+        {0.35f, 0.4f},
+        {0.45f, 0.375f},
+        {0.55f, 0.375f},
+        {0.65f, 0.4f},
+        {0.35f, 0.6f},
+        {0.45f, 0.575f},
+        {0.55f, 0.575f},
+        {0.65f, 0.6f},
+    };
 
-    add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Tile Taction", 0.5f, 0.5f, -1, true, DEFAULT_FONT_SCALE * 5.0 });
+    i32 lFrame[8] = {
+        6,
+        7,
+        8,
+        5,
+        6,
+        3,
+        0,
+        4
+    };
+
+    for(i32 i = 0; i < 8; ++i) {
+        UIElement letter = UIElement{ Anchor::CENTER, gState->uiPage->numberOfImageElements++, TITLE_T, tPos[i].x, tPos[i].y, 0.1f * RENDERING_ASPECT, 0.1f};
+        letter.color = R_RED;
+        SheetAnimation a = SheetAnimation{3, 3};
+        a.currentFrame = lFrame[i];
+        letter.sheetAnimation = a;
+        add_bob(&letter);
+        add_ui_element(gState->uiPage, letter);
+
+        UIElement side = UIElement{ Anchor::CENTER, gState->uiPage->numberOfImageElements++, UI_TILE_T, tPos[i].x, tPos[i].y, 0.1f * RENDERING_ASPECT, 0.1f}; 
+        add_bob(&side, true);
+        add_ui_element(gState->uiPage, side);
+    }
+
+
+
+    //add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Tile Taction", 0.5f, 0.5f, -1, true, DEFAULT_FONT_SCALE * 5.0 });
 //    write_page(gState->uiPage, "main_menu.eui");
 }
 
@@ -2327,10 +2375,7 @@ void add_relics_ui() {
     vec2 relicSlotPositions[MAX_RELICS] = {}; 
     layout_grid(relicSlotPositions, MAX_RELICS / 10, MAX_RELICS / 5, CENTER, vec2(0.5f), vec2(0.75f, 0.9f), vec2(0.05f));
 
-    for(i32 i = 0; i < MAX_RELICS; ++i) {
-        if(gState->player.relics[i] <= 0)
-            continue;
-
+    for(i32 i = 0; i < gState->player.numberOfRelics; ++i) {
         UIElement relic = {
             CENTER,
             -1,
@@ -2342,7 +2387,7 @@ void add_relics_ui() {
         };
         relic.actionId = 12;//nothing
 
-        relic.sheetAnimation = {3, 3};
+        relic.sheetAnimation = {RELIC_COLUMNS, RELIC_ROWS};
         relic.sheetAnimation.currentFrame = gState->player.relics[i] - 1;
 
         relicIds[i] = add_ui_element(gState->uiPage, relic);
@@ -2380,6 +2425,11 @@ void add_relics_ui() {
             );
         }
     }
+}
+
+u8 start_round(void *ptr) {
+    init_game();
+    return true;
 }
 
 void init_game() {
@@ -2614,6 +2664,8 @@ void count_table() {
 
             push_wait(&gState->cmdQueue, 0.1f);
         }
+        
+        push_wait(&gState->cmdQueue, 1.0f);
 
         calculate_set_bonuses(set, true);
 
@@ -2782,6 +2834,7 @@ void clear_player_data() {
     //gState->player.playerData.score = 0;
     gState->player.playerData.runMultipliers = 1;
     gState->player.playerData.groupMultipliers = 1;
+    gState->player.numberOfRelics = 0;
 }
 
 void quit() {
@@ -3002,6 +3055,7 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
     if(key == 268 && action == 1) {//home key
         gState->player.relics[gState->player.numberOfRelics++] = TYPE_1;
         //__debugbreak();
+        add_shop_purchase_menu();
     }
 
     if (key == 78 && action == 1) {
