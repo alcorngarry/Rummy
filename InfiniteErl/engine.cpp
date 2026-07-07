@@ -483,7 +483,7 @@ void load_textures() {
     load_texture(EXIT_T, "./res/exit.png", true, false, false);
     load_texture(UI_TILE_T, "./res/ui-tile.png", true, false, false);
     load_texture(TITLE_T, "./res/title-sheet.png", true, false, false);
-    load_texture(ACTIVES_T, "./res/title-sheet.png", true, false, false);
+    load_texture(ACTIVES_T, "./res/actives.png", true, false, false);
 }
 
 VideoSettings load_video_settings() {

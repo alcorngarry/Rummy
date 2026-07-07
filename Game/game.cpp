@@ -347,9 +347,9 @@ Relic RELIC_TABLE[TOTAL_RELICS] = {
 };
 
 Active ACTIVE_TABLE[TOTAL_ACTIVES] = {
-    { COMMON, "Discard", "Every set with exactly three tiles gets double the points.", 1, nullptr },
+    { COMMON, "Pawn", "Every set with exactly three tiles gets double the points.", 1, nullptr },
     { COMMON, "Joker", "Every set with exactly four tiles gets double the points.", 1, nullptr},
-    { RARE, "Pawn", "Every set with exactly five tiles gets triple the points.", 2, nullptr }
+    { RARE, "Discard", "Every set with exactly five tiles gets triple the points.", 2, nullptr }
 };
 
 u64 get_set_value(Set *set) {
@@ -1822,10 +1822,7 @@ void add_actives_ui(u8 animated) {
         {0.235f, 0.925f}
     };
 
-    for(i32 i = 0; i < 6; ++i) {
-        if(gState->player.actives[i] <= 0)
-            continue;
-
+    for(i32 i = 0; i < gState->player.numberOfActives; ++i) {
         UIElement relic = {
             Anchor::CENTER,
             -1,
@@ -2027,12 +2024,16 @@ void add_active() {
     } // quick fix for now, will fix in the shop ui
 
 
+    printf("frame %i\n", frame);
     gState->player.actives[gState->player.numberOfActives] = frame;
 
     //charge the player
     gState->gameData.dollaBills -= ACTIVE_TABLE[frame].price;
 
-    if(gState->player.numberOfRelics <= MAX_ACTIVES - 2) gState->player.numberOfActives++;
+    if(gState->player.numberOfActives <= MAX_ACTIVES - 2) {
+        gState->player.numberOfActives++;
+        printf("NUMBER OF ACTIVES after added %i\n", (i32)gState->player.numberOfActives);
+    }
 
     push_wait(&gState->cmdQueue, 1.0f);
 
@@ -2312,7 +2313,7 @@ void add_main_menu_ui() {
     i32 profile = add_button(gState->uiPage, BUTTON_T, "Profile", vec2(0.65f, 0.9f), vec2(0.08f), R_PURPLE, 2);
     add_button(gState->uiPage, BUTTON_T, "Quit", vec2(0.9f, 0.9f), vec2(0.1f), R_RED, 3);
 
-    i32 windowIndex = add_window(gState->uiPage, UI_BG_T, Anchor::CENTER, vec2(0.15f, 0.5f), vec2(0.5f, 1.15f), vec2(0.5f, 0.9f), R_SILVER, R_DARK_BLUE); 
+    i32 windowIndex = add_window(gState->uiPage, UI_BG_2_T, Anchor::CENTER, vec2(0.15f, 0.5f), vec2(0.5f, 1.15f), vec2(0.5f, 0.9f), R_SILVER, R_DARK_BLUE); 
     add_button_to_window(gState->uiPage, windowIndex, newGame);
     add_button_to_window(gState->uiPage, windowIndex, options);
     add_button_to_window(gState->uiPage, windowIndex, profile);
