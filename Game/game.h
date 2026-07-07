@@ -11,6 +11,11 @@
 #define RELIC_ROWS 4
 #define RELIC_COLUMNS 3
 
+#define TOTAL_ACTIVES 3
+#define MAX_ACTIVES 6
+#define ACTIVE_ROWS 1
+#define ACTIVE_COLUMNS 3
+
 const i32 TABLE_ROWS = 6;
 const i32 TABLE_COLUMNS = 16;
 
@@ -87,12 +92,13 @@ enum GAME_MODE {
 enum PAGE_STATE {
     IN_GAME,
     END_GAME,
-    SHOP_PURCHASE,
+    RELICS_PURCHASE,
     ROUND_COMPLETE,
     MAIN_MENU,
     PROFILE,
     OPTIONS,
-    RELIC
+    RELIC,
+    ACTIVES_PURCHASE
 };
 
 enum SET_TYPE {
@@ -231,11 +237,22 @@ struct Relic {
     u8 price;
 };
 
+struct Active {
+    Rarity rarity;
+    const char* name;
+    const char* description;
+    u8 price;
+
+    CmdActionFuncPtr action;
+};
+
 struct Player {
     PlayerData playerData;
     Tile* heldTile;
     RelicType relics[MAX_RELICS];
     u8 numberOfRelics = 0;
+    i32 actives[MAX_ACTIVES];// trying without enum
+    u8 numberOfActives = 0;
 };
 
 struct RoundSnapshot {
@@ -262,6 +279,7 @@ struct GameState {
 
     Tile tiles[TOTAL_TILES];
     Relic relics[TOTAL_RELICS];
+    Active actives[TOTAL_ACTIVES];
 
     RoundSnapshot roundStart;
 

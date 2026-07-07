@@ -42,7 +42,9 @@ void clear_player_data();
 u8 move_tile(void* ptr);
 void add_game_ui_data(UIPage *uiPage);
 vec2 world_to_ui(mat4 model, mat4 view, mat4 projection);
-void add_shop_purchase_menu();
+void add_shop_purchase_menu(u8 isRelic);
+void add_relic_purchase();
+void add_active_purchase();
 u64 calculate_set_bonuses(Set *set, u8 uiAnimation);
 u8 add_table_value_total(void *ptr);
 void reinit_page_state();
@@ -86,7 +88,8 @@ u8 add_image_to_page(void *ptr) {
 
 u8 load_shop_purchase_menu(void *ptr) {
     clear_game_ui();
-    add_shop_purchase_menu();
+    //add_shop_purchase_menu();
+    add_relic_purchase();
     return true;
 }
 //
@@ -343,6 +346,12 @@ Relic RELIC_TABLE[TOTAL_RELICS] = {
 //    { TYPE_6, "type 6", "this item does this thing! 6" }
 };
 
+Active ACTIVE_TABLE[TOTAL_ACTIVES] = {
+    { COMMON, "Discard", "Every set with exactly three tiles gets double the points.", 1, nullptr },
+    { COMMON, "Joker", "Every set with exactly four tiles gets double the points.", 1, nullptr},
+    { RARE, "Pawn", "Every set with exactly five tiles gets triple the points.", 2, nullptr }
+};
+
 u64 get_set_value(Set *set) {
     u64 value = 0; 
     for(i32 i = 0; i < set->numberOfTiles; ++i) {
@@ -399,8 +408,10 @@ u8 relic_8_action(void *ptr) {
     return true;
 }
 
+//change name
 void create_relics() {
     memcpy(gState->relics, RELIC_TABLE, sizeof(RELIC_TABLE));
+    memcpy(gState->actives, ACTIVE_TABLE, sizeof(ACTIVE_TABLE));
 }
 
 void create_tiles() {
@@ -1811,26 +1822,24 @@ void add_actives_ui(u8 animated) {
         {0.235f, 0.925f}
     };
 
+    for(i32 i = 0; i < 6; ++i) {
+        if(gState->player.actives[i] <= 0)
+            continue;
 
- //   for(i32 i = 0; i < 6; ++i) {
- //       if(gState->player.relics[i] <= 0)
- //           continue;
+        UIElement relic = {
+            Anchor::CENTER,
+            -1,
+            ACTIVES_T,
+            relicSlotPositions[i].x,
+            relicSlotPositions[i].y,
+            0.045f * RENDERING_ASPECT,
+            0.045f
+        };
 
- //       UIElement relic = {
- //           Anchor::CENTER,
- //           -1,
- //           RELICS_T,
- //           relicSlotPositions[i].x,
- //           relicSlotPositions[i].y,
- //           0.045f * RENDERING_ASPECT,
- //           0.045f
- //       };
-
- //       relic.sheetAnimation = {3, 2};
- //       relic.sheetAnimation.currentFrame = gState->player.relics[i] - 1;
-
- //       relicIds[i] = add_ui_element(gState->uiPage, relic);
- //   }
+        relic.sheetAnimation = {ACTIVE_COLUMNS, ACTIVE_ROWS};
+        relic.sheetAnimation.currentFrame = gState->player.actives[i];
+        relicIds[i] = add_ui_element(gState->uiPage, relic);
+    }
 
     for(i32 i = 0; i < 6; ++i) {
         UIElement slot = {
@@ -2008,6 +2017,31 @@ void add_relic() {
     } 
 }
 
+void add_active() {
+    // gross, there has to be a way to make is better for yourself to transfer info between
+    i32 frame = gState->uiPage->uiElements[gState->uiPage->uiElements[gState->uiPage->elementHovered].imageChildId].sheetAnimation.currentFrame;
+    if(ACTIVE_TABLE[frame].price > gState->gameData.dollaBills) return;
+    if(gState->player.numberOfActives == MAX_ACTIVES) {
+        printf("number of relics %i\n", gState->player.numberOfActives);
+        return;
+    } // quick fix for now, will fix in the shop ui
+
+
+    gState->player.actives[gState->player.numberOfActives] = frame;
+
+    //charge the player
+    gState->gameData.dollaBills -= ACTIVE_TABLE[frame].price;
+
+    if(gState->player.numberOfRelics <= MAX_ACTIVES - 2) gState->player.numberOfActives++;
+
+    push_wait(&gState->cmdQueue, 1.0f);
+
+    ActionCommand *nextRound = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, 0, execute_action);
+    if (nextRound) { 
+        nextRound->action = start_round;
+    } 
+}
+
 void populate_relics_in_shop(i32 *arr) {
     for(i32 i = 0; i < 3; ++i) {
         u8 unique = false;
@@ -2030,15 +2064,62 @@ void populate_relics_in_shop(i32 *arr) {
     }
 }
 
-void add_shop_purchase_menu() {
-    set_page_state(SHOP_PURCHASE);
+void populate_actives_in_shop(i32 *arr) {
+    for(i32 i = 0; i < 3; ++i) {
+        u8 unique = false;
+
+        while(!unique) {
+            i32 value = rng_range(0, TOTAL_ACTIVES - 1);
+            unique = true;
+
+            for(i32 j = 0; j < i; ++j) {
+                if(arr[j] == value) {
+                    unique = false;
+                    break;
+                }
+            }
+
+            if(unique) {
+                arr[i] = value;
+            }
+        }
+    }
+}
+
+void add_relic_purchase() {
+    add_shop_purchase_menu(true);
+}
+
+void add_active_purchase() {
+    add_shop_purchase_menu(false);
+}
+
+//pass in actives and passives here.
+void add_shop_purchase_menu(u8 isRelic) {
+    if(isRelic) {
+        set_page_state(RELICS_PURCHASE);
+    } else {
+        set_page_state(ACTIVES_PURCHASE);
+    }
     clear_game_ui();
-    UIElement relic = UIElement{ Anchor::CENTER, -1, RELICS_T, 0.26f, 0.4f, 0.08f * RENDERING_ASPECT, 0.08f};
+
+    // names are all off
+    SheetAnimation relicSheet;
+    UIElement relic;
 
     i32 relicIds[3];
-    populate_relics_in_shop(relicIds);
+    if(isRelic) {
+      populate_relics_in_shop(relicIds);
+      relic = UIElement{ Anchor::CENTER, -1, RELICS_T, 0.26f, 0.4f, 0.08f * RENDERING_ASPECT, 0.08f};
+      relicSheet = SheetAnimation{RELIC_COLUMNS, RELIC_ROWS};
 
-    SheetAnimation relicSheet = SheetAnimation{RELIC_COLUMNS, RELIC_ROWS};
+    } else {
+      populate_actives_in_shop(relicIds);
+      relic = UIElement{ Anchor::CENTER, -1, ACTIVES_T, 0.26f, 0.4f, 0.08f * RENDERING_ASPECT, 0.08f};
+      relicSheet = SheetAnimation{ACTIVE_COLUMNS, ACTIVE_ROWS};
+    }
+
+    //SheetAnimation relicSheet = SheetAnimation{RELIC_COLUMNS, RELIC_ROWS};
     relic.sheetAnimation = relicSheet;
     relic.sheetAnimation.currentFrame = relicIds[0];
 
@@ -2055,7 +2136,7 @@ void add_shop_purchase_menu() {
     
     UIElement relicBg = UIElement{ Anchor::CENTER, -1, BUTTON_T, 0.26f, 0.525f, 0.5f, 0.225f};
     relicBg.sheetAnimation = panelSheet;
-    relicBg.actionId = 11;
+    relicBg.actionId = isRelic ? 11 : 17;
 
     relicBg.isPanel = true;
     relicBg.color = R_BLUE;
@@ -2070,53 +2151,103 @@ void add_shop_purchase_menu() {
     relicBg.imageChildId = relic3;
     i32 relicBg3 = add_ui_element(gState->uiPage, relicBg);
 
-    i32 nextRoundId = add_button(gState->uiPage, BUTTON_T, "Skip", vec2(0.5f, 0.815f), vec2(0.05f, 0.05f), R_GRAY, 0);
+    i32 nextRoundId = add_button(gState->uiPage, BUTTON_T, "Skip", vec2(0.5f, 0.815f), vec2(0.05f, 0.05f), R_GRAY, isRelic ? 16 : 0);
 
     i32 windowIndex = add_window(gState->uiPage, UI_BG_2_T, Anchor::CENTER, vec2(0.75f, 0.75f), vec2(0.5f, 2.0f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE); 
 
+    const char* name1;
+    const char* name2;
+    const char* name3;
+
+    const char* rarity1;
+    const char* rarity2;
+    const char* rarity3;
+
+    const char* desc1;
+    const char* desc2;
+    const char* desc3;
+
+    i32 price1;
+    i32 price2;
+    i32 price3;
+
+    if(isRelic) {
+        name1 = gState->relics[relicIds[0]].name;
+        name2 = gState->relics[relicIds[1]].name;
+        name3 = gState->relics[relicIds[2]].name;
+
+        rarity1 = rarity_to_string(gState->relics[relicIds[0]].rarity);
+        rarity2 = rarity_to_string(gState->relics[relicIds[1]].rarity);
+        rarity3 = rarity_to_string(gState->relics[relicIds[2]].rarity);
+
+        desc1 = gState->relics[relicIds[0]].description;
+        desc2 = gState->relics[relicIds[1]].description;
+        desc3 = gState->relics[relicIds[2]].description;
+        
+        price1 = (i32)gState->relics[relicIds[0]].price;
+        price2 = (i32)gState->relics[relicIds[1]].price;
+        price3 = (i32)gState->relics[relicIds[2]].price;
+    } else {
+        name1 = gState->actives[relicIds[0]].name;
+        name2 = gState->actives[relicIds[1]].name;
+        name3 = gState->actives[relicIds[2]].name;
+
+        rarity1 = rarity_to_string(gState->actives[relicIds[0]].rarity);
+        rarity2 = rarity_to_string(gState->actives[relicIds[1]].rarity);
+        rarity3 = rarity_to_string(gState->actives[relicIds[2]].rarity);
+
+        desc1 = gState->actives[relicIds[0]].description;
+        desc2 = gState->actives[relicIds[1]].description;
+        desc3 = gState->actives[relicIds[2]].description;
+        
+        price1 = (i32)gState->actives[relicIds[0]].price;
+        price2 = (i32)gState->actives[relicIds[1]].price;
+        price3 = (i32)gState->actives[relicIds[2]].price;
+    }
+
     TextElement relicName = TextElement{ Anchor::CENTER, "", 0.26f, 0.3f, -1, true, DEFAULT_FONT_SCALE, vec3(R_WHITE)}; 
-    snprintf(relicName.text, sizeof(relicName.text), "%s", gState->relics[relicIds[0]].name);
+    snprintf(relicName.text, sizeof(relicName.text), "%s", name1);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicName));
     relicName.posx += 0.24f;
-    snprintf(relicName.text, sizeof(relicName.text), "%s", gState->relics[relicIds[1]].name);
+    snprintf(relicName.text, sizeof(relicName.text), "%s", name2);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicName));
     relicName.posx += 0.24f;
-    snprintf(relicName.text, sizeof(relicName.text), "%s", gState->relics[relicIds[2]].name);
+    snprintf(relicName.text, sizeof(relicName.text), "%s", name3);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicName));
 
     TextElement relicRarity = TextElement{ Anchor::CENTER, "", 0.26f, 0.5f, -1, true, DEFAULT_FONT_SCALE * 2.0f, vec3(R_WHITE)}; 
-    snprintf(relicRarity.text, sizeof(relicRarity.text), "%s", rarity_to_string(gState->relics[relicIds[0]].rarity));
-    relicRarity.color = rarity_to_color(gState->relics[relicIds[0]].rarity);
+    snprintf(relicRarity.text, sizeof(relicRarity.text), "%s", rarity1);
+    //relicRarity.color = rarity_to_color(rarity1);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicRarity));
     relicRarity.posx += 0.24f;
-    snprintf(relicRarity.text, sizeof(relicRarity.text), "%s", rarity_to_string(gState->relics[relicIds[1]].rarity));
-    relicRarity.color = rarity_to_color(gState->relics[relicIds[1]].rarity);
+    snprintf(relicRarity.text, sizeof(relicRarity.text), "%s", rarity2);
+    //relicRarity.color = rarity_to_color(gState->relics[relicIds[1]].rarity);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicRarity));
     relicRarity.posx += 0.24f;
-    snprintf(relicRarity.text, sizeof(relicRarity.text), "%s", rarity_to_string(gState->relics[relicIds[2]].rarity));
-    relicRarity.color = rarity_to_color(gState->relics[relicIds[2]].rarity);
+    snprintf(relicRarity.text, sizeof(relicRarity.text), "%s", rarity3);
+    //relicRarity.color = rarity_to_color(gState->relics[relicIds[2]].rarity);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicRarity));
 
     TextElement relicDesc = TextElement{ Anchor::CENTER, "", 0.26f, 0.575f, -1, true, DEFAULT_FONT_SCALE, vec3(R_WHITE)}; 
     relicDesc.maxWidth = 0.3f;
-    snprintf(relicDesc.text, sizeof(relicDesc.text), "%s", gState->relics[relicIds[0]].description);
+    snprintf(relicDesc.text, sizeof(relicDesc.text), "%s", desc1);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicDesc));
     relicDesc.posx += 0.24f;
-    snprintf(relicDesc.text, sizeof(relicDesc.text), "%s", gState->relics[relicIds[1]].description);
+    snprintf(relicDesc.text, sizeof(relicDesc.text), "%s", desc2);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicDesc));
     relicDesc.posx += 0.24f;
-    snprintf(relicDesc.text, sizeof(relicDesc.text), "%s", gState->relics[relicIds[2]].description);
+    snprintf(relicDesc.text, sizeof(relicDesc.text), "%s", desc3);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicDesc));
 
     TextElement relicPrice = TextElement{ Anchor::CENTER, "", 0.26f, 0.725f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_YELLOW)}; 
     relicPrice.maxWidth = 0.3f;
-    snprintf(relicPrice.text, sizeof(relicPrice.text), "$%d", (i32)gState->relics[relicIds[0]].price);
+    snprintf(relicPrice.text, sizeof(relicPrice.text), "$%d", price1);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicPrice));
     relicPrice.posx += 0.24f;
-    snprintf(relicPrice.text, sizeof(relicPrice.text), "$%d", (i32)gState->relics[relicIds[1]].price);
+    snprintf(relicPrice.text, sizeof(relicPrice.text), "$%d", price2);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicPrice));
     relicPrice.posx += 0.24f;
-    snprintf(relicPrice.text, sizeof(relicPrice.text), "$%d", (i32)gState->relics[relicIds[2]].price);
+    snprintf(relicPrice.text, sizeof(relicPrice.text), "$%d", price3);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicPrice));
 
 
@@ -2895,12 +3026,14 @@ void add_game_ui_data(UIPage *uiPage) {
     uiPage->actions[uiPage->numberOfActions++] = &sort_rack_by_number;
     uiPage->actions[uiPage->numberOfActions++] = &add_group_multiplier;
     uiPage->actions[uiPage->numberOfActions++] = &add_run_multiplier;
-    uiPage->actions[uiPage->numberOfActions++] = &add_shop_purchase_menu;
+    uiPage->actions[uiPage->numberOfActions++] = &add_relic_purchase;
     uiPage->actions[uiPage->numberOfActions++] = &add_relic;
     uiPage->actions[uiPage->numberOfActions++] = &nothing;
     uiPage->actions[uiPage->numberOfActions++] = &apply_video_settings; // 13
     uiPage->actions[uiPage->numberOfActions++] = &init_main_menu; // 14
     uiPage->actions[uiPage->numberOfActions++] = &init_relics_ui; // 15
+    uiPage->actions[uiPage->numberOfActions++] = &add_active_purchase; //16
+    uiPage->actions[uiPage->numberOfActions++] = &add_active; //16
     
     uiPage->values[uiPage->numberOfValues++] = &gState->gameData.roundScore;//&gState->player.playerData.score;
     uiPage->values[uiPage->numberOfValues++] = &gState->gameData.turnLimit;
@@ -2933,8 +3066,14 @@ void reinit_page_state() {
             add_round_complete_ui();
             break;
         }
-        case SHOP_PURCHASE: {
-            add_shop_purchase_menu();
+        case RELICS_PURCHASE: {
+            //add_shop_purchase_menu();
+            add_relic_purchase();
+            break;
+        }
+        case ACTIVES_PURCHASE: {
+            //add_shop_purchase_menu();
+            add_active_purchase();
             break;
         }
         case MAIN_MENU: {
@@ -3055,7 +3194,7 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
     if(key == 268 && action == 1) {//home key
         gState->player.relics[gState->player.numberOfRelics++] = TYPE_1;
         //__debugbreak();
-        add_shop_purchase_menu();
+        //add_shop_purchase_menu();
     }
 
     if (key == 78 && action == 1) {
