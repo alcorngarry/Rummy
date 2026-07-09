@@ -147,16 +147,6 @@ struct Tile {
     vec2 tableSpace = vec2(-1, -1);
 };
 
-enum ITEM_TYPE {
-  PASSIVE
-};
-
-struct Item {
-  ITEM_TYPE type;
-  i32 cost;
-  const char* name;
-};
-
 struct Set {
     GameObject object;
     i32 id;
@@ -209,49 +199,34 @@ struct PlayerData {
     i32 groupMultipliers = 1;
 };
 
-//probable phase this out
-enum RelicType {
-    TYPE_1 = 1,
-    TYPE_2 = 2,
-    TYPE_3 = 3,
-    TYPE_4 = 4,
-    TYPE_5 = 5,
-    TYPE_6 = 6,
-    TYPE_7 = 7,
-    TYPE_8 = 8,
-    TYPE_9 = 9,
-    TYPE_10 = 10
-};
-
 enum Rarity {
     COMMON,
     RARE,
     EXCEEDINGLY_RARE
 };
 
-struct Relic {
-    RelicType type;
-    Rarity rarity;
-    const char* name;
-    const char* description;
-    u8 price;
+struct Condition {
+    Set *set;
+    i32 value;
 };
 
-struct Active {
+struct Item {
     Rarity rarity;
     const char* name;
     const char* description;
     u8 price;
-
+    i32 conditionValue;
+    i32 modifierValue;
+    CmdActionFuncPtr condition;
     CmdActionFuncPtr action;
 };
 
 struct Player {
     PlayerData playerData;
     Tile* heldTile;
-    RelicType relics[MAX_RELICS];
+    i32 relics[MAX_RELICS];
     u8 numberOfRelics = 0;
-    i32 actives[MAX_ACTIVES];// trying without enum
+    i32 actives[MAX_ACTIVES];
     u8 numberOfActives = 0;
 };
 
@@ -278,8 +253,8 @@ struct GameState {
     UIPage *uiPage;
 
     Tile tiles[TOTAL_TILES];
-    Relic relics[TOTAL_RELICS];
-    Active actives[TOTAL_ACTIVES];
+    Item relics[TOTAL_RELICS];
+    Item actives[TOTAL_ACTIVES];
 
     RoundSnapshot roundStart;
 

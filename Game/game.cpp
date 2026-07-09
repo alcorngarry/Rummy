@@ -328,17 +328,87 @@ vec4 rarity_to_color(Rarity rarity) {
     }
 }
 
-Relic RELIC_TABLE[TOTAL_RELICS] = {
-    { TYPE_1, COMMON, "Neophyte 3", "Every set with exactly three tiles gets double the points.", 1 },
-    { TYPE_2, COMMON, "Plebian 4", "Every set with exactly four tiles gets double the points.", 1 },
-    { TYPE_3, RARE, "Mr 5", "Every set with exactly five tiles gets triple the points.", 2 },
-    { TYPE_4, RARE, "Mrs 6", "Every set with exactly six tiles gets triple the points.", 2 },
-    { TYPE_5, EXCEEDINGLY_RARE, "Dr 7", "Every set with exactly seven tiles gets quadruple the points.", 3 },
-    { TYPE_6, EXCEEDINGLY_RARE, "Ruler 8", "Every set with exactly eight tiles gets eight times the points.", 3 },
-    { TYPE_7, COMMON, "Even Steven", "Every even set gets +20.", 1 },
-    { TYPE_8, COMMON, "Odd Todd", "Every odd set gets +20.", 1 },
-    { TYPE_9, RARE, "SkullDuggery", "TO DO ADD HERE", 2 },
-    { TYPE_10, RARE, "Crok Jock", "TO DO ADD HERE", 2 }
+void add_multiplier_animation(Set *set, i32 value) {
+    vec2 setPos = world_to_ui(
+        set->object.model,
+        gMemory->renderBuffer->view,
+        gMemory->renderBuffer->projection        
+    );
+
+    TextElement multiplier = TextElement{ Anchor::CENTER, "", setPos.x, setPos.y - 0.1f, -1, true, DEFAULT_FONT_SCALE * 3.0 };
+    multiplier.color = R_RED;
+    snprintf(multiplier.text, sizeof(multiplier.text), "x%d", value);
+    add_pop_animation(&multiplier, 0.4f);
+
+    ActionCommand *setText = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, TextElement, execute_action);
+    if (setText) {
+        setText->action = add_text_to_page;
+        *COMMAND_PAYLOAD(setText, TextElement) = multiplier;
+    }
+
+    push_wait(&gState->cmdQueue, 0.75f);
+}
+
+void add_addition_animation(Set *set, i32 value) {
+    vec2 setPos = world_to_ui(
+        set->object.model,
+        gMemory->renderBuffer->view,
+        gMemory->renderBuffer->projection        
+    );
+
+    TextElement multiplier = TextElement{ Anchor::CENTER, "", setPos.x, setPos.y - 0.1f, -1, true, DEFAULT_FONT_SCALE * 3.0 };
+    multiplier.color = R_BLUE;
+    snprintf(multiplier.text, sizeof(multiplier.text), "+%d", value);
+    add_pop_animation(&multiplier, 0.4f);
+
+    ActionCommand *setText = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, TextElement, execute_action);
+    if (setText) {
+        setText->action = add_text_to_page;
+        *COMMAND_PAYLOAD(setText, TextElement) = multiplier;
+    }
+
+    push_wait(&gState->cmdQueue, 0.75f);
+}
+
+u8 multiplier_action(void *ptr) {
+    i32 multiplier = *(i32 *)ptr;
+    hoveredSetValue *= multiplier;
+    return true;
+}
+
+u8 addition_action(void *ptr) {
+    i32 addition = *(i32 *)ptr;
+    hoveredSetValue += addition;
+    return true;
+}
+
+u8 size_equals_condition(void *ptr) {
+    //assumes not passed through buffer
+    Condition *condition = (Condition *)ptr;
+    return condition->set->numberOfTiles == condition->value;
+}
+
+u8 set_even_condition(void *ptr) {
+    Condition *condition = (Condition *)ptr;
+    return !(condition->set->numberOfTiles % 2);
+}
+
+u8 set_odd_condition(void *ptr) {
+    Condition *condition = (Condition *)ptr;
+    return condition->set->numberOfTiles % 2;
+}
+
+Item RELIC_TABLE[TOTAL_RELICS] = {
+    { COMMON, "Neophyte 3", "Every set with exactly three tiles gets double the points.", 1, 3, 2, size_equals_condition, multiplier_action },
+    { COMMON, "Plebian 4", "Every set with exactly four tiles gets double the points.", 1, 4, 2, size_equals_condition, multiplier_action },
+    { RARE, "Mr 5", "Every set with exactly five tiles gets triple the points.", 2, 5, 3, size_equals_condition, multiplier_action },
+    { RARE, "Mrs 6", "Every set with exactly six tiles gets triple the points.", 2, 6, 3, size_equals_condition, multiplier_action },
+    { EXCEEDINGLY_RARE, "Dr 7", "Every set with exactly seven tiles gets quadruple the points.", 3, 7, 4, size_equals_condition, multiplier_action },
+    { EXCEEDINGLY_RARE, "Ruler 8", "Every set with exactly eight tiles gets eight times the points.", 3, 8, 4, size_equals_condition, multiplier_action },
+    { COMMON, "Even Steven", "Every even set gets +20.", 1, 2, 20, set_even_condition, addition_action },
+    { COMMON, "Odd Todd", "Every odd set gets +20.", 1, 2, 20, set_odd_condition, addition_action },
+    { RARE, "SkullDuggery", "TO DO ADD HERE", 2, 1, 1, nullptr, addition_action },
+    { RARE, "Crok Jock", "TO DO ADD HERE", 2, 1, 1, nullptr, addition_action }
 //    { TYPE_2, "Odd Man", "Every odd tile in a set gets +10 points." },
 //    { TYPE_3, "Big Man", "Sets larger than 6 tiles get +50 points." },
 //    { TYPE_4, "6 Scores x2", "Every set with exactly 6 tiles gets double points." },
@@ -346,10 +416,10 @@ Relic RELIC_TABLE[TOTAL_RELICS] = {
 //    { TYPE_6, "type 6", "this item does this thing! 6" }
 };
 
-Active ACTIVE_TABLE[TOTAL_ACTIVES] = {
-    { COMMON, "Pawn", "Every set with exactly three tiles gets double the points.", 1, nullptr },
-    { COMMON, "Joker", "Every set with exactly four tiles gets double the points.", 1, nullptr},
-    { RARE, "Discard", "Every set with exactly five tiles gets triple the points.", 2, nullptr }
+Item ACTIVE_TABLE[TOTAL_ACTIVES] = {
+    { COMMON, "Pawn", "Every set with exactly three tiles gets double the points.", 1, 1, 1, nullptr, nullptr},
+    { COMMON, "Joker", "Every set with exactly four tiles gets double the points.", 1, 1, 1, nullptr, nullptr},
+    { RARE, "Discard", "Every set with exactly five tiles gets triple the points.", 2, 1, 1, nullptr, nullptr }
 };
 
 u64 get_set_value(Set *set) {
@@ -359,54 +429,6 @@ u64 get_set_value(Set *set) {
     }
     return value;
 };
-
-u8 relic_1_action(void *ptr) {
-    Set *set = *(Set **)ptr;
-    hoveredSetValue *= 2;
-    return true;
-}
-
-u8 relic_2_action(void *ptr) {
-    Set *set = *(Set **)ptr;
-    hoveredSetValue *= 2;
-    return true;
-}
-
-u8 relic_3_action(void *ptr) {
-    Set *set = *(Set **)ptr;
-    hoveredSetValue *= 3;
-    return true;
-}
-
-u8 relic_4_action(void *ptr) {
-    Set *set = *(Set **)ptr;
-    hoveredSetValue *= 3;
-    return true;
-}
-
-u8 relic_5_action(void *ptr) {
-    Set *set = *(Set **)ptr;
-    hoveredSetValue *= 4;
-    return true;
-}
-
-u8 relic_6_action(void *ptr) {
-    Set *set = *(Set **)ptr;
-    hoveredSetValue *= 8;
-    return true;
-}
-
-u8 relic_7_action(void *ptr) {
-    Set *set = *(Set **)ptr;
-    hoveredSetValue += 20;
-    return true;
-}
-
-u8 relic_8_action(void *ptr) {
-    Set *set = *(Set **)ptr;
-    hoveredSetValue += 20;
-    return true;
-}
 
 //change name
 void create_relics() {
@@ -634,6 +656,7 @@ u8 add_set_amount(void *ptr) {
     GameObject *self = *(GameObject **)ptr;
     Tile* tile = (Tile*)self;
     //Set *set = &gState->table.sets[tile->setId];
+    printf("add set amount!\n");
     hoveredSetValue += tile->details.tileNumber;
     return true;
 }
@@ -1518,7 +1541,8 @@ void update_set_ui(Set *set) {
     bg->posx = pos.x;
     bg->posy = pos.y - 0.1f;
 
-    hoveredSetValue = calculate_set_bonuses(set, false);
+    //hoveredSetValue = 
+    calculate_set_bonuses(set, false);
 }
 
 void add_tile_to_table_space(Tile* tile, vec2 tableSpace) {
@@ -1999,7 +2023,7 @@ void add_relic() {
     } // quick fix for now, will fix in the shop ui
 
 
-    gState->player.relics[gState->player.numberOfRelics] = (RelicType)(frame + 1);
+    gState->player.relics[gState->player.numberOfRelics] = frame;
 
     //charge the player
     gState->gameData.dollaBills -= RELIC_TABLE[frame].price;
@@ -2614,120 +2638,38 @@ u8 add_table_value_total(void *ptr) {
 }
 
 void push_set_bonus(Set *set, i32 value, CmdActionFuncPtr relicFn) {
-    vec2 setPos = world_to_ui(
-        set->object.model,
-        gMemory->renderBuffer->view,
-        gMemory->renderBuffer->projection        
-    );
-
-    TextElement multiplier = TextElement{ Anchor::CENTER, "", setPos.x, setPos.y - 0.1f, -1, true, DEFAULT_FONT_SCALE * 3.0 };
-    multiplier.color = R_RED;
-    snprintf(multiplier.text, sizeof(multiplier.text), "x%d", value);
-    add_pop_animation(&multiplier, 0.4f);
-
-    ActionCommand *setText = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, TextElement, execute_action);
-    if (setText) {
-        setText->action = add_text_to_page;
-        *COMMAND_PAYLOAD(setText, TextElement) = multiplier;
+    if(relicFn == addition_action) {
+        add_addition_animation(set, value);
+    } else {
+        add_multiplier_animation(set, value);
     }
 
-    push_wait(&gState->cmdQueue, 0.75f);
-
-    ActionCommand *setVal = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, Set *, execute_action);
+    ActionCommand *setVal = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, i32, execute_action);
     if (setVal) { 
-        *COMMAND_PAYLOAD(setVal, Set *) = set;
+        *COMMAND_PAYLOAD(setVal, i32) = value;
         setVal->action = relicFn;
     } 
 }
 
 u64 calculate_set_bonuses(Set *set, u8 uiAnimation) {
-    u64 multiplier = 1;
-    u64 addition = 0;
+    if(!uiAnimation) hoveredSetValue = get_set_value(set);
+
+    //sort by addition first
     for(i32 i = 0; i < gState->player.numberOfRelics; ++i) {
-        switch(gState->player.relics[i]) {
-            case TYPE_1 : {
-                if(set->numberOfTiles == 3) {
-                    if(uiAnimation) {
-                        push_set_bonus(set, 2, &relic_1_action);
-                    } else {
-                        multiplier *= 2;
-                    }
-                } 
-                break;
-            }
-            case TYPE_2 : {
-                if(set->numberOfTiles == 4) {
-                    if(uiAnimation) {
-                        push_set_bonus(set, 2, &relic_2_action);
-                    } else {
-                        multiplier *= 2;
-                    }
-                }
-                break;
-            }
-            case TYPE_3 : {
-                if(set->numberOfTiles == 5) {
-                    if(uiAnimation) {
-                        push_set_bonus(set, 3, &relic_3_action);
-                    } else {
-                        multiplier *= 3;
-                    }
-                }
-                break;
-            }
-            case TYPE_4 : {
-                if(set->numberOfTiles == 6) {
-                    if(uiAnimation) {
-                        push_set_bonus(set, 3, &relic_4_action);
-                    } else {
-                        multiplier *= 3;
-                    }
-                }
-                break;
-            }
-            case TYPE_5 : {
-                if(set->numberOfTiles == 7) { 
-                    if(uiAnimation) {
-                        push_set_bonus(set, 4, &relic_5_action);
-                    } else {
-                        multiplier *= 4;
-                    }
-                }
-                break;
-            }
-            case TYPE_6 : {
-                if(set->numberOfTiles == 8)  {
-                    if(uiAnimation) {
-                        push_set_bonus(set, 8, &relic_6_action);
-                    } else {
-                        multiplier *= 8;
-                    }
-                }
-                break;
-            }
-            case TYPE_7 : {
-                if(set->numberOfTiles % 2 == 0)  {
-                    if(uiAnimation) {
-                        push_set_bonus(set, 20, &relic_7_action);
-                    } else {
-                        addition += 20;
-                    }
-                }
-                break;
-            }
-            case TYPE_8 : {
-                if(set->numberOfTiles % 2 != 0)  {
-                    if(uiAnimation) {
-                        push_set_bonus(set, 20, &relic_8_action);
-                    } else {
-                        addition += 20;
-                    }
-                }
-                break;
+        Item item = gState->relics[gState->player.relics[i]];
+        Condition condition = Condition {set, item.conditionValue};
+        if(item.condition(&condition)) {
+            if(uiAnimation) {
+                push_set_bonus(set, item.modifierValue, item.action);
+            } else {
+                //this is expecting the multiplier/additive, broken until hoveredSetValue is .. Removed?
+                item.action(&item.modifierValue);
             }
         }
-    } 
-    return (get_set_value(set) + addition) * multiplier;
+    }
+    printf("hovered set value %i\n", (i32)hoveredSetValue);
+
+    return hoveredSetValue; //(get_set_value(set) + addition) * multiplier;
 }
 
 
@@ -3193,7 +3135,7 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
     }
 
     if(key == 268 && action == 1) {//home key
-        gState->player.relics[gState->player.numberOfRelics++] = TYPE_1;
+        //gState->player.relics[gState->player.numberOfRelics++] = TYPE_1;
         //__debugbreak();
         //add_shop_purchase_menu();
     }
