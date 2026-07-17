@@ -1389,23 +1389,30 @@ void check_relic_hovered(f64 xpos, f64 ypos) {
         UIElement *relic = &gState->uiPage->uiElements[gState->uiPage->elementHovered];
         i32 frame = relic->sheetAnimation.currentFrame;
         if(relic->textureName == RELICS_T) {
-            name->posx = relic->posx + 0.15f;
-            name->posy = relic->posy - 0.1f;
+            f32 distanceX = 0.125f;
+
+            if(relic->posx > 0.5f) {
+                distanceX *= -1.0f;
+            }
+
+            name->posx = relic->posx + distanceX;
+            name->posy = relic->posy - 0.075f;
             snprintf(name->text, sizeof(name->text), "%s", gState->relics[frame].name);
 
-            rarity->posx = relic->posx + 0.15f;
-            rarity->posy = relic->posy - 0.05f;
+            rarity->posx = relic->posx + distanceX;
+            rarity->posy = relic->posy - 0.04f;
             snprintf(rarity->text, sizeof(rarity->text), "%s", rarity_to_string(gState->relics[frame].rarity)); 
             rarity->color = rarity_to_color(gState->relics[frame].rarity);
 
-            desc->posx = relic->posx + 0.15f;
-            desc->posy = relic->posy;
-            desc->maxWidth = bg->width * RENDERING_ASPECT;
+            desc->posx = relic->posx + distanceX;
+            desc->posy = relic->posy + 0.01f;
+            desc->maxWidth = bg->width * RENDERING_ASPECT - 0.075f;
             snprintf(desc->text, sizeof(desc->text), "%s", gState->relics[frame].description);
 
-            bg->posx = relic->posx + 0.15f;
+            bg->posx = relic->posx + distanceX;
             bg->posy = relic->posy + 0.0125f;
 
+            
             bg->visible = true;
             name->visible = true;
             rarity->visible = true;
@@ -2146,13 +2153,9 @@ void add_in_game_ui() {
     //add_button(gState->uiPage, BUTTON_T, EXIT_T, vec2(0.035f, 0.05f), vec2(0.035f * RENDERING_ASPECT, 0.035f), R_DARK_GRAY, 14);
     add_button(gState->uiPage, BUTTON_T, SETTINGS_T, vec2(0.035f, 0.05f), vec2(0.035f * RENDERING_ASPECT, 0.035f), R_DARK_GRAY, 1);
     //ACTIVES TOGGLE!!! 
-    add_button(gState->uiPage, BUTTON_T, "", vec2(0.89f, 0.95f), vec2(0.0375f * RENDERING_ASPECT, 0.075f), R_SILVER, 18);
+    i32 switchButton = add_button(gState->uiPage, BUTTON_T, "Toggle Rack", vec2(0.89f, 0.95f), vec2(0.0375f * RENDERING_ASPECT, 0.075f), R_SILVER, 18);
     //make a SWITCH ui element
-    i32 k = add_radio_element(gState->uiPage, activesShown, CENTER, vec2(0.05f, 0.86f), vec2(0.02f * RENDERING_ASPECT, 0.02f), 12, RADIO_T); 
-    i32 t = add_radio_element(gState->uiPage, !activesShown, CENTER, vec2(0.05f, 0.9f), vec2(0.02f * RENDERING_ASPECT, 0.02f), 12, RADIO_T); 
-    gState->uiPage->uiElements[k].visible = true;
-    gState->uiPage->uiElements[t].visible = true;
-
+    add_switch_element(gState->uiPage, CENTER, switchButton, vec2(0.05, 0.86f), vec2(0.02f * RENDERING_ASPECT, 0.02f), RADIO_T);
 
     i32 windowIndex = add_window(gState->uiPage, UI_BG_2_T, Anchor::TOP_LEFT, vec2(0.12f, 0.6f), vec2(0.075f, -0.2f), vec2(0.075f, 0.01f), R_SILVER, R_DARK_BLUE, 0.5f); 
 
@@ -3125,7 +3128,7 @@ void reset_board() {
 }
 
 u8 check_endgame_condition(GameData gd) {
-    return (gState->playerRack.numberOfTiles == 0 || gd.turnLimit == 0 || gd.minimumScore <= gd.roundScore); 
+    return (gState->playerRack.numberOfTiles == 0 || gd.turnLimit == 0 || gd.minimumScore < gd.roundScore); 
 }
 
 void end_turn() {

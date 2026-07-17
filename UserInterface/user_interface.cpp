@@ -517,6 +517,29 @@ i32 add_radio_element(UIPage *page, u8 enabled, Anchor anchor, vec2 pos, vec2 si
     return add_ui_element(page, radio);
 }
 
+i32 add_switch_element(UIPage *page, Anchor anchor, i32 buttonId, vec2 pos, vec2 size, i32 radioHandle) {
+    UIElement *button = &page->uiElements[buttonId];
+
+    UIElement radio = UIElement{ anchor, -1, radioHandle, pos.x, pos.y, size.x, size.y};
+    SheetAnimation anim = SheetAnimation{};
+    anim.cols = 2;
+    anim.rows = 1;
+    anim.currentFrame = 1;
+    radio.sheetAnimation = anim;
+    
+    i32 parent = add_ui_element(page, radio);
+    radio.posy += 0.04f;
+    radio.sheetAnimation.currentFrame = 0;
+
+    i32 child = add_ui_element(page, radio);
+
+    button->dependentElements[button->numberOfDependentElements++] = &page->uiElements[parent];
+    button->dependentElements[button->numberOfDependentElements++] = &page->uiElements[child];
+
+    button->onCompleteActionId = 4;
+    return parent;
+}
+
 void add_cursor(UIPage *page, i32 cursorHandle, vec4 color, CursorType type) {
     UIElement cursor = UIElement{ Anchor::CENTER, -1, cursorHandle, 0.0f, 0.0f, 0.09f, 0.09f};
     cursor.color = color;
@@ -722,6 +745,16 @@ void next_sheet_frame(UIPage *page, void *ptr) {
     UIElement* self = (UIElement*)ptr;
     i32 frames = self->sheetAnimation.cols * self->sheetAnimation.rows;
     self->sheetAnimation.currentFrame = self->sheetAnimation.currentFrame == frames - 1 ? 0 : self->sheetAnimation.currentFrame + 1;
+}
+
+void next_switch(UIPage *page, void *ptr) {
+    UIElement* self = (UIElement*)ptr;
+    printf("HERE!\n");
+
+    for(i32 i = 0; i < self->numberOfDependentElements; ++i) {
+        UIElement *child = self->dependentElements[i];
+        child->sheetAnimation.currentFrame = !child->sheetAnimation.currentFrame;
+    }
 }
 
 void add_move_animation(UIPage *page, i32 elementId, vec2 destination) {
@@ -1183,6 +1216,7 @@ void load_self_actions() {
     selfActions[numberOfSelfActions++] = &next_option;
     selfActions[numberOfSelfActions++] = &previous_option;
     selfActions[numberOfSelfActions++] = &next_sheet_frame;
+    selfActions[numberOfSelfActions++] = &next_switch;
 }
 
 UIPage* create_ui_page(UIMemory* mem) {
