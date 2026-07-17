@@ -11,13 +11,14 @@
 #define RELIC_ROWS 4
 #define RELIC_COLUMNS 3
 
-#define TOTAL_ACTIVES 3
+#define TOTAL_ACTIVES 8
 #define MAX_ACTIVES 6
-#define ACTIVE_ROWS 1
+#define ACTIVE_ROWS 3
 #define ACTIVE_COLUMNS 3
 
 const i32 TABLE_ROWS = 6;
 const i32 TABLE_COLUMNS = 16;
+const i32 RACK_SPACES = 24;
 
 void default_action();
 
@@ -143,7 +144,6 @@ struct Tile {
     vec2 grabOffset;
     mat4 originalPosition;
     i32 setId = -1;
-    DragState dragState;
     vec2 tableSpace = vec2(-1, -1);
 };
 
@@ -168,7 +168,7 @@ struct Set {
 struct Pool {
     GameObject object;
     Tile* tiles[TOTAL_TILES];
-    u8 numberOfTiles = 0;
+    i32 numberOfTiles = 0;
 };
 
 struct Rack {
@@ -221,12 +221,22 @@ struct Item {
     CmdActionFuncPtr action;
 };
 
+struct Active { 
+    GameObject object;
+    Item item;
+    u8 isHovered = false;
+    mat4 originalPosition;
+    vec2 grabOffset;
+};
+
 struct Player {
     PlayerData playerData;
     Tile* heldTile;
     i32 relics[MAX_RELICS];
     u8 numberOfRelics = 0;
-    i32 actives[MAX_ACTIVES];
+
+    i32 heldActiveId = -1;
+    i32 activeIds[MAX_ACTIVES];
     u8 numberOfActives = 0;
 };
 
@@ -254,7 +264,7 @@ struct GameState {
 
     Tile tiles[TOTAL_TILES];
     Item relics[TOTAL_RELICS];
-    Item actives[TOTAL_ACTIVES];
+    Active actives[TOTAL_ACTIVES];
 
     RoundSnapshot roundStart;
 

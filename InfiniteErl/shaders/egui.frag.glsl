@@ -31,7 +31,7 @@ void main() {
         float referenceHeight = 1080.0;
         float resolutionScale = resolution.y / referenceHeight;
 
-        float borderPx = 32.0 * resolutionScale;
+        float borderPx = 16.0 * resolutionScale;
 
         vec2 uvPerPixel = fwidth(localUV);
         vec2 bVec = uvPerPixel * borderPx;

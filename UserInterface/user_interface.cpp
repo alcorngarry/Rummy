@@ -131,17 +131,17 @@ void move_element(UIElement* element, f32 deltaTime) {
     for(i32 i = 0; i < element->numberOfAnimations; ++i) {
         Animation* a = &element->animations[i];
 
-        if(a->animationType == BOB) {
-          a->elapsed += deltaTime;
+          if (a->animationType == BOB) {
+              a->elapsed += deltaTime;
 
-          if (a->elapsed >= a->duration) a->elapsed = fmodf(a->elapsed, a->duration);
+              if (a->elapsed >= a->duration)
+                  a->elapsed = fmodf(a->elapsed, a->duration);
 
-          f32 t = a->elapsed / a->duration;
-          f32 offset = -1.0f * (sinf(t * 2.0f * PI32) * a->destination.y);
+              f32 t = a->elapsed / a->duration;
+              f32 offset = -sinf(t * 2.0f * PI32) * a->destination.y;
 
-          element->posy += offset;
-
-        } else {
+              element->posy = a->start.y + offset;
+          } else {
             if(a->complete) continue;
 
             a->elapsed += deltaTime;
@@ -241,12 +241,13 @@ void move_text_element(UIPage *page, TextElement* element, f32 deltaTime) {
             case BOB: {
                 a->elapsed += deltaTime;
 
-                if (a->elapsed >= a->duration) a->elapsed = fmodf(a->elapsed, a->duration);
+                if (a->elapsed >= a->duration)
+                    a->elapsed = fmodf(a->elapsed, a->duration);
 
                 f32 t = a->elapsed / a->duration;
                 f32 offset = -1.0f * (sinf(t * 2.0f * PI32) * a->destination.y);
 
-                element->posy += offset;
+                element->posy = a->start.y + offset;
                 break;
             }
             case POP: {
@@ -533,7 +534,7 @@ void add_cursor(UIPage *page, i32 cursorHandle, vec4 color, CursorType type) {
 f32 randomBob = 0.0f;
 
 void add_text_bob(TextElement *element) {
-    f32 amplitude = 0.000005f;
+    f32 amplitude = 0.001f;
     f32 duration = 5.0f;
 
     Animation *a = &element->animations[element->numberOfAnimations++];
@@ -552,7 +553,7 @@ void add_text_bob(TextElement *element) {
 }
 
 void add_bob(UIElement *element, u8 tied) {
-    f32 amplitude = 0.000005f;
+    f32 amplitude = 0.05f;
     f32 duration = 5.0f;
 
     Animation *a = &element->animations[element->numberOfAnimations++];

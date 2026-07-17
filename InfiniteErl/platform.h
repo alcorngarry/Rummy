@@ -33,6 +33,7 @@
 #define UI_TILE_T 25
 #define TITLE_T 26
 #define ACTIVES_T 27
+#define TOOL_TIP_T 28
 
 #ifdef BUILD_DLL
 #define GAME_DLL __declspec(dllexport)

@@ -461,20 +461,20 @@ void load_textures() {
     load_texture(END_TURN_T, "./res/end-run.png", true, false, true);
     load_texture(RESET_BOARD_T, "./res/reset-board.png", true, false, false);
     load_texture(DISCARD_T, "./res/discard.png", true, false, false);
-    load_texture(TILE_FACE_T, "./res/tile-face64.png", true, true, false);
-    load_texture(TILE_SIDES_T, "./res/tile-bg64.png", true, true, false);
-    load_texture(NUMBER_SHEET_T, "./res/number-sheet.png", true, true, true);
+    load_texture(TILE_FACE_T, "./res/tile-face64.png", true, false, false);
+    load_texture(TILE_SIDES_T, "./res/tile-bg64.png", true, false, false);
+    load_texture(NUMBER_SHEET_T, "./res/number-sheet.png", true, false, true);
     load_texture(SORT_NUMBER_T, "./res/sort-number.png", true, false, true);
     load_texture(SORT_COLOR_T, "./res/sort-color.png", true, false, true);
-    load_texture(BRIDGE_T, "./res/bridge.png", true, true, true);
-    load_texture(TILE_SLOT_T, "./res/tile-slot.png", true, true, false);
-    load_texture(BG_PATTERN_T, "./res/bg-pattern.png", true, true, true);
-    load_texture(UI_BG_T, "./res/ui-bg3.png", true, true, false);
+    load_texture(BRIDGE_T, "./res/bridge.png", true, false, true);
+    load_texture(TILE_SLOT_T, "./res/tile-slot.png", true, false, false);
+    load_texture(BG_PATTERN_T, "./res/bg-pattern.png", true, false, true);
+    load_texture(UI_BG_T, "./res/ui-bg3.png", true, false, false);
     load_texture(BUTTON_T, "./res/button.png", true, false, false);
-    load_texture(POOL_T, "./res/pool.png", true, true, false);
-    load_texture(CIRCLE_BUTTON_T, "./res/circle-button.png", true, true, false);
+    load_texture(POOL_T, "./res/pool.png", true, false, false);
+    load_texture(CIRCLE_BUTTON_T, "./res/circle-button.png", true, false, false);
     load_texture(RELICS_T, "./res/relics.png", true, false, true);
-    load_texture(UI_BG_2_T, "./res/ui-bg2.png", true, true, false);
+    load_texture(UI_BG_2_T, "./res/ui-bg2.png", true, false, false);
     load_texture(BUTTON_SELECT_T, "./res/button-select.png", true, true, false);
     load_texture(RADIO_T, "./res/radio-sheet.png", true, true, false);
     load_texture(BACK_T, "./res/back-icon.png", true, true, false);
@@ -484,6 +484,7 @@ void load_textures() {
     load_texture(UI_TILE_T, "./res/ui-tile.png", true, false, false);
     load_texture(TITLE_T, "./res/title-sheet.png", true, false, false);
     load_texture(ACTIVES_T, "./res/actives.png", true, false, false);
+    load_texture(TOOL_TIP_T, "./res/tooltip.png", true, false, false);
 }
 
 VideoSettings load_video_settings() {

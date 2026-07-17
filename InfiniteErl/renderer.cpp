@@ -254,7 +254,9 @@ void render_buffer(RenderBuffer* buffer) {
                   entry->frameIndex,
                   entry->tiled,
                   entry->tileCount,
-                  buffer->aspect
+                  buffer->aspect,
+                  entry->cols,
+                  entry->rows
               );
               break;
           }
@@ -306,7 +308,7 @@ void render_buffer(RenderBuffer* buffer) {
 
 f32 T = 0;
 
-void draw_entity(mat4 model, mat4 view, mat4 projection, u32 vao, i32 textureId, vec4 color, i8 useSpriteSheet, i32 frameIndex, u8 tiled, vec2 tileCount, f32 aspect) {
+void draw_entity(mat4 model, mat4 view, mat4 projection, u32 vao, i32 textureId, vec4 color, i8 useSpriteSheet, i32 frameIndex, u8 tiled, vec2 tileCount, f32 aspect, i32 cols, i32 rows) {
     glDepthMask(GL_FALSE);
     glEnable(GL_BLEND);
 
@@ -332,8 +334,8 @@ void draw_entity(mat4 model, mat4 view, mat4 projection, u32 vao, i32 textureId,
         itemShader->setBool("useSpriteSheet", useSpriteSheet);
         itemShader->setInt("frameIndex", frameIndex);
 
-        itemShader->setInt("cols", 7);
-        itemShader->setInt("rows", 2);
+        itemShader->setInt("cols", (i32)cols);
+        itemShader->setInt("rows", (i32)rows);
 
         itemShader->setBool("tiled", tiled);
         itemShader->setVec2("tileCount", tileCount);
