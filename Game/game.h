@@ -12,7 +12,7 @@
 #define RELIC_COLUMNS 3
 
 #define TOTAL_ACTIVES 8
-#define MAX_ACTIVES 6
+#define MAX_ACTIVES 24
 #define ACTIVE_ROWS 3
 #define ACTIVE_COLUMNS 3
 
@@ -224,6 +224,7 @@ struct Item {
 struct Active { 
     GameObject object;
     Item item;
+
     u8 isHovered = false;
     mat4 originalPosition;
     vec2 grabOffset;
@@ -255,6 +256,12 @@ struct GameData {
     u64 roundScore = 0;
 };
 
+struct ValidationRules {
+    u8 minSetSize = 3;
+    u8 rainbowRunEnabled = false;
+    i32 rainbowRunSetId = -1;
+};
+
 struct GameState {
     //default game values
     u32 quadMesh;
@@ -274,6 +281,7 @@ struct GameState {
 
     Player player;
     GameData gameData;
+    ValidationRules rules;
 
     Pool pool;
     Rack playerRack;

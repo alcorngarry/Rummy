@@ -12,7 +12,6 @@ const vec3 defaultTileScale = vec3(0.08f);
 GameState* gState = nullptr;
 GameMemory* gMemory = nullptr;
 mat4 rackSpaces[RACK_SPACES];
-u8 debugMenuOpen = false;
 u8 activesShown = false;
 // terrible but for the ui endgame
 u64 numTableTiles = 0; //move this to table value
@@ -22,6 +21,7 @@ char *videoModes[2] = {"Window", "Fullscreen"};
 void get_playable_tiles(Set *set);
 void remove_empty_sets();
 u8 is_tile_released_inside_table(Tile* tile);
+u8 is_active_released_inside_pool(Active *active);
 u8 snap_tile_to_table_space(Tile *tile);
 Tile* find_left_most_tile(Set *set);
 Tile* find_right_most_tile(Set *set);
@@ -34,7 +34,6 @@ void end_turn();
 void init_game();
 void init_main_menu();
 void quit();
-u8 is_table_valid();
 void add_options_ui();
 void update_set_ui(Set* set);
 Set* get_hovered_set();
@@ -50,19 +49,30 @@ u8 add_table_value_total(void *ptr);
 void reinit_page_state();
 u8 start_round(void *ptr);
 void add_item_window(); 
+void add_tile_to_rack(Tile *tile);
+void toggle_actives();
 
 // validations.cpp
 i32 get_joker_array(Set *set, Tile** jokerArray);
 i32 get_normal_array_sorted(Set *set, Tile** normalArray);
 i32 get_bridge_array(Set *set, Tile** bridgeArray);
 i32 get_spans(i32 size, Tile** normalArraySorted, i32* outArray, i32 jokerCount);
-u8 tile_valid_in_run(Set *set, Tile *tile);
-u8 tile_valid_in_group(Set *set, Tile *tile);
-u8 tile_valid_in_invalid(Set *set, Tile *tile);
-u8 is_tile_playable_in_set(Set *set, Tile *tile);
+u8 is_tile_playable_in_set(ValidationRules *rules, Set *set, Tile *tile);
 u8 is_group(Set *set);
 u8 is_run(Set *set);
-//
+u8 is_run_valid(ValidationRules *rules, Set *set);
+u8 is_group_valid(Set *set);
+u8 is_table_valid();
+u8 is_rainbow_run(Set *set);
+// active_actions.cpp
+u8 sell_item(void *ptr);
+u8 add_new_joker(void *ptr);
+u8 allow_twins_for_round(void *ptr);
+u8 discard(void *ptr);
+u8 show_next_five_in_pool(void *ptr);
+u8 repaint_tile(void *ptr);
+u8 allow_rainbow_run(void *ptr);
+
 // game_queue.cpp
 void* push(CommandQueue *b, u64 size);
 void* push_command(CommandQueue *q, u32 totalSize, CmdActionFuncPtr executeFn);
@@ -465,15 +475,63 @@ void create_tiles() {
     }
 }
 
+u8 sell_item(void *ptr) {
+
+    return true;
+}
+
+u8 add_new_joker(void *ptr) {
+    for(i32 i = 0; i < gState->pool.numberOfTiles; ++i) {
+        Tile *t = gState->pool.tiles[i];
+        if(t->details.tileNumber == 14) {
+            add_tile_to_rack(t);
+            toggle_actives();
+            return true;
+        }
+    }
+    return true;
+}
+
+//make this passive
+//u8 allow_wrap(void *ptr) {
+
+//}
+
+u8 allow_twins_for_round(void *ptr) {
+    gState->rules.minSetSize = 2;
+
+    return true;
+}
+
+//tricky
+u8 discard(void *ptr) {
+    return true;
+}
+
+
+u8 show_next_five_in_pool(void *ptr) {
+    return true;
+}
+
+u8 repaint_tile(void *ptr) {
+    return true;
+}
+
+u8 allow_rainbow_run(void *ptr) {
+    printf("RAINBOW ENABLED!\n");
+    gState->rules.rainbowRunEnabled = true;
+    return true;
+}
+
 Item ACTIVE_TABLE[TOTAL_ACTIVES] = {
-    { COMMON, "Pawn Shop", "Sell any relic or active for $$$.", 1, 1, 1, nullptr, nullptr},
-    { RARE, "Wild Joker", "One 'FREE' joker added to the rack.", 2, 1, 1, nullptr, nullptr},
+    { COMMON, "Pawn Shop", "Sell any relic or active for $$$.", 1, 1, 1, nullptr, sell_item},
+    { RARE, "Wild Joker", "One 'FREE' joker added to the rack.", 2, 1, 1, nullptr, add_new_joker},
     { EXCEEDINGLY_RARE, "Wrap", "Allows '12' Tiles to connect to '1' tiles", 3, 1, 1, nullptr, nullptr},
-    { EXCEEDINGLY_RARE, "Twins Basil", "Sets of two are allowed for the current run.", 3, 1, 1, nullptr, nullptr},
-    { COMMON, "Discard", "Discard one tile from the rack.", 1, 1, 1, nullptr, nullptr},
-    { COMMON, "Peak Next 5", "'Peak' at next five draws from the pool.", 1, 1, 1, nullptr, nullptr},
-    { RARE, "Color Wheel", "Repaint one tile's color.", 2, 1, 1, nullptr, nullptr},
-    { RARE, "Rainbow Run", "One run on the table is able to ignore tile color.", 2, 1, 1, nullptr, nullptr }
+    { EXCEEDINGLY_RARE, "Twins Basil", "Sets of two are allowed for the current round.", 3, 1, 1, nullptr, allow_twins_for_round},
+    { COMMON, "Discard", "Discard one tile from the rack.", 1, 1, 1, nullptr, discard},
+    { COMMON, "Peak Next 5", "'Peak' at next five draws from the pool.", 1, 1, 1, nullptr, show_next_five_in_pool},
+    { RARE, "Color Wheel", "Repaint one tile's color.", 2, 1, 1, nullptr, repaint_tile},
+    { RARE, "Rainbow Run", "One run on the table is able to ignore tile color.", 2, 1, 1, nullptr, allow_rainbow_run}
 };
 
 void create_actives() {
@@ -1639,12 +1697,11 @@ void validate_set(Set* set) {
         }
 
         for(i32 i = 1; i < set->numberOfTiles; ++i) {
+            //this is weird works only with runs?
             if(set->tiles[i]->details.type != JOKER && set->tiles[i-1]->details.type != JOKER && set->tiles[i]->details.tileNumber - set->tiles[i-1]->details.tileNumber != 1) {
                 set->setType = INVALID;
                 printf("SET INVALIDATED!\n");
-                push_message(&Message{0, 2.0f, "Run invalidated!"});
             }
-
         }
     }
 
@@ -1654,7 +1711,7 @@ void validate_set(Set* set) {
     }
 
     //may not be necessary
-    if(set->numberOfTiles == 1) set->setType = SET_TYPE::INVALID;
+    //if(set->numberOfTiles == 1) set->setType = SET_TYPE::INVALID;
 
     create_new_set_model(set); 
     get_high_tile_number(set);
@@ -1699,6 +1756,19 @@ u8 is_tile_released_inside_rack(Tile *tile) {
     return response;
 }
 
+u8 is_active_released_inside_pool(Active *active) {
+    vec3 tilePos  = vec3(active->object.model[3]);
+    vec3 tablePos = vec3(gState->pool.object.model[3]);
+
+    f32 halfWidth  = glm::length(vec3(gState->pool.object.model[0])) * 0.5f;
+    f32 halfHeight = glm::length(vec3(gState->pool.object.model[1])) * 0.5f;
+
+    return tilePos.x >= tablePos.x - halfWidth &&
+           tilePos.x <= tablePos.x + halfWidth &&
+           tilePos.y >= tablePos.y - halfHeight &&
+           tilePos.y <= tablePos.y + halfHeight;
+}
+
 u8 verify_tile_was_not_played(Tile *tile) {
     for(i32 i = 0; i < TOTAL_TILES; i++) {
         if(gState->roundStart.tiles[i].details.tileNumber == tile->details.tileNumber && 
@@ -1740,6 +1810,14 @@ vec2 world_to_ui(mat4 model, mat4 view, mat4 projection) {
 void update_set_ui(Set *set) {
     //if(hoveredSetValue == set->value) return;
     //something better..
+    
+    if(!set) {
+        TextElement* text = get_text_element_by_parent_id(gState->uiPage, 99);
+        text->visible = false;
+        UIElement* bg = get_element_by_parent_id(gState->uiPage, 99);
+        bg->visible = false;
+        return;
+    }
 
     vec2 pos = world_to_ui(
         set->object.model,
@@ -1798,8 +1876,9 @@ void order_set_tiles(Set* set) {
     }
 
     //need to handle replacing joker... 
+    // how did this ever work????
     for(i32 i = 1; i < normalCount; ++i) {
-        i32 distance = normals[i] - normals[i - 1];
+        i32 distance = normals[i]->details.tileNumber - normals[i - 1]->details.tileNumber;
         printf("index %i, normalCount %i, distance %i\n", i, normalCount, distance);
         if(distance > 1) {
             if(jokerCount != 0 && jokerCount >= (distance - 1)) {
@@ -1808,7 +1887,7 @@ void order_set_tiles(Set* set) {
                     left++;
                 }
                 printf("JOKER index %i, jokerCount %i, distance %i\n", jokerIndex, jokerCount, (distance - 1));
-            } else if(bridgeCount != 0) {
+            } else if(bridgeIndex < bridgeCount) {
                 add_tile_to_table_space(bridges[bridgeIndex], vec2(leftVec.x, left));
                 bridgeIndex++;
                 left++;
@@ -1842,7 +1921,6 @@ u8 add_tile_to_set(Set *set, Tile *tile) {
         assert(set->numberOfTiles <= 12);
     }
     set->tiles[set->numberOfTiles++] = tile;
-    //set->value += tile->details.tileNumber;
 
     create_new_set_model(set);
 
@@ -1850,10 +1928,10 @@ u8 add_tile_to_set(Set *set, Tile *tile) {
     get_high_tile_number(set);
 
     if(is_group(set)) {
+      printf("is group!!!!\n");
       set->setType = GROUP;
       if(set->numberOfTiles == 4) set->isComplete = true;
-    }
-    if(is_run(set)) {
+    } else if(is_run(set)) {
       set->setType = RUN;
       order_set_tiles(set);
     }
@@ -1864,11 +1942,16 @@ u8 add_tile_to_set(Set *set, Tile *tile) {
 void remove_tile_from_set(Set *set, Tile *tile) {
     set->tiles[tile->locationIndex] = nullptr;
     set->numberOfTiles--;
-    //set->value -= tile->details.tileNumber;
 
     if(set->numberOfTiles != 0) {
         get_high_tile_number(set);
         get_low_tile_number(set);
+    }
+
+    if(set->setType != GROUP && gState->rules.rainbowRunEnabled && set->id == gState->rules.rainbowRunSetId) {
+        if(!is_rainbow_run(set)) {
+            gState->rules.rainbowRunSetId = -1;
+        }
     }
 }
 
@@ -1954,6 +2037,7 @@ void handle_tile_removal(Set *set, Tile *tile) {
 }
 
 void release_tile() {
+    printf("RAINBOW SET ID= %i\n", gState->rules.rainbowRunSetId);
     if(gState->player.heldTile) {
         Tile *tile = gState->player.heldTile;
         Set *hoveredSet = get_hovered_set();
@@ -1966,7 +2050,7 @@ void release_tile() {
         //null, 2, 3, 4 from:
         //2, 3, 4 to:
         if(hoveredSet) {
-            if(is_tile_playable_in_set(hoveredSet, tile) && is_there_table_space(hoveredSet, tile)) {
+            if(is_tile_playable_in_set(&gState->rules, hoveredSet, tile) && is_there_table_space(hoveredSet, tile)) {
                 //clear previous set
                 if(wasFromTable) handle_tile_removal(&gState->table.sets[tile->setId], tile);
 
@@ -1993,6 +2077,7 @@ void release_tile() {
                 gState->table.tableSpaces[(i32)tile->tableSpace.x][(i32)tile->tableSpace.y].isOccupied = false;
                 tile->tableSpace = vec2(-1);
                 add_tile_to_rack(tile);
+                update_set_ui(nullptr);
             } else {
                 tile->object.model = tile->originalPosition;
             }
@@ -2005,11 +2090,45 @@ void release_tile() {
     gState->player.heldTile = nullptr;
 }
 
+void remove_active() {
+    for (i32 i = 0; i < gState->player.numberOfActives; ++i) {
+        if (gState->player.activeIds[i] == gState->player.heldActiveId) {
+            for (i32 j = i; j < gState->player.numberOfActives - 1; ++j) {
+                gState->player.activeIds[j] = gState->player.activeIds[j + 1];
+            }
+
+            gState->player.activeIds[gState->player.numberOfActives - 1] = -1;
+
+            gState->player.numberOfActives--;
+            gState->player.heldActiveId = -1;
+            return;
+        }
+    }
+}
+
+void sort_active_rack() {
+    for(i32 i = 0; i < gState->player.numberOfActives; ++i) {
+        Active *active = &gState->actives[gState->player.activeIds[i]];
+        active->object.model = rackSpaces[i];
+    } 
+}
+
 void release_active() {
+    //check if inside pool
     if(gState->player.heldActiveId != -1) {
         Active *active = &gState->actives[gState->player.heldActiveId];
-        active->object.model = active->originalPosition;
-        gState->player.heldActiveId = -1;
+
+        if(is_active_released_inside_pool(active)) {
+            active->item.action(nullptr);
+            printf("release inside pool!\n");
+            active->object.model = gState->pool.object.model;
+            active->originalPosition = gState->pool.object.model;
+            remove_active();
+            sort_active_rack();
+        } else {
+            active->object.model = active->originalPosition;
+            gState->player.heldActiveId = -1;
+        }
     }
 }
 
@@ -2020,6 +2139,7 @@ void remove_empty_sets() {
         Set* set = &gState->table.sets[readIndex];
 
         if (set->numberOfTiles == 0) {
+            if(set->id == gState->rules.rainbowRunSetId) gState->rules.rainbowRunSetId = -1;
             continue;
         }
 
@@ -2033,6 +2153,7 @@ void remove_empty_sets() {
             Tile* t = gState->table.sets[writeIndex].tiles[j];
             t->setId = writeIndex;
         }
+        if(is_rainbow_run(&gState->table.sets[writeIndex])) gState->rules.rainbowRunSetId = gState->table.sets[writeIndex].id;
 
         writeIndex++;
     }
@@ -2040,22 +2161,8 @@ void remove_empty_sets() {
     gState->table.numberOfSets = writeIndex;
 }
 
-u8 is_table_valid() {
-    remove_empty_sets();
-
-    for(i32 i = 0; i < gState->table.numberOfSets; i++) {
-        Set *set = &gState->table.sets[i];
-        if(set->numberOfTiles < 3) return false;
-    }
-
-    add_table_value_total(nullptr);
-
-    return true;
-}
-
 void toggle_actives() {
     activesShown = !activesShown; 
-    printf("actives toggled\n");
 }
 
 void add_actives_ui(u8 animated) {
@@ -2153,7 +2260,7 @@ void add_in_game_ui() {
     //add_button(gState->uiPage, BUTTON_T, EXIT_T, vec2(0.035f, 0.05f), vec2(0.035f * RENDERING_ASPECT, 0.035f), R_DARK_GRAY, 14);
     add_button(gState->uiPage, BUTTON_T, SETTINGS_T, vec2(0.035f, 0.05f), vec2(0.035f * RENDERING_ASPECT, 0.035f), R_DARK_GRAY, 1);
     //ACTIVES TOGGLE!!! 
-    i32 switchButton = add_button(gState->uiPage, BUTTON_T, "Toggle Rack", vec2(0.89f, 0.95f), vec2(0.0375f * RENDERING_ASPECT, 0.075f), R_SILVER, 18);
+    i32 switchButton = add_button(gState->uiPage, BUTTON_T, "*", vec2(0.89f, 0.95f), vec2(0.0375f * RENDERING_ASPECT, 0.075f), R_SILVER, 18);
     //make a SWITCH ui element
     add_switch_element(gState->uiPage, CENTER, switchButton, vec2(0.05, 0.86f), vec2(0.02f * RENDERING_ASPECT, 0.02f), RADIO_T);
 
@@ -2839,7 +2946,12 @@ void init_game() {
     init_table();
     snapshot_round_start();
     gState->prevState = MAIN_MENU;
+    printf("SET SIZE 3\n");
     //gState->player.numberOfRelics = 0;
+    gState->rules.minSetSize = 3;
+    gState->rules.rainbowRunSetId = -1;
+    gState->rules.rainbowRunEnabled = false;
+
 
     gState->mode = GM_PLAYING;
     clear_game_ui();
@@ -3128,10 +3240,28 @@ void reset_board() {
 }
 
 u8 check_endgame_condition(GameData gd) {
-    return (gState->playerRack.numberOfTiles == 0 || gd.turnLimit == 0 || gd.minimumScore < gd.roundScore); 
+    return (gState->playerRack.numberOfTiles == 0 || gd.turnLimit == 0 || gd.minimumScore <= gd.roundScore); 
 }
 
+u8 is_table_valid() {
+    remove_empty_sets();
+
+    for(i32 i = 0; i < gState->table.numberOfSets; i++) {
+        Set *set = &gState->table.sets[i];
+        if(set->setType == GROUP) {
+            if(!is_group_valid(set)) return false; 
+        } else if(set->setType == RUN) {
+            if(!is_run_valid(&gState->rules, set)) return false;
+        }
+        //THIS IS FUNGIBLE
+        if(set->numberOfTiles < gState->rules.minSetSize) return false;
+    }
+
+    add_table_value_total(nullptr);
+} 
+
 void end_turn() {
+    printf("rr se= %i\n", gState->rules.rainbowRunSetId);
     if(gState->mode == GM_PLAYING) {
         // can still end turn when round complete...
         if(is_table_valid()) {
@@ -3388,8 +3518,17 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
     }
 
     if (key == 298 && action == 1) {
-        clear_game_ui();
-        add_round_complete_ui();
+        gState->player.numberOfActives = 0;
+
+        for (i32 i = 0; i < TOTAL_ACTIVES; ++i) {
+            gState->player.activeIds[i] = i;
+
+            Active *active = &gState->actives[i];
+            active->object.model = rackSpaces[i];
+            active->originalPosition = rackSpaces[i];
+
+            gState->player.numberOfActives++;
+        }
     }
 
     if(key == 297 && action == 1) {
@@ -3410,17 +3549,6 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
 
         //charge the player
         //gState->gameData.dollaBills -= ACTIVE_TABLE[frame].price;
-        gState->player.numberOfActives = 0;
-
-        for (i32 i = 0; i < TOTAL_ACTIVES; ++i) {
-            gState->player.activeIds[i] = i;
-
-            Active *active = &gState->actives[i];
-            active->object.model = rackSpaces[i];
-            active->originalPosition = rackSpaces[i];
-
-            gState->player.numberOfActives++;
-        }
     }
 
     if (key == 78 && action == 1) {
