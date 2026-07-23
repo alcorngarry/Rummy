@@ -13,6 +13,13 @@ GameState* gState = nullptr;
 GameMemory* gMemory = nullptr;
 mat4 rackSpaces[RACK_SPACES];
 u8 activesShown = false;
+
+// fix this
+Tile *peekTiles[5];
+u8 peekTilesAmount = 5;
+u8 nextFiveShown = false;
+u8 paintEnabled = false;
+u8 discardEnabled = false;
 // terrible but for the ui endgame
 u64 numTableTiles = 0; //move this to table value
 u64 hoveredSetValue = 0;
@@ -505,15 +512,31 @@ u8 allow_twins_for_round(void *ptr) {
 
 //tricky
 u8 discard(void *ptr) {
+    toggle_actives();
+    discardEnabled = true;
     return true;
 }
 
-
 u8 show_next_five_in_pool(void *ptr) {
+    mat4 start = gState->pool.object.model;
+    start = glm::translate(start, vec3(-1.225f, -1.5f, 0.0f));
+    start = glm::scale(start, vec3(0.5f));
+    for(i32 i = 0; i < peekTilesAmount; ++i) {
+        peekTiles[i] = gState->pool.tiles[(gState->pool.numberOfTiles - 1) - i];
+        peekTiles[i]->object.model = start;
+        start = glm::translate(start, vec3(1.2f, 0.0f, 0.0f));
+        
+        nextFiveShown = true;
+        // gState->pool.numberOfTiles == 0 ? 0 : gState->pool.numberOfTiles--; this won't happen
+        // unless round complete check changes
+    }
+
     return true;
 }
 
 u8 repaint_tile(void *ptr) {
+    activesShown = false;
+    paintEnabled = true;
     return true;
 }
 
@@ -591,7 +614,7 @@ void init_pool() {
 
     GameObject poolObject = GameObject{};
     mat4 startPos = glm::scale(mat4(1.0f), defaultTileScale);
-    startPos = glm::translate(startPos, vec3(10.0f * RENDERING_ASPECT, 11.0f, 1.0f));
+    startPos = glm::translate(startPos, vec3((9.8f * RENDERING_ASPECT), 11.0f, 1.0f));
     poolObject.model = startPos;
     pool.object = poolObject;
 
@@ -807,6 +830,9 @@ u8 draw_from_pool(Rack &rack) {
     Tile* tileDrawn = gState->pool.tiles[gState->pool.numberOfTiles - 1];
     gState->pool.numberOfTiles == 0 ? 0 : gState->pool.numberOfTiles--;
     add_tile_to_rack(tileDrawn);
+    if(nextFiveShown) {
+      peekTilesAmount == 0 ? 5 : peekTilesAmount--;
+    }
     return true;
 }
 
@@ -910,6 +936,12 @@ void draw_pool() {
 
     gMemory->push_entity_fn(gMemory->renderBuffer, &sides);
 
+    if(!activesShown && nextFiveShown) {
+        for(i32 i = 0; i < 5; ++i) {
+            create_tile_render_entry(peekTiles[i], vec4(1.0f));
+        }
+    }
+
  //   RenderEntryEntity face = RenderEntryEntity {
  //       gState->pool.object.model,
  //       gState->quadMesh,
@@ -918,6 +950,8 @@ void draw_pool() {
  //   };
 
  //   gMemory->push_entity_fn(gMemory->renderBuffer, &face);
+
+    
 
 }
 
@@ -979,6 +1013,10 @@ void draw_background() {
     };
 
     gMemory->push_entity_fn(gMemory->renderBuffer, &table);
+}
+
+void draw_cursor() {
+
 }
 
 void draw_table() {
@@ -1226,12 +1264,20 @@ void grab_tile(f64 xpos, f64 ypos) {
         Tile* tile = gState->playerRack.tiles[i];
 
         if(tile->isHovered) {
-            tile->originalPosition = tile->object.model;
-            
-            vec3 pos = vec3(tile->object.model[3]);
-            tile->grabOffset = vec2(pos.x - xpos, pos.y - ypos);
+            if(paintEnabled) { 
+                printf("COLOR CHANGED!\n");
+                tile->details.tileColor = 0;
+                paintEnabled = false;
+            } else {
+                tile->originalPosition = tile->object.model;
+                
+                vec3 pos = vec3(tile->object.model[3]);
+                tile->grabOffset = vec2(pos.x - xpos, pos.y - ypos);
+                
 
-            gState->player.heldTile = tile;
+                gState->player.heldTile = tile;
+            }
+
             return;
         }
     }
@@ -1356,6 +1402,8 @@ void clear_all_hover() {
         gState->table.sets[i].isHovered = false;
     }
 }
+
+
 
 void check_table_space_hovered(f64 xpos, f64 ypos) {
     for(i32 row = 0; row < TABLE_ROWS; ++row) {
@@ -1756,8 +1804,8 @@ u8 is_tile_released_inside_rack(Tile *tile) {
     return response;
 }
 
-u8 is_active_released_inside_pool(Active *active) {
-    vec3 tilePos  = vec3(active->object.model[3]);
+u8 is_inside_pool(mat4 model) {
+    vec3 tilePos  = vec3(model[3]);
     vec3 tablePos = vec3(gState->pool.object.model[3]);
 
     f32 halfWidth  = glm::length(vec3(gState->pool.object.model[0])) * 0.5f;
@@ -1767,6 +1815,27 @@ u8 is_active_released_inside_pool(Active *active) {
            tilePos.x <= tablePos.x + halfWidth &&
            tilePos.y >= tablePos.y - halfHeight &&
            tilePos.y <= tablePos.y + halfHeight;
+}
+
+void check_pool_hovered(f64 xpos, f64 ypos) {
+    vec3 tilePos  = vec3(xpos, ypos, 0.0f);
+    vec3 tablePos = vec3(gState->pool.object.model[3]);
+
+    f32 halfWidth  = glm::length(vec3(gState->pool.object.model[0])) * 0.5f;
+    f32 halfHeight = glm::length(vec3(gState->pool.object.model[1])) * 0.5f;
+
+    u8 inPool = tilePos.x >= tablePos.x - halfWidth &&
+           tilePos.x <= tablePos.x + halfWidth &&
+           tilePos.y >= tablePos.y - halfHeight &&
+           tilePos.y <= tablePos.y + halfHeight;
+
+    if(nextFiveShown && inPool) {
+        printf("HERE!\n");
+        //for(i32 i = 0; i < 5; ++i) {
+        //    create_tile_render_entry(tiles[i], vec4(get_tile_color(tiles[i]->details.tileColor), 1.0f));
+        //}
+    } else {
+    }
 }
 
 u8 verify_tile_was_not_played(Tile *tile) {
@@ -2078,6 +2147,10 @@ void release_tile() {
                 tile->tableSpace = vec2(-1);
                 add_tile_to_rack(tile);
                 update_set_ui(nullptr);
+            } else if(discardEnabled && is_inside_pool(tile->object.model)) { 
+                tile->location = DISCARD;
+                discardEnabled = false;
+    
             } else {
                 tile->object.model = tile->originalPosition;
             }
@@ -2118,7 +2191,7 @@ void release_active() {
     if(gState->player.heldActiveId != -1) {
         Active *active = &gState->actives[gState->player.heldActiveId];
 
-        if(is_active_released_inside_pool(active)) {
+        if(is_inside_pool(active->object.model)) {
             active->item.action(nullptr);
             printf("release inside pool!\n");
             active->object.model = gState->pool.object.model;
@@ -2308,7 +2381,7 @@ void add_in_game_ui() {
 
     //add_actives_ui(true);
 
-    TextElement poolTiles = TextElement{ Anchor::CENTER, "", 0.8f, 0.98f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+    TextElement poolTiles = TextElement{ Anchor::CENTER, "", 0.785f, 0.98f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
     poolTiles.haveCountAnimation = false;
     add_text_bob(&poolTiles);
     poolTiles.animations[poolTiles.numberOfAnimations - 1].autoAnimate = true;
@@ -3235,8 +3308,11 @@ void sort_rack_by_number() {
 
 void reset_board() {
     revert_to_round_start();
-    shuffle_tiles(gState->pool.tiles, gState->pool.numberOfTiles);
+    //shuffle_tiles(gState->pool.tiles, gState->pool.numberOfTiles);
     snapshot_round_start();
+    if(nextFiveShown) {
+        show_next_five_in_pool(nullptr);
+    }
 }
 
 u8 check_endgame_condition(GameData gd) {
@@ -3493,11 +3569,12 @@ extern "C" GAME_DLL void game_update_and_render() {
 extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 ypos) {
     // the projection matrix for ui is different!
     check_elements_hovered(gState->uiPage, xpos * (1.0f / RENDERING_ASPECT), ypos);
-
     check_relic_hovered(xpos, ypos);
+
     if(gState->pageState == IN_GAME) {
         check_set_hovered(xpos, ypos);
         check_table_space_hovered(xpos, ypos);
+        check_pool_hovered(xpos, ypos);
     }
 
     if (key == 256) {

@@ -11,6 +11,7 @@ static Shader* textShader;
 static Shader* uiShader;
 static Shader* itemShader;
 static Shader* bgShader;
+static Shader* ppShader;
 
 static Character* characters[128];
 static f32 fontAscent;
@@ -85,6 +86,15 @@ struct RenderEntryUIImage {
     u8 hasShadow;
 };
 
+struct PostProcess {
+    u32 framebuffer;
+    u32 colorTexture;
+    u32 rbo;
+    u32 quadVAO;
+    u32 quadVBO;
+    u32 quadEBO;
+};
+
 struct RenderBuffer {
     u32 maxBufferSize;
     u32 bufferSize;
@@ -126,4 +136,7 @@ u32 load_walls_buffer(f32* vertices, i32 vertexCount);
 u32 load_quad_buffer(f32* vertices, i32 vertexCount, u32* indices, i32 indexCount);
 u32 load_ui_quad_buffer(f32* vertices, i32 vertexCount, u32* indices, i32 indexCount);
 void unload_renderer();
+
+void init_post_process(i32 width, i32 height);
+void resize_post_process(i32 width, i32 height);
 #endif

@@ -5,6 +5,8 @@ u32 textVAO, textVBO;
 Texture textures[50];
 i32 textureCount = 0;
 f32 dT = 0;
+PostProcess post;
+f32 T = 0;
 
 struct RendererMesh {
     u32 vao;
@@ -118,6 +120,8 @@ void load_shaders() {
         "./shaders/item.frag.glsl");
     bgShader = new Shader("./shaders/bg.vert.glsl",
         "./shaders/bg.frag.glsl");
+    ppShader = new Shader("./shaders/pp.vert.glsl",
+        "./shaders/pp.frag.glsl");
 }
 
 void push_ui_page(RenderBuffer* buffer, UIPage* uiPage) {
@@ -214,9 +218,167 @@ f32 get_render_buffer_usage_percent(RenderBuffer* buffer) {
     return (buffer->bufferSize / (f32)buffer->maxBufferSize) * 100.0f;
 }
 
+void init_post_process(i32 width, i32 height) {
+    glGenFramebuffers(1, &post.framebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, post.framebuffer);
+
+    glGenTextures(1, &post.colorTexture);
+    glBindTexture(GL_TEXTURE_2D, post.colorTexture);
+
+    glTexImage2D(
+        GL_TEXTURE_2D,
+        0,
+        GL_RGB,
+        width,
+        height,
+        0,
+        GL_RGB,
+        GL_UNSIGNED_BYTE,
+        nullptr
+    );
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glFramebufferTexture2D(
+        GL_FRAMEBUFFER,
+        GL_COLOR_ATTACHMENT0,
+        GL_TEXTURE_2D,
+        post.colorTexture,
+        0
+    );
+
+    glGenRenderbuffers(1, &post.rbo);
+    glBindRenderbuffer(GL_RENDERBUFFER, post.rbo);
+    glRenderbufferStorage(
+        GL_RENDERBUFFER,
+        GL_DEPTH24_STENCIL8,
+        width,
+        height
+    );
+
+    glFramebufferRenderbuffer(
+        GL_FRAMEBUFFER,
+        GL_DEPTH_STENCIL_ATTACHMENT,
+        GL_RENDERBUFFER,
+        post.rbo
+    );
+
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        printf("POST FRAMEBUFFER FAILED\n");
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+
+    f32 quadVertices[] = {
+        -1.0f, -1.0f, 0.0f, 0.0f,
+         1.0f, -1.0f, 1.0f, 0.0f,
+         1.0f,  1.0f, 1.0f, 1.0f,
+        -1.0f,  1.0f, 0.0f, 1.0f
+    };
+
+    u32 quadIndices[] = {
+        0, 1, 2,
+        2, 3, 0
+    };
+
+    glGenVertexArrays(1, &post.quadVAO);
+    glGenBuffers(1, &post.quadVBO);
+    glGenBuffers(1, &post.quadEBO);
+
+    glBindVertexArray(post.quadVAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, post.quadVBO);
+    glBufferData(
+        GL_ARRAY_BUFFER,
+        sizeof(quadVertices),
+        quadVertices,
+        GL_STATIC_DRAW
+    );
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, post.quadEBO);
+    glBufferData(
+        GL_ELEMENT_ARRAY_BUFFER,
+        sizeof(quadIndices),
+        quadIndices,
+        GL_STATIC_DRAW
+    );
+
+    glVertexAttribPointer(
+        0, 2, GL_FLOAT, GL_FALSE,
+        4 * sizeof(float),
+        (void*)0
+    );
+    glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(
+        1, 2, GL_FLOAT, GL_FALSE,
+        4 * sizeof(float),
+        (void*)(2 * sizeof(float))
+    );
+    glEnableVertexAttribArray(1);
+
+    glBindVertexArray(0);
+}
+
+void resize_post_process(i32 width, i32 height) {
+    glBindTexture(GL_TEXTURE_2D, post.colorTexture);
+
+    glTexImage2D(
+        GL_TEXTURE_2D,
+        0,
+        GL_RGB,
+        width,
+        height,
+        0,
+        GL_RGB,
+        GL_UNSIGNED_BYTE,
+        nullptr
+    );
+
+    glBindRenderbuffer(GL_RENDERBUFFER, post.rbo);
+
+    glRenderbufferStorage(
+        GL_RENDERBUFFER,
+        GL_DEPTH24_STENCIL8,
+        width,
+        height
+    );
+
+    glViewport(0, 0, width, height);
+}
+
+void begin_post_process(i32 width, i32 height) {
+    glBindFramebuffer(GL_FRAMEBUFFER, post.framebuffer);
+    glViewport(0,0,width,height);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
+void end_post_process() {
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void draw_post_process() {
+    glDisable(GL_DEPTH_TEST);
+
+    ppShader->use();
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, post.colorTexture);
+
+    ppShader->setInt("screenTexture", 0);
+
+    glBindVertexArray(post.quadVAO);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+    glEnable(GL_DEPTH_TEST);
+}
+
 void render_buffer(RenderBuffer* buffer) {
     //default clearing leaving here at the moment.
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    begin_post_process(buffer->windowSize.x, buffer->windowSize.y);
     glLineWidth(2.0f);
     u8* at = buffer->bufferBase;
     u8* end = buffer->bufferBase + buffer->bufferSize;
@@ -303,10 +465,10 @@ void render_buffer(RenderBuffer* buffer) {
           }
         }
     }
+    end_post_process();
+    draw_post_process();
     buffer->bufferSize = 0;
 }
-
-f32 T = 0;
 
 void draw_entity(mat4 model, mat4 view, mat4 projection, u32 vao, i32 textureId, vec4 color, i8 useSpriteSheet, i32 frameIndex, u8 tiled, vec2 tileCount, f32 aspect, i32 cols, i32 rows) {
     glDepthMask(GL_FALSE);

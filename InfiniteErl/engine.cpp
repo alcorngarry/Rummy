@@ -195,6 +195,7 @@ i32 APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, i32 cmd
     load_textures();
     load_fonts();
     load_shaders();
+    init_post_process(1280, 720); // bad gross, ewww
 
     load(&game, "../build/Game.dll");
     RenderBuffer* buffer = allocate_render_buffer(MB / 2);
@@ -287,7 +288,7 @@ GLFWwindow* create_window() {
     //think about set joystick callback..
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL); //make this hidden when updating cursor
     glfwSwapInterval(videoSettings.vsync); 
     
 
@@ -394,6 +395,8 @@ void toggle_fullscreen(GLFWwindow* window) {
 
         videoSettings.fullScreen = false;
     }
+
+    resize_post_process(windowResolution.width, windowResolution.height);
 }
 
 void load_window_icon() {
@@ -419,6 +422,7 @@ void framebuffer_size_callback(GLFWwindow* window, i32 width, i32 height) {
     glViewport(0, 0, width, height);
 
     projection = glm::ortho(0.0f, defaultedAspect, 1.0f, 0.0f, -10.0f, 10.0f);
+    resize_post_process(windowResolution.width, windowResolution.height);
 }
 
 void mouse_callback(GLFWwindow* window, f64 xpos, f64 ypos) {
