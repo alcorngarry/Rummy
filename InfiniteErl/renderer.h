@@ -65,6 +65,7 @@ struct RenderEntryUIText {
     f32 maxWidth;
     vec3 color;
     u8 hasShadow;
+    u8 zIndex;
 };
 
 struct RenderEntryUIImage {
@@ -84,6 +85,7 @@ struct RenderEntryUIImage {
     vec4 color;
     u8 isHovered;
     u8 hasShadow;
+    u8 zIndex;
 };
 
 struct PostProcess {

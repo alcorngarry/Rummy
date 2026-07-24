@@ -2748,7 +2748,7 @@ void add_main_menu_ui() {
 //    read_page(gState->uiPage, "main_menu.eui");
     set_page_state(MAIN_MENU);
 
-    i32 newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.35f, 0.9f), vec2(0.08f), R_GREEN, 0);
+    i32 newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.35f, 0.9f), vec2(0.08f), R_GREEN, 19);
     i32 options = add_button(gState->uiPage, BUTTON_T, "Options", vec2(0.5f, 0.9f), vec2(0.08f), R_BLUE, 1);
     i32 profile = add_button(gState->uiPage, BUTTON_T, "Profile", vec2(0.65f, 0.9f), vec2(0.08f), R_PURPLE, 2);
     add_button(gState->uiPage, BUTTON_T, "Quit", vec2(0.9f, 0.9f), vec2(0.1f), R_RED, 3);
@@ -3007,6 +3007,52 @@ void add_relics_ui() {
 u8 start_round(void *ptr) {
     init_game();
     return true;
+}
+
+void start_transition() {
+    UIElement e = UIElement{CENTER, -1, -1, 0.5, 0.5f, 1, 1};
+    e.color = R_BLACK;
+    e.onCompleteActionId = 5;
+    e.zIndex = 3;
+
+    Animation a = Animation{};
+    a.animationType = SCALE;
+    a.destination = vec2(1.5f);
+    a.start = vec2(0.0f);
+    a.autoAnimate = true;
+    a.loopAnimation = false;
+    
+    e.animations[e.numberOfAnimations++] = a; 
+
+
+    ActionCommand *tileText = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, UIElement, execute_action);
+    if (tileText) {
+        tileText->action = add_image_to_page;
+        *COMMAND_PAYLOAD(tileText, UIElement) = e;
+    }
+
+    push_wait(&gState->cmdQueue, 0.6f);
+
+    Animation b = Animation{};
+    b.animationType = SCALE;
+    b.start = vec2(1.5f);
+    b.destination = vec2(0.0f);
+    b.autoAnimate = true;
+    b.loopAnimation = false;
+    e.animations[0] = b;
+
+    ActionCommand *nextRound = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, 0, execute_action);
+    if (nextRound) { 
+        nextRound->action = start_round;
+    }
+    
+    ActionCommand *tileText2 = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, UIElement, execute_action);
+    if (tileText2) {
+        tileText2->action = add_image_to_page;
+        *COMMAND_PAYLOAD(tileText2, UIElement) = e;
+    }
+
+    push_wait(&gState->cmdQueue, 1.0f);
 }
 
 void init_game() {
@@ -3444,6 +3490,7 @@ void add_game_ui_data(UIPage *uiPage) {
     uiPage->actions[uiPage->numberOfActions++] = &add_active_purchase; //16
     uiPage->actions[uiPage->numberOfActions++] = &add_active; //17
     uiPage->actions[uiPage->numberOfActions++] = &toggle_actives; //18
+    uiPage->actions[uiPage->numberOfActions++] = &start_transition; //19
     
     uiPage->values[uiPage->numberOfValues++] = &gState->gameData.roundScore;//&gState->player.playerData.score;
     uiPage->values[uiPage->numberOfValues++] = &gState->gameData.turnLimit;
@@ -3617,7 +3664,7 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
         }
     }
 
-    if(key == 268 && action == 1) {//home key
+    if(key == 296 && action == 1) {//home key
         //gState->player.relics[gState->player.numberOfRelics++] = TYPE_1;
         //__debugbreak();
         //add_shop_purchase_menu();
@@ -3626,6 +3673,7 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
 
         //charge the player
         //gState->gameData.dollaBills -= ACTIVE_TABLE[frame].price;
+
     }
 
     if (key == 78 && action == 1) {

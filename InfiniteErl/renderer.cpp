@@ -124,46 +124,101 @@ void load_shaders() {
         "./shaders/pp.frag.glsl");
 }
 
+struct UIDrawItem {
+    RenderEntryType type;
+    u8 zIndex;
+    void *element;
+};
+
+void sort_ui_draw_items(UIDrawItem* items, i32 count) {
+    for (i32 i = 1; i < count; ++i) {
+        UIDrawItem key = items[i];
+        i32 j = i - 1;
+
+        while (j >= 0 && items[j].zIndex > key.zIndex) {
+            items[j + 1] = items[j];
+            --j;
+        }
+
+        items[j + 1] = key;
+    }
+}
+
 void push_ui_page(RenderBuffer* buffer, UIPage* uiPage) {
+    //sort_ui_elements(uiPage->uiElements, uiPage->numberOfImageElements);
+    UIDrawItem items[200];
+    i32 itemCount = 0;
+
     for (i32 i = uiPage->numberOfImageElements - 1; i > -1; i--) {
         if (uiPage->uiElements[i].visible) {
-            RenderEntryUIImage image = RenderEntryUIImage{
-                uiPage->uiElements[i].anchor,
-                uiPage->uiElements[i].textureName,
-                uiPage->uiElements[i].posx,
-                uiPage->uiElements[i].posy,
-                uiPage->uiElements[i].height,
-                uiPage->uiElements[i].width,
-                uiPage->uiElements[i].sheetAnimation.cols > 0,
-                uiPage->uiElements[i].sheetAnimation.cols,
-                uiPage->uiElements[i].sheetAnimation.rows,
-                uiPage->uiElements[i].sheetAnimation.fps,
-                uiPage->uiElements[i].sheetAnimation.currentFrame,
-                uiPage->uiElements[i].meshHandle,
-                uiPage->uiElements[i].isPanel,
-                uiPage->uiElements[i].color,
-                uiPage->uiElements[i].hovered,
-                uiPage->uiElements[i].hasShadow
+            items[itemCount++] = UIDrawItem {
+                RenderEntryType_RenderEntryUIImage,
+                uiPage->uiElements[i].zIndex,
+                &uiPage->uiElements[i]
             };
-            push_ui_image(buffer, &image);
+            //push_ui_image(buffer, &image);
         }
     }
 
     for (TextElement& element : uiPage->textElements) {
         if (element.visible) {
-            RenderEntryUIText text = RenderEntryUIText{
-                element.anchor,
-                "",
-                element.posx,
-                element.posy,
-                element.scale,
-                element.maxWidth,
-                element.color,
-                element.hasShadow
+            items[itemCount++] = UIDrawItem {
+                RenderEntryType_RenderEntryUIText,
+                element.zIndex,
+                &element
             };
-            //ugly
-            strcpy_s(text.text, element.text);
-            push_ui_text(buffer, &text);
+            //push_ui_text(buffer, &text);
+        }
+    }
+
+    sort_ui_draw_items(items, itemCount);
+
+    for (i32 i = 0; i < itemCount; ++i) {
+        switch (items[i].type) {
+            case RenderEntryType_RenderEntryUIImage: {
+                UIElement* element = (UIElement*)items[i].element;
+
+                RenderEntryUIImage image = RenderEntryUIImage{
+                    element->anchor,
+                    element->textureName,
+                    element->posx,
+                    element->posy,
+                    element->height,
+                    element->width,
+                    element->sheetAnimation.cols > 0,
+                    element->sheetAnimation.cols,
+                    element->sheetAnimation.rows,
+                    element->sheetAnimation.fps,
+                    element->sheetAnimation.currentFrame,
+                    element->meshHandle,
+                    element->isPanel,
+                    element->color,
+                    element->hovered,
+                    element->hasShadow
+                };
+
+                push_ui_image(buffer, &image);
+                break;
+            }
+            case RenderEntryType_RenderEntryUIText: {
+                TextElement* element = (TextElement*)items[i].element;
+
+                RenderEntryUIText text = RenderEntryUIText{
+                    element->anchor,
+                    "",
+                    element->posx,
+                    element->posy,
+                    element->scale,
+                    element->maxWidth,
+                    element->color,
+                    element->hasShadow
+                };
+                //ugly
+                strcpy_s(text.text, element->text);
+
+                push_ui_text(buffer, &text);
+                break;
+            }
         }
     }
 }

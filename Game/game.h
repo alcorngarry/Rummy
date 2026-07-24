@@ -267,6 +267,7 @@ struct GameState {
     u32 quadMesh;
     f32 deltaTime;
     RNG rng;
+
     UIPage *uiPage;
 
     Tile tiles[TOTAL_TILES];

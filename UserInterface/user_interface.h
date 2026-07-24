@@ -65,7 +65,9 @@ enum AnimationType {
   MOVE,
   COUNT,
   BOB,
-  POP
+  POP,
+  SCALE,
+  COLOR_SHIFT
 };
 
 enum CursorType {
@@ -86,6 +88,7 @@ struct Animation {
   AnimationType animationType = MOVE;
   f64 valueStart = 0.0;
   f64 valueDestination = 0.0;
+  u8 blocking = false;
 };
 
 struct SheetAnimation {
@@ -123,6 +126,7 @@ struct UIElement {
   i32 id;
   i32 onCompleteActionId = -1;
   u8 hasShadow = false;
+  u8 zIndex = 0;
 };
 
 enum TextType {
@@ -160,6 +164,7 @@ struct TextElement {
   u8 haveCountAnimation = true;
   f32 maxWidth = 16777216.0f; //max f32
   u8 hasShadow = true;
+  u8 zIndex = 2;
 };
 
 struct UIPage {

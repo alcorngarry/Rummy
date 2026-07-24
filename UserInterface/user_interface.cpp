@@ -127,7 +127,7 @@ void check_elements_hovered(UIPage* page, f64 xpos, f64 ypos) {
     }
 }
 
-void move_element(UIElement* element, f32 deltaTime) {
+void move_element(UIPage *page, UIElement* element, f32 deltaTime) {
     for(i32 i = 0; i < element->numberOfAnimations; ++i) {
         Animation* a = &element->animations[i];
 
@@ -141,7 +141,8 @@ void move_element(UIElement* element, f32 deltaTime) {
               f32 offset = -sinf(t * 2.0f * PI32) * a->destination.y;
 
               element->posy = a->start.y + offset;
-          } else {
+          } else if(a->animationType == MOVE){
+            
             if(a->complete) continue;
 
             a->elapsed += deltaTime;
@@ -164,8 +165,59 @@ void move_element(UIElement* element, f32 deltaTime) {
 
             element->posx = pos.x;
             element->posy = pos.y;
- 
+        } else if(a->animationType == SCALE) {
+            if(a->complete) continue;
+
+            a->elapsed += deltaTime;
+
+            f32 t = a->elapsed / a->duration;
+
+            if(t >= 1.0f) {
+                t = 1.0f;
+
+                if(a->playOnce) {
+                    a->complete = true;
+                } else {
+                    a->elapsed = 0.0f;
+                }
+            }
+
+            f32 eased = ease(t, a->ease);
+
+            vec2 scale = glm::mix(a->start, a->destination, eased);
+
+            element->width = scale.x;
+            element->height = scale.y;
+        } else if(a->animationType == COLOR_SHIFT) {
+            if(a->complete) continue;
+
+            a->elapsed += deltaTime;
+
+            f32 t = a->elapsed / a->duration;
+
+            if(t >= 1.0f) {
+                t = 1.0f;
+
+                if(a->playOnce) {
+                    a->complete = true;
+                } else {
+                    a->elapsed = 0.0f;
+                }
+            }
+
+            f32 eased = ease(t, a->ease);
+
+            vec2 scale = glm::mix(a->start, a->destination, eased);
+
+            element->width = scale.x;
+            element->height = scale.y;
         }
+
+        if(a->blocking) break;
+
+        if (a->complete && (i == element->numberOfAnimations - 1) && element->onCompleteActionId != -1) {
+            RUN_ON_COMPLETE_ACTION(page, element);
+        } 
     }
 }
 
@@ -271,7 +323,7 @@ void move_text_element(UIPage *page, TextElement* element, f32 deltaTime) {
     }
 }
 
-void update_animation(UIElement* element, f32 deltaTime) {
+void update_animation(UIPage *page, UIElement* element, f32 deltaTime) {
     //sheet animation
     //if (element->numberOfAnimations > 0) {
     //    if (!element->loopAnimation && element->sheetAnimation.currentFrame == (element->fps - 1)) {
@@ -309,12 +361,12 @@ void update_animation(UIElement* element, f32 deltaTime) {
 //        }
 //    }
     for(i32 i = 0; i < (i32)element->numberOfAnimations; ++i) {
-        if(element->animations[i].autoAnimate) move_element(element, deltaTime);
+        if(element->animations[i].autoAnimate) move_element(page, element, deltaTime);
     }
 };
 
-void update(UIElement* element, f32 deltaTime) {
-    update_animation(element, deltaTime);
+void update(UIPage *page, UIElement* element, f32 deltaTime) {
+    update_animation(page, element, deltaTime);
 }
 
 void reset_animation(UIElement* element) {
@@ -346,7 +398,7 @@ f64 get_converted_text_type(TextType type, void *ptr) {
     }
 }
 
-void update(TextElement* text, UIPage *page, f32 deltaTime) {
+void update(UIPage *page, TextElement* text, f32 deltaTime) {
     for(i32 i = 0; i < (i32)text->numberOfAnimations; ++i) {
         if(text->animations[i].autoAnimate) {
             move_text_element(page, text, deltaTime);
@@ -736,8 +788,13 @@ i32 add_button(UIPage *page, i32 buttonHandle, i32 buttonImageHandle, vec2 pos, 
     return add_ui_element(page, button, true);
 }
 
-void toggle_visibility(UIPage *page, void *ptr) {
+void toggle_text_visibility(UIPage *page, void *ptr) {
     TextElement* self = (TextElement*)ptr;
+    self->visible = !self->visible;
+}
+
+void toggle_image_visibility(UIPage *page, void *ptr) {
+    UIElement* self = (UIElement*)ptr;
     self->visible = !self->visible;
 }
 
@@ -1136,7 +1193,7 @@ void draw_messages(f32 deltaTime) {
 void update(UIPage* page, f32 deltaTime) {
     for (i32 i = 0; i < page->numberOfImageElements; i++) {
         //if (page->uiElements[i].hovered)
-        update(&page->uiElements[i], deltaTime);
+        update(page, &page->uiElements[i], deltaTime);
         //if (page->uiElements[i].canDelete) {
         //    clear_image_elements(page->uiElements[i]);
 
@@ -1149,7 +1206,7 @@ void update(UIPage* page, f32 deltaTime) {
     }
 
     for (i32 i = 0; i < page->numberOfTextElements; i++) {
-        update(&page->textElements[i], page, deltaTime);
+        update(page, &page->textElements[i], deltaTime);
         //if (page->textElements[i].canDelete) {
         //    clear_text_elements(page->textElements[i]);
 
@@ -1212,11 +1269,12 @@ void create_image_quad(UIMemory* mem) {
 }
 
 void load_self_actions() {
-    selfActions[numberOfSelfActions++] = &toggle_visibility;
+    selfActions[numberOfSelfActions++] = &toggle_text_visibility;
     selfActions[numberOfSelfActions++] = &next_option;
     selfActions[numberOfSelfActions++] = &previous_option;
     selfActions[numberOfSelfActions++] = &next_sheet_frame;
     selfActions[numberOfSelfActions++] = &next_switch;
+    selfActions[numberOfSelfActions++] = &toggle_image_visibility;
 }
 
 UIPage* create_ui_page(UIMemory* mem) {
