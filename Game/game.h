@@ -248,12 +248,34 @@ struct RoundSnapshot {
     Rack rack;
 };
 
-struct GameData {
+enum ROUND_TYPE {
+    RUN_TOTALS,
+    RUN_MAX_SIZE,
+    GROUP_TOTALS,
+    EVERY_COLOR_ON_BOARD, //might be terrible
+    CURSED_RED,
+    CURSED_BLUE,
+    CURSED_GREEN,
+    CURSED_BLACK,
+    EMPTY_RACK,
+    TEN_IN_RACK,
+    NO_ACTIVES,
+    NO_PASSIVES,
+    MIN_SCORE
+};
+
+struct RoundData {
     i32 turnLimit;
     u64 minimumScore;
+    u64 roundScore = 0;
+    CmdActionFuncPtr roundWinCondition;
+    CmdActionFuncPtr roundLoseCondition;
+    ROUND_TYPE roundType;
+};
+
+struct RunData {
     u64 dollaBills = 0;
     u64 rounds = 1;
-    u64 roundScore = 0;
 };
 
 struct ValidationRules {
@@ -281,7 +303,8 @@ struct GameState {
     PAGE_STATE prevState;
 
     Player player;
-    GameData gameData;
+    RunData runData;
+    RoundData roundData;
     ValidationRules rules;
 
     Pool pool;

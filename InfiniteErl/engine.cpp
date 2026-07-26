@@ -489,6 +489,7 @@ void load_textures() {
     load_texture(TITLE_T, "./res/title-sheet.png", true, false, false);
     load_texture(ACTIVES_T, "./res/actives.png", true, false, false);
     load_texture(TOOL_TIP_T, "./res/tooltip.png", true, false, false);
+    load_texture(ROUND_TYPE_T, "./res/roundtype.png", true, false, false);
 }
 
 VideoSettings load_video_settings() {

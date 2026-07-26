@@ -71,15 +71,12 @@ u8 is_run_valid(ValidationRules *rules, Set *set);
 u8 is_group_valid(Set *set);
 u8 is_table_valid();
 u8 is_rainbow_run(Set *set);
-// active_actions.cpp
-u8 sell_item(void *ptr);
-u8 add_new_joker(void *ptr);
-u8 allow_twins_for_round(void *ptr);
-u8 discard(void *ptr);
-u8 show_next_five_in_pool(void *ptr);
-u8 repaint_tile(void *ptr);
-u8 allow_rainbow_run(void *ptr);
-
+// rounds.cpp
+u8 check_endgame_condition(GameState *state);
+RunData create_run_data();
+void clear_round_score(RoundData *data);
+u8 check_round_lose_condition(GameState *state);
+RoundData create_round_data(ROUND_TYPE roundType);
 // game_queue.cpp
 void* push(CommandQueue *b, u64 size);
 void* push_command(CommandQueue *q, u32 totalSize, CmdActionFuncPtr executeFn);
@@ -1129,6 +1126,8 @@ void check_active_hovered(f64 xpos, f64 ypos) {
     TextElement *name   = bg->dependentTextElements[0];
     TextElement *rarity = bg->dependentTextElements[1];
     TextElement *desc   = bg->dependentTextElements[2];
+
+    if(!name || !rarity || !desc) return;
 
     for(i32 i = 0; i < gState->player.numberOfActives; ++i) {
         Active* active = &gState->actives[gState->player.activeIds[i]];
@@ -2305,8 +2304,57 @@ void add_actives_ui(u8 animated) {
     }
 }
 
+void add_map_ui() {
+    i32 frontIndex = 3;
+
+    vec2 mapSpaces[8] = {
+        {0.2f,  0.5f},   
+        {0.4f,  0.5f},   
+        {0.4f,  0.7f},  
+        {0.4f,  0.3f}, 
+        {0.6f,  0.5f},
+        {0.6f,  0.7f}, 
+        {0.6f,  0.3f},
+        {0.8f,  0.5f}
+    };
+
+    i32 frames[8] = {
+        0,
+        0,
+        3,
+        1,
+        0,
+        3,
+        1,
+        2
+    };
+
+    UIElement a = UIElement{CENTER, -1, ROUND_TYPE_T, 0, 0, 0.05f, 0.05f};
+    a.sheetAnimation = SheetAnimation{4, 1};
+    a.zIndex = 3;
+
+    i32 nodeIds[8];
+
+    for (i32 i = 0; i < 8; ++i) {
+        a.posx = mapSpaces[i].x;
+        a.posy = mapSpaces[i].y;
+        a.sheetAnimation.currentFrame = frames[i];
+
+        nodeIds[i] = add_ui_element(gState->uiPage, a);
+    }
+
+    i32 multWindowIndex = add_window(gState->uiPage, UI_BG_2_T, Anchor::CENTER, vec2(0.9f, 0.75f), vec2(0.5f, 1.2f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE, 0.25f); 
+    gState->uiPage->uiElements[multWindowIndex].zIndex = 3;
+    gState->uiPage->uiElements[multWindowIndex + 1].zIndex = 3;
+
+    for(i32 i = 0; i < 8; ++i) {
+        add_image_to_window(gState->uiPage, multWindowIndex, nodeIds[i]);
+    }
+}
+
 void add_in_game_ui() {
     set_page_state(IN_GAME);
+
     UIElement a = UIElement{ Anchor::CENTER, 99, TOOL_TIP_T, 0, 0, 0.075f, 0.1f};
 
     SheetAnimation panelSheet = SheetAnimation {3, 3};
@@ -2416,15 +2464,15 @@ void add_end_game_ui() {
 }
 
 void add_group_multiplier() {
-    if(gState->gameData.dollaBills >= 1) {
-        gState->gameData.dollaBills -= 1;
+    if(gState->runData.dollaBills >= 1) {
+        gState->runData.dollaBills -= 1;
         gState->player.playerData.groupMultipliers++;
     }
 }
 
 void add_run_multiplier() {
-    if(gState->gameData.dollaBills >= 1) {
-        gState->gameData.dollaBills -= 1;
+    if(gState->runData.dollaBills >= 1) {
+        gState->runData.dollaBills -= 1;
         gState->player.playerData.runMultipliers++;
     }
 }
@@ -2432,7 +2480,7 @@ void add_run_multiplier() {
 void add_relic() {
     // gross, there has to be a way to make is better for yourself to transfer info between
     i32 frame = gState->uiPage->uiElements[gState->uiPage->uiElements[gState->uiPage->elementHovered].imageChildId].sheetAnimation.currentFrame;
-    if(RELIC_TABLE[frame].price > gState->gameData.dollaBills) return;
+    if(RELIC_TABLE[frame].price > gState->runData.dollaBills) return;
     if(gState->player.numberOfRelics == MAX_RELICS) {
         printf("number of relics %i\n", gState->player.numberOfRelics);
         return;
@@ -2442,7 +2490,7 @@ void add_relic() {
     gState->player.relics[gState->player.numberOfRelics] = frame;
 
     //charge the player
-    gState->gameData.dollaBills -= RELIC_TABLE[frame].price;
+    gState->runData.dollaBills -= RELIC_TABLE[frame].price;
 
     if(gState->player.numberOfRelics <= MAX_RELICS - 2) gState->player.numberOfRelics++;
 
@@ -2457,7 +2505,7 @@ void add_relic() {
 void add_active() {
     // gross, there has to be a way to make is better for yourself to transfer info between
     i32 frame = gState->uiPage->uiElements[gState->uiPage->uiElements[gState->uiPage->elementHovered].imageChildId].sheetAnimation.currentFrame;
-    if(ACTIVE_TABLE[frame].price > gState->gameData.dollaBills) return;
+    if(ACTIVE_TABLE[frame].price > gState->runData.dollaBills) return;
     if(gState->player.numberOfActives == MAX_ACTIVES) {
         printf("number of relics %i\n", gState->player.numberOfActives);
         return;
@@ -2468,7 +2516,7 @@ void add_active() {
     gState->player.activeIds[gState->player.numberOfActives] = frame;
     
     //charge the player
-    gState->gameData.dollaBills -= ACTIVE_TABLE[frame].price;
+    gState->runData.dollaBills -= ACTIVE_TABLE[frame].price;
 
     if(gState->player.numberOfActives <= MAX_ACTIVES - 2) {
         gState->player.numberOfActives++;
@@ -2723,7 +2771,7 @@ void add_round_complete_ui() {
     set_page_state(ROUND_COMPLETE);
     i32 windowIndex = add_window(gState->uiPage, UI_BG_2_T, Anchor::CENTER, vec2(0.12f, 0.85f), vec2(0.5f, 0.0f), vec2(0.5f, 0.07f), R_SILVER, R_DARK_BLUE); 
     
-    gState->gameData.roundScore = 0;
+    gState->roundData.roundScore = 0;
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Round Score", 0.5f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(R_WHITE)}));
     i32 progressIndex = add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_PURPLE)}, 
         "", 7, UINT_64);
@@ -3056,7 +3104,9 @@ void start_transition() {
 }
 
 void init_game() {
-    gState->gameData.roundScore = 0;
+    //clear_round_score(&gState->roundData);
+    gState->roundData = create_round_data(MIN_SCORE);
+    
     create_tiles();
     create_actives();
     create_relics();
@@ -3065,12 +3115,10 @@ void init_game() {
     init_table();
     snapshot_round_start();
     gState->prevState = MAIN_MENU;
-    printf("SET SIZE 3\n");
     //gState->player.numberOfRelics = 0;
     gState->rules.minSetSize = 3;
     gState->rules.rainbowRunSetId = -1;
     gState->rules.rainbowRunEnabled = false;
-
 
     gState->mode = GM_PLAYING;
     clear_game_ui();
@@ -3078,7 +3126,7 @@ void init_game() {
 }
 
 void init_main_menu() {
-    gState->gameData = GameData{20, 100};
+    gState->runData = create_run_data();
     clear_player_data();
     gState->mode = GM_START_MENU;
     clear_game_ui();
@@ -3096,16 +3144,16 @@ void clear_game_ui() {
 
 u8 add_set_value_total(void *ptr) {
     Set *set = *(Set **)ptr;
-    gState->gameData.roundScore += hoveredSetValue;
+    gState->roundData.roundScore += hoveredSetValue;
     hoveredSetValue = 0;
     return true;
 }
 
 u8 add_table_value_total(void *ptr) {
-    gState->gameData.roundScore = 0; //zero it out first 
+    clear_round_score(&gState->roundData); //zero it out first 
     for(i32 i = 0; i < gState->table.numberOfSets; i++) {
         Set *set = &gState->table.sets[i];
-        gState->gameData.roundScore += calculate_set_bonuses(set, false); 
+        gState->roundData.roundScore += calculate_set_bonuses(set, false); 
     }
     return true;
 }
@@ -3163,15 +3211,13 @@ u64 calculate_set_bonuses(Set *set, u8 uiAnimation) {
     return hoveredSetValue; //(get_set_value(set) + addition) * multiplier;
 }
 
-
-
 u8 add_cash(void *ptr) {
     u64 cash = *(u64 *)ptr;
-    gState->gameData.dollaBills += cash;
+    gState->runData.dollaBills += cash;
     return true;
 }
 
-void calculate_round_cash(GameData *gd) {
+void calculate_round_cash(RunData *gd) {
     ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u64, execute_action);
     if (total) {
         total->action = add_cash;
@@ -3252,7 +3298,7 @@ void count_table() {
 
     push_wait(&gState->cmdQueue, 1.0f);
 
-    calculate_round_cash(&gState->gameData);
+    calculate_round_cash(&gState->runData);
 
     push_wait(&gState->cmdQueue, 1.0f);
 
@@ -3260,34 +3306,33 @@ void count_table() {
     if (cmd) cmd->action = load_shop_purchase_menu;
 }
 
-void calculate_round_bonus(GameData *gd, PlayerData pd) {
+void calculate_round_bonus(RunData *gd, PlayerData pd) {
     count_table();
 }
 
 void complete_round() {
     clear_game_ui();
-    GameData gd = gState->gameData;
 
-    if(gd.turnLimit == 0 && (gState->playerRack.numberOfTiles > 0 || gd.minimumScore > gd.roundScore)) {
+    if(check_round_lose_condition(gState)) {
         gState->mode = GM_GAME_OVER;
-        gState->gameData = GameData{20, 100};
+        gState->runData = create_run_data();
         clear_player_data();
         add_end_game_ui();
     } else {
         add_round_complete_ui();
         gState->mode = GM_ROUND_COMPLETE;
-        calculate_round_bonus(&gState->gameData, gState->player.playerData);
-        gState->gameData.turnLimit = 20; 
-        gState->gameData.rounds++;
-        gState->gameData.minimumScore *= gState->gameData.rounds;
-        gState->gameData.roundScore = 0;
+        calculate_round_bonus(&gState->runData, gState->player.playerData);
+
+        gState->roundData.turnLimit = 20; 
+        gState->runData.rounds++;
+        gState->roundData.minimumScore *= gState->runData.rounds;
+        gState->roundData.roundScore = 0;
         //should be clear_player_data without updating the runMultipliers
         gState->player.playerData.timesDrawn = 0;
     }
 }
 
 void sort_rack_by_color() {
-    printf("Sorting rack by color\n");
     Rack* rack = &gState->playerRack;
     if (rack->numberOfTiles <= 1) return;
 
@@ -3328,7 +3373,6 @@ void sort_rack_by_color() {
 }
 
 void sort_rack_by_number() {
-    printf("Sorting rack\n");
     Rack *rack = &gState->playerRack;
     if(rack->numberOfTiles <= 1) return;
 
@@ -3354,15 +3398,10 @@ void sort_rack_by_number() {
 
 void reset_board() {
     revert_to_round_start();
-    //shuffle_tiles(gState->pool.tiles, gState->pool.numberOfTiles);
     snapshot_round_start();
     if(nextFiveShown) {
         show_next_five_in_pool(nullptr);
     }
-}
-
-u8 check_endgame_condition(GameData gd) {
-    return (gState->playerRack.numberOfTiles == 0 || gd.turnLimit == 0 || gd.minimumScore <= gd.roundScore); 
 }
 
 u8 is_table_valid() {
@@ -3389,12 +3428,12 @@ void end_turn() {
         if(is_table_valid()) {
             //gState->player.playerData.score = gState->table.value;
             
-            if(check_endgame_condition(gState->gameData)) {
+            if(check_endgame_condition(gState)) {
                 complete_round();
             } else {
                 if(draw_from_pool(gState->playerRack)) {
                     gState->player.playerData.timesDrawn++;
-                    gState->gameData.turnLimit--;
+                    gState->roundData.turnLimit--;
                 } 
             }
             snapshot_round_start();
@@ -3492,14 +3531,14 @@ void add_game_ui_data(UIPage *uiPage) {
     uiPage->actions[uiPage->numberOfActions++] = &toggle_actives; //18
     uiPage->actions[uiPage->numberOfActions++] = &start_transition; //19
     
-    uiPage->values[uiPage->numberOfValues++] = &gState->gameData.roundScore;//&gState->player.playerData.score;
-    uiPage->values[uiPage->numberOfValues++] = &gState->gameData.turnLimit;
-    uiPage->values[uiPage->numberOfValues++] = &gState->gameData.minimumScore;
-    uiPage->values[uiPage->numberOfValues++] = &gState->gameData.dollaBills;
+    uiPage->values[uiPage->numberOfValues++] = &gState->roundData.roundScore;//&gState->player.playerData.score;
+    uiPage->values[uiPage->numberOfValues++] = &gState->roundData.turnLimit;
+    uiPage->values[uiPage->numberOfValues++] = &gState->roundData.minimumScore;
+    uiPage->values[uiPage->numberOfValues++] = &gState->runData.dollaBills;
     uiPage->values[uiPage->numberOfValues++] = &gState->pool.numberOfTiles;
     uiPage->values[uiPage->numberOfValues++] = &numTableTiles;
-    uiPage->values[uiPage->numberOfValues++] = &gState->gameData.rounds;
-    uiPage->values[uiPage->numberOfValues++] = &gState->gameData.roundScore;
+    uiPage->values[uiPage->numberOfValues++] = &gState->runData.rounds;
+    uiPage->values[uiPage->numberOfValues++] = &gState->roundData.roundScore;
     uiPage->values[uiPage->numberOfValues++] = &hoveredSetValue;
     uiPage->formatters[uiPage->numberOfValues] = gMemory->format_resolution_fn;
     uiPage->values[uiPage->numberOfValues++] = gMemory->supportedResolutions; //9 
@@ -3524,12 +3563,10 @@ void reinit_page_state() {
             break;
         }
         case RELICS_PURCHASE: {
-            //add_shop_purchase_menu();
             add_relic_purchase();
             break;
         }
         case ACTIVES_PURCHASE: {
-            //add_shop_purchase_menu();
             add_active_purchase();
             break;
         }
@@ -3633,7 +3670,7 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
     }
 
     if (key == 301 && action == 1) {
-        gState->gameData.minimumScore = 1;
+        gState->roundData.minimumScore = 1;
     }
 
     if (key == 299 && action == 1) {
@@ -3672,8 +3709,7 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
         //gState->player.numberOfActives++;
 
         //charge the player
-        //gState->gameData.dollaBills -= ACTIVE_TABLE[frame].price;
-
+        //gState->runData.dollaBills -= ACTIVE_TABLE[frame].price;
     }
 
     if (key == 78 && action == 1) {
@@ -3685,6 +3721,10 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
     if (key == 67 && action == 1) {
         gMemory->play_audio_fn("./audio/place_tile.wav");
         sort_rack_by_color();
+    }
+
+    if (key == 77 && action == 1) { //m
+        add_map_ui();
     }
 
     if (key == 294 && action == 1) {

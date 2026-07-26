@@ -202,8 +202,6 @@ u8 is_group(Set *set) {
     Tile* normals[13];
     i32 normalCount = get_normal_array_sorted(set, normals);
 
-    printf("normal count %i\n", normalCount);
-
     if(normalCount < 2) return false;
 
     i32 number = normals[0]->details.tileNumber;
@@ -220,6 +218,8 @@ u8 is_group(Set *set) {
 u8 is_rainbow_run(Set *set) {
     Tile* normals[13];
     i32 normalCount = get_normal_array_sorted(set, normals);
+
+    if(normalCount == 0) return false;
     
     u8 color = normals[0]->details.tileColor;
 
@@ -268,6 +268,14 @@ u8 is_run_valid(ValidationRules *rules, Set *set) {
 
     Tile* bridges[4];
     i32 bridgeCount = get_bridge_array(set, bridges);
+
+    if(normalCount < 2) {
+      if(jokerCount > 2) {
+        return true;
+      } else {
+        return false;
+      }
+    }
 
     //rainbow run
     if(rules->rainbowRunEnabled) {
