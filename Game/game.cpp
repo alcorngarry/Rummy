@@ -38,7 +38,7 @@ void reset_board();
 void sort_rack_by_number();
 void sort_rack_by_color();
 void end_turn();
-void init_game();
+void init_round(ROUND_TYPE type);
 void init_main_menu();
 void quit();
 void add_options_ui();
@@ -2304,52 +2304,79 @@ void add_actives_ui(u8 animated) {
     }
 }
 
+void set_round_type() {
+    i32 frame = gState->uiPage->uiElements[gState->uiPage->elementHovered].imageChildId;
+    printf("frame = %i\n", frame);
+    init_round((ROUND_TYPE)frame);
+}
+
 void add_map_ui() {
+    clear_game_ui();
     i32 frontIndex = 3;
 
-    vec2 mapSpaces[8] = {
-        {0.2f,  0.5f},   
-        {0.4f,  0.5f},   
-        {0.4f,  0.7f},  
-        {0.4f,  0.3f}, 
-        {0.6f,  0.5f},
-        {0.6f,  0.7f}, 
-        {0.6f,  0.3f},
-        {0.8f,  0.5f}
-    };
+    TextElement selectMessage = TextElement{ CENTER, "Select one of the following Round Types", 0.5, 0.1f, -1, true, DEFAULT_FONT_SCALE * 2.0f, vec3(1.0f)};
+    selectMessage.zIndex = frontIndex;  
+    i32 selectMessageId = add_text_element(gState->uiPage, selectMessage);
 
-    i32 frames[8] = {
-        0,
-        0,
-        3,
-        1,
-        0,
-        3,
-        1,
-        2
-    };
+    UIElement nextRoundBg = UIElement{ Anchor::CENTER, -1, BUTTON_T, 0.2575f, 0.5f, 0.7f, 0.225f};
+    nextRoundBg.zIndex = frontIndex;
+    nextRoundBg.sheetAnimation = SheetAnimation{3,3};
 
-    UIElement a = UIElement{CENTER, -1, ROUND_TYPE_T, 0, 0, 0.05f, 0.05f};
-    a.sheetAnimation = SheetAnimation{4, 1};
-    a.zIndex = 3;
+    nextRoundBg.isPanel = true;
+    nextRoundBg.color = R_BLUE;
 
-    i32 nodeIds[8];
+    TextElement desc1 = TextElement{ CENTER, "", (f32)nextRoundBg.posx, 0.7f, -1, true, DEFAULT_FONT_SCALE * 1.5f, vec3(1.0f)};
+    desc1.zIndex = frontIndex;  
+    desc1.maxWidth = RENDERING_ASPECT * 0.225f;
+    strcpy(desc1.text, create_round_data((ROUND_TYPE)12).desc);
 
-    for (i32 i = 0; i < 8; ++i) {
-        a.posx = mapSpaces[i].x;
-        a.posy = mapSpaces[i].y;
-        a.sheetAnimation.currentFrame = frames[i];
+    i32 desc1Id = add_text_element(gState->uiPage, desc1);
+    i32 nextRoundBg1 = add_ui_element(gState->uiPage, nextRoundBg);
+    i32 roundButton1 = add_button(gState->uiPage, BUTTON_T, "SELECT", vec2(nextRoundBg.posx, 0.9f), vec2(0.05f, 0.225f), R_SILVER, 0, frontIndex);
+    nextRoundBg.posx += 0.2425f;
 
-        nodeIds[i] = add_ui_element(gState->uiPage, a);
-    }
+    desc1.posx += 0.2425f;
+    strcpy(desc1.text, create_round_data((ROUND_TYPE)1).desc);
+    i32 desc2Id = add_text_element(gState->uiPage, desc1);
+    i32 nextRoundBg2 = add_ui_element(gState->uiPage, nextRoundBg);
+    i32 roundButton2 = add_button(gState->uiPage, BUTTON_T, "SELECT", vec2(nextRoundBg.posx, 0.9f), vec2(0.05f, 0.225f), R_SILVER, 0, frontIndex);
+    nextRoundBg.posx += 0.2425f;
+    
+    desc1.posx += 0.2425f;
+    strcpy(desc1.text, create_round_data((ROUND_TYPE)1).desc);
+    i32 desc3Id = add_text_element(gState->uiPage, desc1);
+    i32 nextRoundBg3 = add_ui_element(gState->uiPage, nextRoundBg);
+    i32 roundButton3 = add_button(gState->uiPage, BUTTON_T, "SELECT", vec2(nextRoundBg.posx, 0.9f), vec2(0.05f, 0.225f), R_SILVER, 0, frontIndex);
+    UIElement round1 = UIElement{ Anchor::CENTER, -1, BUTTON_T, 0.2575f, 0.5f, 0.8f, 0.225f};
 
     i32 multWindowIndex = add_window(gState->uiPage, UI_BG_2_T, Anchor::CENTER, vec2(0.9f, 0.75f), vec2(0.5f, 1.2f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE, 0.25f); 
     gState->uiPage->uiElements[multWindowIndex].zIndex = 3;
     gState->uiPage->uiElements[multWindowIndex + 1].zIndex = 3;
 
-    for(i32 i = 0; i < 8; ++i) {
-        add_image_to_window(gState->uiPage, multWindowIndex, nodeIds[i]);
-    }
+    //set the image child Id for the buttons to be the value for roundtype
+    gState->uiPage->uiElements[roundButton1].imageChildId = 12;
+    gState->uiPage->uiElements[roundButton2].imageChildId = 1;
+    gState->uiPage->uiElements[roundButton3].imageChildId = 1;
+
+    add_image_to_window(gState->uiPage, multWindowIndex, nextRoundBg1);
+    add_image_to_window(gState->uiPage, multWindowIndex, nextRoundBg2);
+    add_image_to_window(gState->uiPage, multWindowIndex, nextRoundBg3);
+
+    add_button_to_window(gState->uiPage, multWindowIndex, roundButton1);
+    add_button_to_window(gState->uiPage, multWindowIndex, roundButton2);
+    add_button_to_window(gState->uiPage, multWindowIndex, roundButton3);
+
+    add_text_to_window(gState->uiPage, multWindowIndex, selectMessageId);
+
+    add_text_to_window(gState->uiPage, multWindowIndex, desc1Id);
+    add_text_to_window(gState->uiPage, multWindowIndex, desc2Id);
+    add_text_to_window(gState->uiPage, multWindowIndex, desc3Id);
+
+
+    UIElement blur = UIElement{CENTER, -1, -1, 0.5, 0.5, 1.0f, 1.0f};
+    blur.color = vec4(0.0f, 0.0f, 0.0f, 0.5);
+    blur.zIndex = frontIndex;
+    add_ui_element(gState->uiPage, blur);
 }
 
 void add_in_game_ui() {
@@ -2496,10 +2523,12 @@ void add_relic() {
 
     push_wait(&gState->cmdQueue, 1.0f);
 
-    ActionCommand *nextRound = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, 0, execute_action);
-    if (nextRound) { 
-        nextRound->action = start_round;
-    } 
+    //if no money don't show.. do this later..
+    add_active_purchase();
+//    ActionCommand *nextRound = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, 0, execute_action);
+//    if (nextRound) { 
+//        nextRound->action = start_round;
+//    } 
 }
 
 void add_active() {
@@ -2525,10 +2554,12 @@ void add_active() {
 
     push_wait(&gState->cmdQueue, 1.0f);
 
-    ActionCommand *nextRound = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, 0, execute_action);
-    if (nextRound) { 
-        nextRound->action = start_round;
-    } 
+    add_map_ui();
+
+//    ActionCommand *nextRound = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, 0, execute_action);
+//    if (nextRound) { 
+//        nextRound->action = start_round;
+//    } 
 }
 
 void populate_relics_in_shop(i32 *arr) {
@@ -2640,7 +2671,7 @@ void add_shop_purchase_menu(u8 isRelic) {
     relicBg.imageChildId = relic3;
     i32 relicBg3 = add_ui_element(gState->uiPage, relicBg);
 
-    i32 nextRoundId = add_button(gState->uiPage, BUTTON_T, "Skip", vec2(0.5f, 0.815f), vec2(0.05f, 0.05f), R_GRAY, isRelic ? 16 : 0);
+    i32 nextRoundId = add_button(gState->uiPage, BUTTON_T, "Skip", vec2(0.5f, 0.815f), vec2(0.05f, 0.5f), R_GRAY, isRelic ? 16 : 20);
 
     i32 windowIndex = add_window(gState->uiPage, UI_BG_2_T, Anchor::CENTER, vec2(0.75f, 0.75f), vec2(0.5f, 2.0f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE); 
 
@@ -2796,7 +2827,7 @@ void add_main_menu_ui() {
 //    read_page(gState->uiPage, "main_menu.eui");
     set_page_state(MAIN_MENU);
 
-    i32 newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.35f, 0.9f), vec2(0.08f), R_GREEN, 19);
+    i32 newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.35f, 0.9f), vec2(0.08f), R_GREEN, 20);
     i32 options = add_button(gState->uiPage, BUTTON_T, "Options", vec2(0.5f, 0.9f), vec2(0.08f), R_BLUE, 1);
     i32 profile = add_button(gState->uiPage, BUTTON_T, "Profile", vec2(0.65f, 0.9f), vec2(0.08f), R_PURPLE, 2);
     add_button(gState->uiPage, BUTTON_T, "Quit", vec2(0.9f, 0.9f), vec2(0.1f), R_RED, 3);
@@ -3053,7 +3084,8 @@ void add_relics_ui() {
 }
 
 u8 start_round(void *ptr) {
-    init_game();
+    ROUND_TYPE type = *(ROUND_TYPE *)ptr;
+    init_round(type);
     return true;
 }
 
@@ -3089,9 +3121,10 @@ void start_transition() {
     b.loopAnimation = false;
     e.animations[0] = b;
 
-    ActionCommand *nextRound = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, 0, execute_action);
+    ActionCommand *nextRound = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, ROUND_TYPE, execute_action);
     if (nextRound) { 
         nextRound->action = start_round;
+        *COMMAND_PAYLOAD(nextRound, ROUND_TYPE) = gState->runData.currentRoundType;
     }
     
     ActionCommand *tileText2 = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, UIElement, execute_action);
@@ -3103,9 +3136,9 @@ void start_transition() {
     push_wait(&gState->cmdQueue, 1.0f);
 }
 
-void init_game() {
+void init_round(ROUND_TYPE type) {
     //clear_round_score(&gState->roundData);
-    gState->roundData = create_round_data(MIN_SCORE);
+    gState->roundData = create_round_data(type);
     
     create_tiles();
     create_actives();
@@ -3510,7 +3543,7 @@ void init_relics_ui() {
 }
 
 void add_game_ui_data(UIPage *uiPage) {
-    uiPage->actions[uiPage->numberOfActions++] = &init_game;
+    uiPage->actions[uiPage->numberOfActions++] = &set_round_type; //NOT USED!!!!
     uiPage->actions[uiPage->numberOfActions++] = &add_options_ui;
     uiPage->actions[uiPage->numberOfActions++] = &go_back;
     uiPage->actions[uiPage->numberOfActions++] = &quit;
@@ -3530,6 +3563,7 @@ void add_game_ui_data(UIPage *uiPage) {
     uiPage->actions[uiPage->numberOfActions++] = &add_active; //17
     uiPage->actions[uiPage->numberOfActions++] = &toggle_actives; //18
     uiPage->actions[uiPage->numberOfActions++] = &start_transition; //19
+    uiPage->actions[uiPage->numberOfActions++] = &add_map_ui; //20
     
     uiPage->values[uiPage->numberOfValues++] = &gState->roundData.roundScore;//&gState->player.playerData.score;
     uiPage->values[uiPage->numberOfValues++] = &gState->roundData.turnLimit;
@@ -3709,6 +3743,7 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
         //gState->player.numberOfActives++;
 
         //charge the player
+
         //gState->runData.dollaBills -= ACTIVE_TABLE[frame].price;
     }
 

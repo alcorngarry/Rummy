@@ -749,23 +749,24 @@ void add_tabs_to_window(UIPage *page, i32 windowId, i32 *tabIds, i32 numberOfTab
     }
 }
 
-i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 scale, vec4 color, i32 actionId) {
+i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 scale, vec4 color, i32 actionId, u8 zIndex) {
     i32 buttonId = page->numberOfImageElements;
     i32 textId = page->numberOfTextElements;
-
 
     UIElement button = UIElement{ Anchor::CENTER, -1, buttonHandle, pos.x, pos.y, scale.x, scale.y, true, actionId};
     button.color = color;
     button.hasShadow = true;
     button.isPanel = true;
+    button.zIndex = zIndex;
 
-    Animation buttonClick = Animation{vec2(button.posx, button.posy + 0.01f), pos};
-    button.animations[button.numberOfAnimations++] = buttonClick;
+    //Animation buttonClick = Animation{vec2(button.posx, button.posy + 0.01f), pos};
+    //button.animations[button.numberOfAnimations++] = buttonClick;
 
     add_ui_element(page, button, true);
   
     TextElement bText = TextElement{ Anchor::CENTER, "", pos.x, pos.y, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
     strcpy(bText.text, text);
+    bText.zIndex = zIndex;
     add_text_element(page, bText);
 
     page->uiElements[buttonId].textChild = &page->textElements[textId];

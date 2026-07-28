@@ -279,7 +279,6 @@ u8 is_run_valid(ValidationRules *rules, Set *set) {
 
     //rainbow run
     if(rules->rainbowRunEnabled) {
-        //fails here why?
         printf("RAINBOW RUN!, setid=%i, rainbowRunSetId=%i\n", set->id, rules->rainbowRunSetId); 
         if(normals[0]->details.tileColor != normals[1]->details.tileColor && rules->rainbowRunSetId != set->id) return false;
     } else {

@@ -270,12 +270,13 @@ struct RoundData {
     u64 roundScore = 0;
     CmdActionFuncPtr roundWinCondition;
     CmdActionFuncPtr roundLoseCondition;
-    ROUND_TYPE roundType;
+    char desc[1024];
 };
 
 struct RunData {
     u64 dollaBills = 0;
     u64 rounds = 1;
+    ROUND_TYPE currentRoundType;
 };
 
 struct ValidationRules {

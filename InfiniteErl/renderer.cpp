@@ -414,7 +414,7 @@ void end_post_process() {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void draw_post_process() {
+void draw_post_process(vec2 res) {
     glDisable(GL_DEPTH_TEST);
 
     ppShader->use();
@@ -423,6 +423,7 @@ void draw_post_process() {
     glBindTexture(GL_TEXTURE_2D, post.colorTexture);
 
     ppShader->setInt("screenTexture", 0);
+    ppShader->setVec2("resolution", res);
 
     glBindVertexArray(post.quadVAO);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -521,7 +522,7 @@ void render_buffer(RenderBuffer* buffer) {
         }
     }
     end_post_process();
-    draw_post_process();
+    draw_post_process(buffer->windowSize);
     buffer->bufferSize = 0;
 }
 

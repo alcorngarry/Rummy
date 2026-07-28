@@ -237,7 +237,7 @@ i32 add_radio_element(UIPage *page, u8 enabled, Anchor anchor, vec2 pos, vec2 si
 i32 add_switch_element(UIPage *page, Anchor anchor, i32 buttonId, vec2 pos, vec2 size, i32 radioHandle);
 void layout_grid(vec2 *slots, i32 rows, i32 cols, Anchor anchor, vec2 pos, vec2 windowSize, vec2 slotSize);
   
-i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 scale, vec4 color, i32 actionId);
+i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 scale, vec4 color, i32 actionId, u8 zIndex = 0);
 i32 add_button(UIPage *page, i32 buttonHandle, i32 imageButtonHandle, vec2 pos, vec2 scale, vec4 color, i32 actionId);
 
 void button_press(UIPage *page, void* ptr);
