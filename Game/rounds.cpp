@@ -59,6 +59,27 @@ u8 check_max_draws_lose(void *ptr) {
     return data.turnLimit == 0;
 }
 
+u8 check_every_color_endgame(void *ptr) {
+    GameState *state = (GameState *)ptr;
+
+    u8 colorMask = 0;
+
+    for (i32 i = 0; i < state->table.numberOfSets; ++i) {
+        Set *set = &state->table.sets[i];
+        for (i32 j = 0; j < set->numberOfTiles; ++j) {
+            u8 color = set->tiles[j]->details.tileColor;
+            if (color < 4) {
+                colorMask |= (1 << color);
+            }
+            if (colorMask == 0xF) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 void populate_round_types(i32 *arr) {
     for(i32 i = 0; i < 2; ++i) {
         u8 unique = false;
@@ -83,25 +104,45 @@ void populate_round_types(i32 *arr) {
     }
 }
 
+void difficulty_to_text(u8 value, char *text) {
+    switch (value) {
+        case 0:
+            strcpy(text, "Easy");
+            break;
+        case 1:
+            strcpy(text, "Medium");
+            break;
+        case 2:
+            strcpy(text, "Hard");
+            break;
+        case 3:
+            strcpy(text, "Boss");
+            break;
+        default:
+            strcpy(text, "Unknown");
+            break;
+    }
+}
+
 RoundData create_round_data(ROUND_TYPE roundType) {
     switch(roundType) {
         case MIN_SCORE: {
-            return RoundData {20, 100, 0, check_min_score_endgame, check_min_score_lose, "Reach target score."};
+            return RoundData {20, 100, 0, check_min_score_endgame, check_min_score_lose, "Reach target score.", 2, 0};
         }
         case RUN_TOTALS: {
-
+            return RoundData {20, 100, 0, check_min_score_endgame, check_min_score_lose, "Reach target score using runs only.", 4, 1};
         }
         case RUN_MAX_SIZE: {
-            return RoundData {20, 0, 0, check_run_six_endgame, check_max_draws_lose, "Have a Run reach six tiles."};
+            return RoundData {20, 6, 0, check_run_six_endgame, check_max_draws_lose, "Have a run reach six tiles.", 4, 1};
         }
         case GROUP_TOTALS: {
 
         }
         case EVERY_COLOR_ON_BOARD: {
-            //might be terrible
+            return RoundData {20, 4, 0, check_every_color_endgame, check_max_draws_lose, "Table has sets with one of every tile color.", 6, 2};
         } 
         case CURSED_RED: {
-
+            return RoundData {20, 100, 0, check_min_score_endgame, check_min_score_lose, "Reach target score when reds are not counted towards the total.", 2, 3};
         }
         case CURSED_BLUE: {
 

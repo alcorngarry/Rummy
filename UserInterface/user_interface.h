@@ -179,6 +179,7 @@ struct UIPage {
   i32 tabCursorId;
   i32 elementCursorId;
   i32 tabSelected;
+  i32 highestZ = -1;
 
   //maybe use buffers instead of arrays??
   void* values[20];

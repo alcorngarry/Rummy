@@ -99,7 +99,7 @@ inline bool ui_point_inside(const UIElement& e, f64 x, f64 y) {
 void check_elements_hovered(UIPage* page, f64 xpos, f64 ypos) {
     page->elementHovered = -1;
     for (i32 i = 0; i < page->numberOfImageElements; ++i) {
-        if(page->uiElements[i].actionId == -1) continue;
+        if(page->uiElements[i].actionId == -1 || (page->highestZ != -1 && page->uiElements[i].zIndex != page->highestZ)) continue;
 
         //ANCHOR EFFECTS THIS LETS ASSUME ANCHOR IS CENTER
         if (ui_point_inside(page->uiElements[i], xpos, ypos)) {
@@ -687,6 +687,8 @@ i32 add_tab(UIPage *page, i32 tabHandle, const char* text, vec4 color) {
     //scale defaulted
     UIElement tab = UIElement{ Anchor::CENTER, -1, tabHandle, 0.5f, 0.5f, 0.08f, 0.1f, true};
     tab.color = color;
+    tab.sheetAnimation = SheetAnimation{3,3};
+    tab.isPanel = true;
 
     TextElement tText = TextElement{ Anchor::CENTER, "", 0.5f, 0.5f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
     strcpy(tText.text, text);
@@ -767,6 +769,7 @@ i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 
     TextElement bText = TextElement{ Anchor::CENTER, "", pos.x, pos.y, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
     strcpy(bText.text, text);
     bText.zIndex = zIndex;
+    bText.maxWidth = button.width * RENDERING_ASPECT;
     add_text_element(page, bText);
 
     page->uiElements[buttonId].textChild = &page->textElements[textId];
@@ -980,7 +983,7 @@ void add_image_to_window(UIPage *page, i32 windowId, i32 elementId) {
         childImage->animations[image->numberOfAnimations].autoAnimate = true;
         childImage->numberOfAnimations++;
 
-        window->dependentElements[page->uiElements[windowId].numberOfDependentElements] = image;
+        window->dependentElements[page->uiElements[windowId].numberOfDependentElements] = childImage;
         window->numberOfDependentElements++;
     }
 }

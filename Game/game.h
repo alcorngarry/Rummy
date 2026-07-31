@@ -189,6 +189,8 @@ struct Table {
     u8 numberOfSets = 0;
     u64 value = 0;
     u8 isValid = true;
+    i32 longestRunSize = 0;
+    i32 numberOfTileColors = 0;
     TableSpace tableSpaces[TABLE_ROWS][TABLE_COLUMNS];
 };
 
@@ -267,10 +269,12 @@ enum ROUND_TYPE {
 struct RoundData {
     i32 turnLimit;
     u64 minimumScore;
-    u64 roundScore = 0;
+    u64 roundScore = 0; //can take on multiple meanings so change name
     CmdActionFuncPtr roundWinCondition;
     CmdActionFuncPtr roundLoseCondition;
-    char desc[1024];
+    char desc[64];
+    u64 cashReward = 0;
+    u8 difficulty = 0;
 };
 
 struct RunData {
