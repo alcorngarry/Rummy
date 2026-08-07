@@ -260,7 +260,6 @@ enum ROUND_TYPE {
     CURSED_GREEN,
     CURSED_BLACK,
     EMPTY_RACK,
-    TEN_IN_RACK,
     NO_ACTIVES,
     NO_PASSIVES,
     MIN_SCORE
@@ -272,7 +271,7 @@ struct RoundData {
     u64 roundScore = 0; //can take on multiple meanings so change name
     CmdActionFuncPtr roundWinCondition;
     CmdActionFuncPtr roundLoseCondition;
-    char desc[64];
+    char desc[128];
     u64 cashReward = 0;
     u8 difficulty = 0;
 };

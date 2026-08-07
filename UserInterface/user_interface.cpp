@@ -102,7 +102,7 @@ void check_elements_hovered(UIPage* page, f64 xpos, f64 ypos) {
         if(page->uiElements[i].actionId == -1 || (page->highestZ != -1 && page->uiElements[i].zIndex != page->highestZ)) continue;
 
         //ANCHOR EFFECTS THIS LETS ASSUME ANCHOR IS CENTER
-        if (ui_point_inside(page->uiElements[i], xpos, ypos)) {
+        if (ui_point_inside(page->uiElements[i], xpos, ypos) && page->uiElements[i].visible) {
             page->uiElements[i].hovered = true;
             page->elementHovered = i; 
 
@@ -472,6 +472,13 @@ UIElement* get_element_by_parent_id(UIPage* page, i16 parentId) {
     return nullptr;
 }
 
+
+UIElement* get_element_by_id(UIPage* page, i32 id) {
+    for(i32 i = 0; i < page->numberOfImageElements; ++i) {
+        if(page->uiElements[i].id == id) return &page->uiElements[i];
+    }
+}
+
 i32 add_ui_element(UIPage* page, UIElement element, bool actionable) {
     i32 index = page->numberOfImageElements;
     element.meshHandle = imageMeshHandle;
@@ -534,6 +541,8 @@ i32 add_options_element(UIPage *page, i32 optionId, i32 optionActionId, i32 opti
     rightArrow.onCompleteActionId = 1;
     rightArrow.color = color;
     rightArrow.textChild = option;
+    rightArrow.sheetAnimation = SheetAnimation{3,3};
+    rightArrow.isPanel = true;
 
     //
     UIElement leftArrowIcon = rightArrowIcon; 

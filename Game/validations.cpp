@@ -154,13 +154,11 @@ u8 tile_valid_in_run(ValidationRules *rules, Set *set, Tile *tile) {
         if(span > 13) return false;
     }
 
-    printf("valid in run\n");
     return true;
 }
 
 u8 tile_valid_in_group(Set *set, Tile *tile) {
     u8 group = tile->details.tileNumber == set->highTileNumber && set->numberOfTiles < 4;
-    printf("valid in group\n");
     return group;
 }
 
@@ -172,8 +170,6 @@ u8 is_tile_playable_in_set(ValidationRules *rules, Set *set, Tile *tile) {
     if(tile->setId == set->id) return false;
 
     if(set->isComplete) return false;
-    if(set->setType == GROUP) printf("Set type group\n");
-    if(set->setType == INVALID) printf("Set type invalid\n");
 
     //don't allow jokers in a group == 4
     if(tile->details.type == JOKER) return true;

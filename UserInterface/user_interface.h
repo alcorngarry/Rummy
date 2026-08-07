@@ -182,11 +182,11 @@ struct UIPage {
   i32 highestZ = -1;
 
   //maybe use buffers instead of arrays??
-  void* values[20];
-  ValueToTextFn formatters[20];
+  void* values[32];
+  ValueToTextFn formatters[32];
   u8 numberOfValues; //formatters is tied to this indirectly
 
-  ActionFuncPtr actions[20];
+  ActionFuncPtr actions[32];
   u8 numberOfActions;
 };
 
@@ -247,7 +247,7 @@ i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 s
 i32 add_static_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 pos, vec4 color1, vec4 color2);
 
 TextElement* get_element_by_text(UIPage* page, const char* text);
-UIElement* get_element_by_id(UIPage* page, const char* id);
+UIElement* get_element_by_id(UIPage* page, i32 id);
 TextElement* get_text_element_by_id(UIPage* page, const char* id);
 
 void delete_text_element(UIPage* page, i32 index);
