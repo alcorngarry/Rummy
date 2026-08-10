@@ -2424,7 +2424,7 @@ void add_actives_ui(u8 animated) {
 }
 
 void set_round_type() {
-    if(gState->pageState == MAIN_MENU || gState->pageState == END_GAME) {
+    if(gState->pageState == MAIN_MENU || gState->pageState == END_GAME || gState->pageState == OPTIONS) {
         gState->runData.currentRoundType = MIN_SCORE;
         clear_player_data();
         start_transition();
@@ -3919,10 +3919,10 @@ void init_player() {
 
 void clear_player_data() {
     gState->player.playerData.timesDrawn = 0;
-    //gState->player.playerData.score = 0;
     gState->player.playerData.runMultipliers = 1;
     gState->player.playerData.groupMultipliers = 1;
     gState->player.numberOfRelics = 0;
+    gState->player.numberOfActives = 0;
 }
 
 void quit() {
