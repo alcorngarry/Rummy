@@ -2424,8 +2424,9 @@ void add_actives_ui(u8 animated) {
 }
 
 void set_round_type() {
-    if(gState->pageState == MAIN_MENU) {
+    if(gState->pageState == MAIN_MENU || gState->pageState == END_GAME) {
         gState->runData.currentRoundType = MIN_SCORE;
+        clear_player_data();
         start_transition();
     } else {
         i32 frame = gState->uiPage->uiElements[gState->uiPage->elementHovered].imageChildId;
@@ -2488,11 +2489,11 @@ void add_map_ui() {
     nextRoundBg.isPanel = true;
     nextRoundBg.color = R_BLUE;
 
-    RoundData option1 = create_round_data((ROUND_TYPE)12, gState->runData.rounds);
+    RoundData option1 = create_round_data((ROUND_TYPE)11, gState->runData.rounds);
     RoundData option2 = create_round_data((ROUND_TYPE)1, gState->runData.rounds);
     RoundData option3 = create_round_data((ROUND_TYPE)4, gState->runData.rounds);
 
-    TextElement desc1 = TextElement{ CENTER, "", (f32)nextRoundBg.posx, 0.6f, -1, true, DEFAULT_FONT_SCALE * 1.5f, vec3(1.0f)};
+    TextElement desc1 = TextElement{ CENTER, "", (f32)nextRoundBg.posx, 0.2f, -1, true, DEFAULT_FONT_SCALE * 1.5f, vec3(1.0f)};
     desc1.zIndex = frontIndex;  
     desc1.maxWidth = RENDERING_ASPECT * 0.2f;
     strcpy(desc1.text, option1.desc);
@@ -2549,7 +2550,7 @@ void add_map_ui() {
 
     //set the image child Id for the buttons to be the value for roundtype
     //using image child Id here breaks animation!!!!!!
-    gState->uiPage->uiElements[roundButton1].imageChildId = 12;
+    gState->uiPage->uiElements[roundButton1].imageChildId = 11;
     gState->uiPage->uiElements[roundButton2].imageChildId = 1;
     gState->uiPage->uiElements[roundButton3].imageChildId = 4;
 
@@ -2606,6 +2607,9 @@ void set_round_complete_ui(i32 windowIndex) {
 
     switch(gState->runData.currentRoundType) {
         case MIN_SCORE: {
+            TextElement score = TextElement{ CENTER, "Clear Rack or Reach Round Minimum Score", 0.375f, 0.075f, -1, true, DEFAULT_FONT_SCALE * 2.0f, vec3(1.0f)};
+            score.visible = false;
+            add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, score));
             break;
         }
         case RUN_MAX_SIZE: {
@@ -2626,7 +2630,7 @@ void set_round_complete_ui(i32 windowIndex) {
             scoreMinVal.visible = false;
             add_text_bob(&scoreMinVal);
             scoreMinVal.color = R_RED;
-            add_text_to_window(gState->uiPage, challengeWindow, add_dynamic_text_element(gState->uiPage, scoreMinVal,"", 2, TextType::UINT_64));
+            add_text_to_window(gState->uiPage, challengeWindow, add_dynamic_text_element(gState->uiPage, scoreMinVal,"", 13, INT_32));
             break;
         }
         case EVERY_COLOR_ON_BOARD: {
@@ -3559,6 +3563,7 @@ void init_round(ROUND_TYPE type) {
     gState->rules.minSetSize = 3;
     gState->rules.rainbowRunSetId = -1;
     gState->rules.rainbowRunEnabled = false;
+    gState->table.longestRunSize = 0;
 
     gState->mode = GM_PLAYING;
     clear_game_ui();
@@ -3670,10 +3675,13 @@ u8 add_cash(void *ptr) {
 }
 
 void calculate_round_cash(RunData *gd) {
-    ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u64, execute_action);
-    if (total) {
-        total->action = add_cash;
-        *COMMAND_PAYLOAD(total, u64) = gState->roundData.cashReward;
+    if(check_challenge_condition(gState)) {
+        printf("CALC R CASH\n");
+        ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u64, execute_action);
+        if (total) {
+            total->action = add_cash;
+            *COMMAND_PAYLOAD(total, u64) = gState->roundData.cashReward;
+        }
     }
 }
 
@@ -3772,12 +3780,11 @@ void complete_round() {
 
     if(check_round_lose_condition(gState)) {
         gState->mode = GM_GAME_OVER;
-        gState->runData = create_run_data();
-        clear_player_data();
         add_end_game_ui();
     } else {
         add_round_complete_ui();
         gState->mode = GM_ROUND_COMPLETE;
+
         calculate_round_bonus(&gState->runData, gState->player.playerData);
 
         gState->roundData.turnLimit = 20; 
@@ -3884,7 +3891,7 @@ void end_turn() {
         if(is_table_valid()) {
             //gState->player.playerData.score = gState->table.value;
             
-            if(check_min_score_endgame(gState) || check_challenge_condition(gState)) {
+            if(check_min_score_endgame(gState)) {
                 complete_round();
             } else {
                 if(draw_from_pool(gState->playerRack)) {
@@ -4009,6 +4016,7 @@ void add_game_ui_data(UIPage *uiPage) {
     uiPage->values[uiPage->numberOfValues++] = &videoModes; //10 
     uiPage->values[uiPage->numberOfValues++] = &gState->table.longestRunSize; //11 
     uiPage->values[uiPage->numberOfValues++] = &gState->table.numberOfTileColors; //12 
+    uiPage->values[uiPage->numberOfValues++] = &gState->roundData.value; //13 
 }
 
 void reinit_page_state() {

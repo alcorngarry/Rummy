@@ -268,12 +268,13 @@ enum ROUND_TYPE {
 struct RoundData {
     i32 turnLimit;
     u64 minimumScore;
-    u64 roundScore = 0; //can take on multiple meanings so change name
+    u64 roundScore = 0;
     CmdActionFuncPtr roundWinCondition;
     CmdActionFuncPtr roundLoseCondition;
     char desc[128];
     u64 cashReward = 0;
     u8 difficulty = 0;
+    i32 value = 0;
 };
 
 struct RunData {
