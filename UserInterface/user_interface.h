@@ -3,8 +3,9 @@
 #include "../InfiniteErl/data_types.h"
 
 #define MAX_ELEMENTS 100
-#define MAX_MESSAGE_SIZE 512
 #define DEFAULT_FONT_SCALE 0.0006f
+#define MAX_DEP_TEXT 50
+#define MAX_ANIMATIONS 8
 
 struct UIPage;
 typedef void (*UISelfActionFuncPtr)(UIPage *page, void* self);
@@ -26,18 +27,6 @@ typedef void (*ValueToTextFn)(void* value, i32 index, char* out, i32 outSize);
     } while(0)
 
 #define RUN_ON_COMPLETE_ACTION(page, obj) selfActions[(obj)->onCompleteActionId](page, obj)
-
-struct MessageBuffer {
-    u32 maxBufferSize;
-    u32 bufferSize;
-    u8* bufferBase;
-};
-
-struct Message {
-    u8 messageCode;
-    f32 duration;
-    char messageText[MAX_MESSAGE_SIZE];
-};
 
 enum EaseType {
     LINEAR,
@@ -112,16 +101,16 @@ struct UIElement {
 	u8 visible = true;
   i32 actionId = -1;
 	u8 hovered = false;
-	UIElement* dependentElements[100];
+	UIElement* dependentElements[MAX_ELEMENTS];
   i32 numberOfDependentElements = 0;
   u32 meshHandle;
   u8 isPanel = false;
   vec4 color = vec4(-1.0f);
   TextElement* textChild = nullptr;
-  TextElement* dependentTextElements[50];
+  TextElement* dependentTextElements[MAX_DEP_TEXT];
   i32 numberOfDependentTextElements = 0;
   SheetAnimation sheetAnimation;
-  Animation animations[8];
+  Animation animations[MAX_ANIMATIONS];
   u8 numberOfAnimations = 0;
   i32 id;
   i32 onCompleteActionId = -1;
@@ -155,7 +144,7 @@ struct TextElement {
 	i32 onCompleteActionId = -1;
   i32 textChildId = -1;
   i32 imageChildId = -1;
-  Animation animations[8];
+  Animation animations[MAX_ANIMATIONS];
   u8 numberOfAnimations = 0;
   Animation countAnimation;
   u8 countingActive = false;
@@ -255,7 +244,5 @@ void format_string_array(void* value, i32 index, char* out, i32 outSize);
 
 void write_page(UIPage *page, const char* path);
 void read_page(UIPage *page, const char* path);
-MessageBuffer* allocateMessageBuffer(u32 maxBufferSize);
-void push_message(Message *message);
 
 #endif

@@ -36,6 +36,7 @@
 #define TOOL_TIP_T 28
 #define ROUND_TYPE_T 29
 #define BGA_T 30
+#define ROUND_CHALLENGE_T 31
 
 #ifdef BUILD_DLL
 #define GAME_DLL __declspec(dllexport)

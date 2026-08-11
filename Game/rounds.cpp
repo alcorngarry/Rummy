@@ -150,7 +150,7 @@ RoundData create_round_data(ROUND_TYPE roundType, u64 round) {
             return RoundData {20, 100 * round, 0, check_run_six_endgame, check_max_draws_lose, "Have a run reach six tiles.", 4, 1, 6};
         }
         case GROUP_TOTALS: {
-            return RoundData {20, 100 * round, 0, check_run_six_endgame, check_max_draws_lose, "Have a run reach six tiles.", 4, 1};
+            return RoundData {20, 100 * round, 0, check_run_six_endgame, check_max_draws_lose, "Reach target score using groups only.", 4, 1};
         }
         case EVERY_COLOR_ON_BOARD: {
             return RoundData {20, 100 * round, 0, check_every_color_endgame, check_max_draws_lose, "Table has sets with one of every tile color.", 6, 2};
@@ -167,9 +167,9 @@ RoundData create_round_data(ROUND_TYPE roundType, u64 round) {
         case CURSED_BLACK: {
             return RoundData {20, 100 * round, 0, nullptr, check_min_score_lose, "Reach target score when black tiles are not counted towards the total.", 8, 3};
         }
-        case EMPTY_RACK: {
-            return RoundData {20, 100 * round, 0, nullptr, check_min_score_lose, "Reach target score and clear your rack", 8, 3};
-        }
+//        case EMPTY_RACK: {
+//            return RoundData {20, 100 * round, 0, nullptr, check_min_score_lose, "Reach target score and clear your rack", 8, 3};
+//        }
         case NO_ACTIVES: {
             return RoundData {20, 100 * round, 0, nullptr, check_min_score_lose, "Reach target score when actives are ignored.", 8, 3};
         }

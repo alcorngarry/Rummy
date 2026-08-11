@@ -3,8 +3,7 @@
 
 typedef void (*ValueToTextFn)(void* value, i32 index, char* out, i32 outSize);
 
-u32 imageMeshHandle;
-MessageBuffer* messageBuffer = nullptr;
+i32 imageMeshHandle = -1;
 void (*play_audio)(const char* filename);
 void (*play_audio_pitch)(const char* filename, f32 pitch);
 
@@ -456,6 +455,28 @@ void update(UIPage *page, TextElement* text, f32 deltaTime) {
     } 
 }
 
+Animation* add_animation(Animation* animations, u8* count) {
+    if (*count >= MAX_ANIMATIONS) assert("Too many animations");
+    return &animations[(*count)++];
+}
+
+void add_dependent_text_element(UIPage *page, i32 elementId, i32 textId) {
+    TextElement *text = &page->textElements[textId];
+    UIElement *e = &page->uiElements[elementId];
+    if(e->numberOfDependentTextElements >= MAX_DEP_TEXT) assert("Too many dependent text elements!");
+    e->dependentTextElements[e->numberOfDependentTextElements++] = text;
+}
+
+UIElement** add_dependent_element(UIElement **dependentElements, i32* count) {
+    if(*count >= MAX_ELEMENTS) assert("Too many dependent elements!");
+    return &dependentElements[(*count)++];
+}
+
+TextElement** add_dependent_text_element(TextElement **dependentTextElements, i32* count) {
+    if(*count >= MAX_ELEMENTS) assert("Too many dependent text elements!");
+    return &dependentTextElements[(*count)++];
+}
+
 TextElement* get_text_element_by_parent_id(UIPage* page, i16 parentId) {
     for(i32 i = 0; i < page->numberOfTextElements; ++i) {
         if(page->textElements[i].parentId == parentId) return &page->textElements[i];
@@ -480,6 +501,8 @@ UIElement* get_element_by_id(UIPage* page, i32 id) {
 }
 
 i32 add_ui_element(UIPage* page, UIElement element, bool actionable) {
+    if (page->numberOfImageElements >= MAX_ELEMENTS) assert("Too many UI elements");
+
     i32 index = page->numberOfImageElements;
     element.meshHandle = imageMeshHandle;
     element.id = index;
@@ -621,7 +644,7 @@ void add_text_bob(TextElement *element) {
     f32 amplitude = 0.001f;
     f32 duration = 5.0f;
 
-    Animation *a = &element->animations[element->numberOfAnimations++];
+    Animation *a = add_animation(element->animations, &element->numberOfAnimations);
 
     a->animationType = BOB;
     a->start = vec2(element->posx, element->posy);
@@ -640,7 +663,7 @@ void add_bob(UIElement *element, u8 tied) {
     f32 amplitude = 0.05f;
     f32 duration = 5.0f;
 
-    Animation *a = &element->animations[element->numberOfAnimations++];
+    Animation *a = add_animation(element->animations, &element->numberOfAnimations);
 
     a->animationType = BOB;
     a->start = vec2(element->posx, element->posy);
@@ -797,7 +820,8 @@ i32 add_button(UIPage *page, i32 buttonHandle, i32 buttonImageHandle, vec2 pos, 
     button.hasShadow = true;
 
     Animation buttonClick = Animation{vec2(button.posx, button.posy + 0.01f), pos};
-    button.animations[button.numberOfAnimations++] = buttonClick;
+    *add_animation(button.animations, &button.numberOfAnimations) = buttonClick;
+
     return add_ui_element(page, button, true);
 }
 
@@ -819,7 +843,6 @@ void next_sheet_frame(UIPage *page, void *ptr) {
 
 void next_switch(UIPage *page, void *ptr) {
     UIElement* self = (UIElement*)ptr;
-    printf("HERE!\n");
 
     for(i32 i = 0; i < self->numberOfDependentElements; ++i) {
         UIElement *child = self->dependentElements[i];
@@ -830,7 +853,8 @@ void next_switch(UIPage *page, void *ptr) {
 void add_move_animation(UIPage *page, i32 elementId, vec2 destination) {
     UIElement *e = &page->uiElements[elementId];
     Animation a = Animation{destination, vec2(e->posx, e->posy)};
-    e->animations[e->numberOfAnimations++] = a;
+    //e->animations[e->numberOfAnimations++] = a;
+    *add_animation(e->animations, &e->numberOfAnimations) = a;
 }
 
 void add_move_text_animation(UIPage *page, i32 elementId, vec2 destination, f32 speed) {
@@ -844,7 +868,8 @@ void add_move_text_animation(UIPage *page, i32 elementId, vec2 destination, f32 
 void add_move_animation(TextElement *e, vec2 destination, f32 speed) {
     Animation a = Animation{destination, vec2(e->posx, e->posy), true};
     a.duration = speed;
-    e->animations[e->numberOfAnimations++] = a;
+    //e->animations[e->numberOfAnimations++] = a;
+    *add_animation(e->animations, &e->numberOfAnimations) = a;
     e->onCompleteActionId = 0;
 }
 
@@ -854,7 +879,8 @@ void add_pop_animation(TextElement *e, f32 duration) {
     a.animationType = POP;
     a.start = vec2(e->scale);
     a.autoAnimate = true;
-    e->animations[e->numberOfAnimations++] = a;
+    //e->animations[e->numberOfAnimations++] = a;
+    *add_animation(e->animations, &e->numberOfAnimations) = a;
     e->onCompleteActionId = 0;
 }
 
@@ -905,7 +931,9 @@ i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 s
     Animation moveWindow = Animation{destination, start};
     moveWindow.autoAnimate = true;
     moveWindow.duration = duration;
-    border.animations[border.numberOfAnimations++] = moveWindow; 
+    //border.animations[border.numberOfAnimations++] = moveWindow; 
+    *add_animation(border.animations, &border.numberOfAnimations) = moveWindow;
+
     border.hasShadow = true;
 
     i32 index = add_ui_element(page, border);
@@ -918,6 +946,7 @@ i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 s
     bg.posy = bgStart.y;
     bg.hasShadow = false;
 
+    //overwrite the broder animation
     bg.animations[0].destination = bgDest;
     bg.animations[0].start = bgStart;
 
@@ -931,6 +960,7 @@ i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 s
     return index;
 }
 
+//deprecate
 i32 add_static_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 pos, vec4 color1, vec4 color2) {
     UIElement border = UIElement{ anchor, -1, windowHandle, pos.x, pos.y, scale.x, scale.y, true};
 
@@ -970,88 +1000,98 @@ i32 add_static_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale,
 
 void add_image_to_window(UIPage *page, i32 windowId, i32 elementId) {
     UIElement *window = &page->uiElements[windowId];
-
     UIElement *image = &page->uiElements[elementId];
-    f32 speed = window->animations[window->numberOfAnimations - 1].duration;
-    vec2 motionDifference = window->animations[window->numberOfAnimations - 1].start - window->animations[window->numberOfAnimations - 1].destination;
-    
-    image->animations[image->numberOfAnimations].start = vec2(image->posx + motionDifference.x, image->posy + motionDifference.y);
-    image->animations[image->numberOfAnimations].destination = vec2(image->posx, image->posy);
-    image->animations[image->numberOfAnimations].duration = speed;
-    image->animations[image->numberOfAnimations].autoAnimate = true;
-    image->numberOfAnimations++;
 
-    window->dependentElements[page->uiElements[windowId].numberOfDependentElements] = image;
-    window->numberOfDependentElements++;
+    i32 windowAnimationIndex = window->numberOfAnimations - 1;
+    if(windowAnimationIndex < 0) assert("Window animation index negative!");
+
+    f32 speed = window->animations[windowAnimationIndex].duration;
+    vec2 motionDifference = window->animations[windowAnimationIndex].start - window->animations[windowAnimationIndex].destination;
+    
+    Animation* imageAnimation = add_animation(image->animations, &image->numberOfAnimations);
+    imageAnimation->start = vec2(image->posx + motionDifference.x, image->posy + motionDifference.y);
+    imageAnimation->destination = vec2(image->posx, image->posy);
+    imageAnimation->duration = speed;
+    imageAnimation->autoAnimate = true;
+
+    *add_dependent_element(window->dependentElements, &window->numberOfDependentElements) = image;
 
     for(i32 i = 0; i < image->numberOfDependentElements; ++i) {
         UIElement *childImage = image->dependentElements[i];
-        childImage->animations[image->numberOfAnimations].start = vec2(childImage->posx + motionDifference.x, childImage->posy + motionDifference.y);
-        childImage->animations[image->numberOfAnimations].destination = vec2(childImage->posx, childImage->posy);
-        childImage->animations[image->numberOfAnimations].duration = speed;
-        childImage->animations[image->numberOfAnimations].autoAnimate = true;
-        childImage->numberOfAnimations++;
+        i32 childAnimationIndex = childImage->numberOfAnimations;
+        Animation *childAnimation = add_animation(childImage->animations, &childImage->numberOfAnimations);
 
-        window->dependentElements[page->uiElements[windowId].numberOfDependentElements] = childImage;
-        window->numberOfDependentElements++;
+        childAnimation->start = vec2(childImage->posx + motionDifference.x, childImage->posy + motionDifference.y);
+        childAnimation->destination = vec2(childImage->posx, childImage->posy);
+        childAnimation->duration = speed;
+        childAnimation->autoAnimate = true;
+
+        *add_dependent_element(window->dependentElements, &window->numberOfDependentElements) = childImage;
     }
 }
 
 void add_text_to_window(UIPage *page, i32 windowId, i32 elementId) {
     UIElement *window = &page->uiElements[windowId];
     TextElement *text = &page->textElements[elementId];
-    f32 speed = window->animations[window->numberOfAnimations - 1].duration;
-    vec2 motionDifference = window->animations[window->numberOfAnimations - 1].start - window->animations[window->numberOfAnimations - 1].destination;
 
-    text->animations[text->numberOfAnimations].start = vec2(text->posx + motionDifference.x, text->posy + motionDifference.y);
-    text->animations[text->numberOfAnimations].destination = vec2(text->posx, text->posy);
-    text->animations[text->numberOfAnimations].duration = speed;
-    text->animations[text->numberOfAnimations].autoAnimate = true;
-    text->numberOfAnimations++;
+    i32 windowAnimationIndex = window->numberOfAnimations - 1;
+    if(windowAnimationIndex < 0) assert("Window animation index negative!");
 
-    window->dependentTextElements[page->uiElements[windowId].numberOfDependentTextElements] = text;
-    window->numberOfDependentTextElements++;
+    f32 speed = window->animations[windowAnimationIndex].duration;
+    vec2 motionDifference = window->animations[windowAnimationIndex].start - window->animations[windowAnimationIndex].destination;
+
+    Animation* textAnimation = add_animation(text->animations, &text->numberOfAnimations);
+
+    textAnimation->start = vec2(text->posx + motionDifference.x, text->posy + motionDifference.y);
+    textAnimation->destination = vec2(text->posx, text->posy);
+    textAnimation->duration = speed;
+    textAnimation->autoAnimate = true;
+
+    *add_dependent_text_element(window->dependentTextElements, &window->numberOfDependentTextElements) = text;
 }
 
 void add_button_to_window(UIPage *page, i32 windowId, i32 elementId) {
     UIElement *window = &page->uiElements[windowId];
     UIElement *button = &page->uiElements[elementId];
 
-    f32 speed = window->animations[window->numberOfAnimations - 1].duration;
-    vec2 motionDifference = window->animations[window->numberOfAnimations - 1].start - window->animations[window->numberOfAnimations - 1].destination;
+    i32 windowAnimationIndex = window->numberOfAnimations - 1;
+    if(windowAnimationIndex < 0) assert("Window animation index negative!");
 
-    button->animations[button->numberOfAnimations].start = vec2(button->posx + motionDifference.x, button->posy + motionDifference.y);
-    button->animations[button->numberOfAnimations].destination = vec2(button->posx, button->posy);
-    button->animations[button->numberOfAnimations].duration = speed;
-    button->animations[button->numberOfAnimations].autoAnimate = true;
-    button->numberOfAnimations++;
+    f32 speed = window->animations[windowAnimationIndex].duration;
+    vec2 motionDifference = window->animations[windowAnimationIndex].start - window->animations[windowAnimationIndex].destination;
 
-    window->dependentElements[window->numberOfDependentElements] = button;
-    window->numberOfDependentElements++;
+    Animation *buttonAnimation = add_animation(button->animations, &button->numberOfAnimations);
+    buttonAnimation->start = vec2(button->posx + motionDifference.x, button->posy + motionDifference.y);
+    buttonAnimation->destination = vec2(button->posx, button->posy);
+    buttonAnimation->duration = speed;
+    buttonAnimation->autoAnimate = true;
+
+    *add_dependent_element(window->dependentElements, &window->numberOfDependentElements) = button;
 
     //text
     if(button->textChild) {
         TextElement* text = button->textChild;
-        text->animations[text->numberOfAnimations].start = vec2(text->posx + motionDifference.x, text->posy + motionDifference.y);
-        text->animations[text->numberOfAnimations].destination = vec2(text->posx, text->posy);
-        text->animations[text->numberOfAnimations].duration = speed;
-        text->animations[text->numberOfAnimations].autoAnimate = true;
-        text->numberOfAnimations++;
 
-        page->uiElements[windowId].dependentTextElements[window->numberOfDependentTextElements] = text;
-        page->uiElements[windowId].numberOfDependentTextElements++;
+        Animation *buttonAnimation = add_animation(text->animations, &text->numberOfAnimations);
+        buttonAnimation->start = vec2(text->posx + motionDifference.x, text->posy + motionDifference.y);
+        buttonAnimation->destination = vec2(text->posx, text->posy);
+        buttonAnimation->duration = speed;
+        buttonAnimation->autoAnimate = true;
+
+        *add_dependent_text_element(window->dependentTextElements, &window->numberOfDependentTextElements) = text;
     }
 
     if(button->imageChildId != -1) {
         UIElement* buttonImage = &page->uiElements[button->imageChildId];
-        buttonImage->animations[buttonImage->numberOfAnimations].start = vec2(buttonImage->posx + motionDifference.x, buttonImage->posy + motionDifference.y);
-        buttonImage->animations[buttonImage->numberOfAnimations].destination = vec2(buttonImage->posx, buttonImage->posy);
-        buttonImage->animations[buttonImage->numberOfAnimations].duration = speed;
-        buttonImage->animations[buttonImage->numberOfAnimations].autoAnimate = true;
-        buttonImage->numberOfAnimations++;
 
-        page->uiElements[windowId].dependentElements[page->uiElements[windowId].numberOfDependentElements] = buttonImage;
-        page->uiElements[windowId].numberOfDependentElements++;
+        Animation *imageAnimation = add_animation(buttonImage->animations, &buttonImage->numberOfAnimations);
+
+        imageAnimation->start = vec2(buttonImage->posx + motionDifference.x, buttonImage->posy + motionDifference.y);
+        imageAnimation->destination = vec2(buttonImage->posx, buttonImage->posy);
+        imageAnimation->duration = speed;
+        imageAnimation->autoAnimate = true;
+
+        *add_dependent_element(window->dependentElements, &window->numberOfDependentElements) = buttonImage;
     }
 
 }
@@ -1088,6 +1128,8 @@ void button_release(UIPage *page, void* ptr) {
 }
 
 i32 add_text_element(UIPage* page, TextElement text) {
+    if (page->numberOfTextElements >= MAX_ELEMENTS) assert("Too many UI text elements");
+
     i32 index = page->numberOfTextElements;
     text.id = index;
     page->textElements[page->numberOfTextElements] = text;
@@ -1115,12 +1157,6 @@ i32 add_dynamic_text_element(UIPage* page, TextElement text, const char* label, 
     return page->numberOfTextElements - 1;
 }
 
-void add_dependent_text_element(UIPage *page, i32 elementId, i32 textId) {
-    TextElement *text = &page->textElements[textId];
-    UIElement *e = &page->uiElements[elementId];
-    e->dependentTextElements[e->numberOfDependentTextElements++] = text;
-}
-
 void clear_image_elements(UIElement element) {
     for(i32 i = 0; i < 3; i++) {
         element.dependentElements[i] = nullptr;
@@ -1141,66 +1177,6 @@ void delete_text_element(UIPage* page, i32 index) {
     }
 
     page->numberOfTextElements--;
-}
-
-void push_message(Message* message) {
-    u32 size = sizeof(Message);
-
-    if(messageBuffer->bufferSize + size > messageBuffer->maxBufferSize) {
-        //printf("Message overflow\n");
-        return;
-    }
-
-    Message* dest = (Message*)(messageBuffer->bufferBase + messageBuffer->bufferSize);
-    *dest = *message;
-
-    messageBuffer->bufferSize += size;
-}
-
-MessageBuffer* allocateMessageBuffer(u32 maxBufferSize) {
-    MessageBuffer* buffer = (MessageBuffer*)malloc(sizeof(MessageBuffer));
-    buffer->maxBufferSize = maxBufferSize;
-    buffer->bufferSize = 0;
-    buffer->bufferBase = (u8*)malloc(maxBufferSize);
-    return buffer;
-}
-
-void draw_messages(f32 deltaTime) {
-    u32 count = messageBuffer->bufferSize / sizeof(Message);
-
-    for (u32 i = 0; i < count; )
-    {
-        Message* msg = (Message*)
-            (messageBuffer->bufferBase + i * sizeof(Message));
-
-        msg->duration -= deltaTime;
-
-        if (msg->duration <= 0.0f)
-        {
-            Message* last = (Message*)
-                (messageBuffer->bufferBase + (count - 1) * sizeof(Message));
-
-            *msg = *last;
-
-            messageBuffer->bufferSize -= sizeof(Message);
-            count--;
-        }
-        else
-        {
-            RenderEntryUIText text = RenderEntryUIText{
-              Anchor::CENTER,
-                "",
-                0.5f, //* gMemory->aspect,
-                msg->messageCode == 0 ? 0.95f : 0.9f,
-                DEFAULT_FONT_SCALE,
-                -1.0f,
-                vec3(1.0f)
-            };
-            strcpy_s(text.text, msg->messageText);
-            //gMemory->push_ui_text_fn(gMemory->renderBuffer, &text);
-            i++;
-        }
-    }
 }
 
 void update(UIPage* page, f32 deltaTime) {
@@ -1246,8 +1222,6 @@ void update(UIPage* page, f32 deltaTime) {
             if(tab->dependentElements[i]->textChild) tab->dependentElements[i]->textChild->visible = true;
         }
     }
-
-    draw_messages(deltaTime);
 }
 
 void format_string_array(void* value, i32 index, char* out, i32 outSize) {
@@ -1260,6 +1234,8 @@ void ui_reset(UIMemory* mem) {
 }
 
 void* ui_push_size(UIMemory* mem, u32 size) {
+    if (mem->used + size > mem->size) assert("UI memory exhausted");
+
     void* result = (u8*)mem->base + mem->used;
     mem->used += size;
     return result;
@@ -1282,6 +1258,9 @@ void create_image_quad(UIMemory* mem) {
 }
 
 void load_self_actions() {
+    printf("number of self actions %i \n", numberOfSelfActions);
+    numberOfSelfActions = 0;
+
     selfActions[numberOfSelfActions++] = &toggle_text_visibility;
     selfActions[numberOfSelfActions++] = &next_option;
     selfActions[numberOfSelfActions++] = &previous_option;
@@ -1291,11 +1270,10 @@ void load_self_actions() {
 }
 
 UIPage* create_ui_page(UIMemory* mem) {
-    create_image_quad(mem);
+    if(imageMeshHandle == -1) create_image_quad(mem);
     play_audio = mem->play_audio_fn;
     play_audio_pitch = mem->play_audio_pitch_fn;
     load_self_actions();
-    messageBuffer = allocateMessageBuffer(128);
     
     UIPage* page = (UIPage*)ui_push_size(mem, sizeof(UIPage));
     memset(page, 0, sizeof(UIPage));

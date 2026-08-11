@@ -64,6 +64,7 @@ void toggle_actives();
 void add_paint_window();
 void hide_paint_hovered_window();
 void add_map_ui();
+void populate_challenges(i32 *arr);
 
 // validations.cpp
 i32 get_joker_array(Set *set, Tile** jokerArray);
@@ -1798,7 +1799,6 @@ void validate_set(Set* set) {
             if(writeIndex != readIndex) {
                 if(writeIndex > 12) {
                     printf("Validate set write index i is greater than 12!\n");
-                    push_message(&Message{0, 3.0f, "Write index is greater than 12"});
                     assert(writeIndex <= 12);
                 }
                 printf("Write index = %i\n", writeIndex);
@@ -2430,7 +2430,13 @@ void set_round_type() {
         start_transition();
     } else {
         i32 frame = gState->uiPage->uiElements[gState->uiPage->elementHovered].imageChildId;
-        init_round((ROUND_TYPE)frame);
+        gState->runData.currentRoundType = (ROUND_TYPE)frame;
+
+        ActionCommand *nextRound = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, ROUND_TYPE, execute_action);
+        if (nextRound) { 
+            nextRound->action = start_round;
+            *COMMAND_PAYLOAD(nextRound, ROUND_TYPE) = gState->runData.currentRoundType;
+        }
     }
 }
 
@@ -2451,28 +2457,6 @@ void show_challenge_ui() {
     }
 }
 
-void populate_challenges(i32 *arr) {
-    for(i32 i = 0; i < 3; ++i) {
-        u8 unique = false;
-
-        while(!unique) {
-            i32 value = rng_range(0, TOTAL_RELICS - 1);
-            unique = true;
-
-            for(i32 j = 0; j < i; ++j) {
-                if(arr[j] == value) {
-                    unique = false;
-                    break;
-                }
-            }
-
-            if(unique) {
-                arr[i] = value;
-            }
-        }
-    }
-}
-
 void add_map_ui() {
     i32 frontIndex = 3;
     clear_game_ui();
@@ -2482,6 +2466,10 @@ void add_map_ui() {
     selectMessage.zIndex = frontIndex;  
     i32 selectMessageId = add_text_element(gState->uiPage, selectMessage);
 
+    UIElement challengeImage = UIElement{ CENTER, -1, ROUND_CHALLENGE_T, 0.2575f, 0.5f, 0.1f * RENDERING_ASPECT, 0.1f};
+    challengeImage.sheetAnimation = SheetAnimation{3,1};
+    challengeImage.zIndex = frontIndex;
+
     UIElement nextRoundBg = UIElement{ Anchor::CENTER, -1, BUTTON_T, 0.2575f, 0.5f, 0.7f, 0.225f};
     nextRoundBg.zIndex = frontIndex;
     nextRoundBg.sheetAnimation = SheetAnimation{3,3};
@@ -2489,9 +2477,14 @@ void add_map_ui() {
     nextRoundBg.isPanel = true;
     nextRoundBg.color = R_BLUE;
 
-    RoundData option1 = create_round_data((ROUND_TYPE)11, gState->runData.rounds);
-    RoundData option2 = create_round_data((ROUND_TYPE)1, gState->runData.rounds);
-    RoundData option3 = create_round_data((ROUND_TYPE)4, gState->runData.rounds);
+
+    i32 challengeIds[2];
+    populate_challenges(challengeIds);
+    //need to specify by type as well, so one green/yell/red
+
+    RoundData option1 = create_round_data((ROUND_TYPE)0, gState->runData.rounds);
+    RoundData option2 = create_round_data((ROUND_TYPE)challengeIds[0], gState->runData.rounds);
+    RoundData option3 = create_round_data((ROUND_TYPE)challengeIds[1], gState->runData.rounds);
 
     TextElement desc1 = TextElement{ CENTER, "", (f32)nextRoundBg.posx, 0.2f, -1, true, DEFAULT_FONT_SCALE * 1.5f, vec3(1.0f)};
     desc1.zIndex = frontIndex;  
@@ -2499,6 +2492,7 @@ void add_map_ui() {
     strcpy(desc1.text, option1.desc);
 
     i32 desc1Id = add_text_element(gState->uiPage, desc1);
+    i32 challenge1 = add_ui_element(gState->uiPage, challengeImage);
     i32 nextRoundBg1 = add_ui_element(gState->uiPage, nextRoundBg);
     i32 roundButton1 = add_button(gState->uiPage, BUTTON_T, "SELECT", vec2(nextRoundBg.posx, 0.9f), vec2(0.05f, 0.225f), R_SILVER, 0, frontIndex);
 
@@ -2514,12 +2508,16 @@ void add_map_ui() {
     i32 reward1 = add_text_element(gState->uiPage, reward);
 
     nextRoundBg.posx += 0.2425f;
-    nextRoundBg.color = R_GREEN;
+    //nextRoundBg.color = R_GREEN;
+    challengeImage.sheetAnimation.currentFrame = 1;
 
     desc1.posx += 0.2425f;
     reward.posx += 0.2425f;
+    challengeImage.posx += 0.2425f;
+
     strcpy(desc1.text, option2.desc);
     i32 desc2Id = add_text_element(gState->uiPage, desc1);
+    i32 challenge2 = add_ui_element(gState->uiPage, challengeImage);
     i32 nextRoundBg2 = add_ui_element(gState->uiPage, nextRoundBg);
     i32 roundButton2 = add_button(gState->uiPage, BUTTON_T, "SELECT", vec2(nextRoundBg.posx, 0.9f), vec2(0.05f, 0.225f), R_SILVER, 0, frontIndex);
 
@@ -2529,12 +2527,15 @@ void add_map_ui() {
     i32 reward2 = add_text_element(gState->uiPage, reward);
 
     nextRoundBg.posx += 0.2425f;
-    nextRoundBg.color = R_RED;
+    //nextRoundBg.color = R_RED;
+    challengeImage.sheetAnimation.currentFrame = 2;
     
     desc1.posx += 0.2425f;
     reward.posx += 0.2425f;
+    challengeImage.posx += 0.2425f;
     strcpy(desc1.text, option3.desc);
     i32 desc3Id = add_text_element(gState->uiPage, desc1);
+    i32 challenge3 = add_ui_element(gState->uiPage, challengeImage);
     i32 nextRoundBg3 = add_ui_element(gState->uiPage, nextRoundBg);
     i32 roundButton3 = add_button(gState->uiPage, BUTTON_T, "SELECT", vec2(nextRoundBg.posx, 0.9f), vec2(0.05f, 0.225f), R_SILVER, 0, frontIndex);
     UIElement round1 = UIElement{ Anchor::CENTER, -1, BUTTON_T, 0.2575f, 0.5f, 0.8f, 0.225f};
@@ -2550,13 +2551,17 @@ void add_map_ui() {
 
     //set the image child Id for the buttons to be the value for roundtype
     //using image child Id here breaks animation!!!!!!
-    gState->uiPage->uiElements[roundButton1].imageChildId = 11;
-    gState->uiPage->uiElements[roundButton2].imageChildId = 1;
-    gState->uiPage->uiElements[roundButton3].imageChildId = 4;
+    gState->uiPage->uiElements[roundButton1].imageChildId = 0;
+    gState->uiPage->uiElements[roundButton2].imageChildId = challengeIds[0];
+    gState->uiPage->uiElements[roundButton3].imageChildId = challengeIds[1];
 
     add_image_to_window(gState->uiPage, multWindowIndex, nextRoundBg1);
     add_image_to_window(gState->uiPage, multWindowIndex, nextRoundBg2);
     add_image_to_window(gState->uiPage, multWindowIndex, nextRoundBg3);
+
+    add_image_to_window(gState->uiPage, multWindowIndex, challenge1);
+    add_image_to_window(gState->uiPage, multWindowIndex, challenge2);
+    add_image_to_window(gState->uiPage, multWindowIndex, challenge3);
 
     add_button_to_window(gState->uiPage, multWindowIndex, roundButton1);
     add_button_to_window(gState->uiPage, multWindowIndex, roundButton2);
@@ -2760,15 +2765,17 @@ void add_end_game_ui() {
     add_image_to_window(gState->uiPage, windowIndex, menuBg);
 
     //maybe do a run total score...
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.35f, 0.3f, -1, true, DEFAULT_FONT_SCALE }, 
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.35f, 0.3f, -1, true, DEFAULT_FONT_SCALE * 1.75f }, 
         "COMPLETED ROUND WITH SCORE: ", 0, TextType::UINT_64));
 
     for(i32 i = 0; i < gState->table.numberOfSets; i++) {
         numTableTiles += gState->table.sets[i].numberOfTiles;
     }
     //maybe do total tiles played... ewwww
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.35f, 0.33f, -1, true, DEFAULT_FONT_SCALE }, 
-        "TILES USED: ", 5, TextType::UINT_64));
+//    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.35f, 0.33f, -1, true, DEFAULT_FONT_SCALE }, 
+//        "TILES USED: ", 5, TextType::UINT_64));
+//
+    //want to add all tiles played, total score gained, rounds / round type
 
     vec2 relicSlotPositions[30] = {}; 
     layout_grid(relicSlotPositions, 10, 3, CENTER, vec2(0.765f, 0.7f), vec2(0.25f, 1.0f), vec2(0.05f));
@@ -2909,6 +2916,8 @@ void add_active() {
     } 
 }
 
+//  THESE CAN BE COMBINED
+
 void populate_relics_in_shop(i32 *arr) {
     for(i32 i = 0; i < 3; ++i) {
         u8 unique = false;
@@ -2952,6 +2961,30 @@ void populate_actives_in_shop(i32 *arr) {
         }
     }
 }
+
+void populate_challenges(i32 *arr) {
+    for(i32 i = 0; i < 2; ++i) {
+        u8 unique = false;
+
+        while(!unique) {
+            i32 value = rng_range(1, 10);
+            unique = true;
+
+            for(i32 j = 0; j < i; ++j) {
+                if(arr[j] == value) {
+                    unique = false;
+                    break;
+                }
+            }
+
+            if(unique) {
+                arr[i] = value;
+            }
+        }
+    }
+}
+
+//
 
 void add_relic_purchase() {
     ActionCommand *nextRound = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u8, execute_action);
@@ -3582,9 +3615,6 @@ void clear_game_ui() {
     ui_reset(&gMemory->uiMem);
     gState->uiPage = create_ui_page(&gMemory->uiMem);
     gState->uiPage->aspect = RENDERING_ASPECT;
-    gState->uiPage->numberOfImageElements = 0;
-    gState->uiPage->actionableElementCount = 0;
-    gState->uiPage->highestZ = -1;
     add_game_ui_data(gState->uiPage);
 }
 
@@ -3715,7 +3745,7 @@ void count_table() {
 
             TextElement bonus = TextElement{ Anchor::CENTER, "", tilePos.x / RENDERING_ASPECT, tilePos.y, -1, true, DEFAULT_FONT_SCALE * 2.0 };
             snprintf(bonus.text, sizeof(bonus.text), "+%d", (i32)tile->details.tileNumber);
-            add_move_animation(&bonus, vec2(tilePos.x / RENDERING_ASPECT, tilePos.y - 0.1f), 0.5f);
+            add_move_animation(&bonus, vec2(tilePos.x / RENDERING_ASPECT, tilePos.y - 0.1f), 0.25f);
             bonus.color = R_BLACK;
 
             ActionCommand *tileText = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, TextElement, execute_action);
@@ -3724,7 +3754,7 @@ void count_table() {
                 *COMMAND_PAYLOAD(tileText, TextElement) = bonus;
             }
 
-            push_wait(&gState->cmdQueue, 0.1f);
+            push_wait(&gState->cmdQueue, 0.05f);
             
             //adds tile number to hoveredset
             ActionCommand *setVal = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, GameObject *, execute_action);
@@ -3736,7 +3766,7 @@ void count_table() {
             push_wait(&gState->cmdQueue, 0.1f);
         }
         
-        push_wait(&gState->cmdQueue, 1.0f);
+        push_wait(&gState->cmdQueue, 0.5f);
 
         calculate_set_bonuses(set, true);
 
@@ -3745,7 +3775,7 @@ void count_table() {
         //} else if (set->setType == GROUP && gState->player.playerData.groupMultipliers > 1) {
         //    add_multiplier_text(set, gState->player.playerData.groupMultipliers);
         //}
-        push_wait(&gState->cmdQueue, 1.0f);
+        push_wait(&gState->cmdQueue, 0.5f);
 
         //adds hovered set to total, clears hovered set
         ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, Set *, execute_action);
@@ -3753,14 +3783,14 @@ void count_table() {
             total->action = add_set_value_total;
             *COMMAND_PAYLOAD(total, Set *) = set;
         }
-        push_wait(&gState->cmdQueue, 1.0f);
+        push_wait(&gState->cmdQueue, 0.5f);
     }
 
-    push_wait(&gState->cmdQueue, 1.0f);
+    push_wait(&gState->cmdQueue, 0.5f);
 
     calculate_round_cash(&gState->runData);
 
-    push_wait(&gState->cmdQueue, 1.0f);
+    push_wait(&gState->cmdQueue, 0.5f);
 
     //  ActionCommand *cmd = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, 0, execute_action);
     //  if (cmd) cmd->action = load_shop_purchase_menu;
@@ -3902,7 +3932,6 @@ void end_turn() {
             snapshot_round_start();
         } else {
             // maybe not enable button when invalid sets
-            push_message(&Message{0, 2.0f, "Table not valid"});
         }
     }
 }
@@ -3973,6 +4002,9 @@ void init_relics_ui() {
 }
 
 void add_game_ui_data(UIPage *uiPage) {
+    uiPage->numberOfActions = 0;
+    printf("NUMBER OF VALUES %i\n", uiPage->numberOfValues);
+
     uiPage->actions[uiPage->numberOfActions++] = &set_round_type; //NOT USED!!!!
     uiPage->actions[uiPage->numberOfActions++] = &add_options_ui;
     uiPage->actions[uiPage->numberOfActions++] = &go_back;
@@ -4076,6 +4108,7 @@ extern "C" GAME_DLL void game_init(GameMemory* memory, i32 preserveState) {
 
     debug_state_memory(memory, memoryCursor);
 
+    //too many rebuilds could leak imagemesh memory
     create_quad();
     set_seed();
     init_rack_space();
@@ -4202,7 +4235,8 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
 
     if (key == 77 && action == 1) { //m
         //add_map_ui();
-        add_end_game_ui();
+        //add_end_game_ui();
+        __debugbreak();
     }
 
     if (key == 294 && action == 1) {

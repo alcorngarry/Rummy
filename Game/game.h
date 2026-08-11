@@ -251,6 +251,7 @@ struct RoundSnapshot {
 };
 
 enum ROUND_TYPE {
+    MIN_SCORE,
     RUN_TOTALS,
     RUN_MAX_SIZE,
     GROUP_TOTALS,
@@ -259,10 +260,8 @@ enum ROUND_TYPE {
     CURSED_BLUE,
     CURSED_GREEN,
     CURSED_BLACK,
-    EMPTY_RACK,
     NO_ACTIVES,
-    NO_PASSIVES,
-    MIN_SCORE
+    NO_PASSIVES
 };
 
 struct RoundData {
