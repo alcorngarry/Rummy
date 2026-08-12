@@ -91,7 +91,7 @@ struct SheetAnimation {
 struct TextElement;
 
 struct UIElement {
-	Anchor anchor = Anchor::TOP_LEFT;
+	Anchor anchor = TOP_LEFT;
 	i32 imageChildId = -1;
 	i32 textureName;
 	f64 posx;
@@ -116,6 +116,7 @@ struct UIElement {
   i32 onCompleteActionId = -1;
   u8 hasShadow = false;
   u8 zIndex = 0;
+  i32 val = -1;
 };
 
 enum TextType {

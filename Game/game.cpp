@@ -86,7 +86,7 @@ u8 check_round_lose_condition(GameState *state);
 RoundData create_round_data(ROUND_TYPE roundType, u64 rounds);
 u8 check_min_score_endgame(void *ptr);
 void difficulty_to_text(u8 value, char *text);
-i32 get_cursed_color_values(Set *set, u8 color);
+void check_set_value_rules(Set *set, u64* hoveredSetValue, ROUND_TYPE type);
 // game_queue.cpp
 void* push(CommandQueue *b, u64 size);
 void* push_command(CommandQueue *q, u32 totalSize, CmdActionFuncPtr executeFn);
@@ -2429,7 +2429,7 @@ void set_round_type() {
         clear_player_data();
         start_transition();
     } else {
-        i32 frame = gState->uiPage->uiElements[gState->uiPage->elementHovered].imageChildId;
+        i32 frame = gState->uiPage->uiElements[gState->uiPage->elementHovered].val;
         gState->runData.currentRoundType = (ROUND_TYPE)frame;
 
         ActionCommand *nextRound = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, ROUND_TYPE, execute_action);
@@ -2476,7 +2476,6 @@ void add_map_ui() {
 
     nextRoundBg.isPanel = true;
     nextRoundBg.color = R_BLUE;
-
 
     i32 challengeIds[2];
     populate_challenges(challengeIds);
@@ -2551,9 +2550,9 @@ void add_map_ui() {
 
     //set the image child Id for the buttons to be the value for roundtype
     //using image child Id here breaks animation!!!!!!
-    gState->uiPage->uiElements[roundButton1].imageChildId = 0;
-    gState->uiPage->uiElements[roundButton2].imageChildId = challengeIds[0];
-    gState->uiPage->uiElements[roundButton3].imageChildId = challengeIds[1];
+    gState->uiPage->uiElements[roundButton1].val = 0;
+    gState->uiPage->uiElements[roundButton2].val = challengeIds[0];
+    gState->uiPage->uiElements[roundButton3].val = challengeIds[1];
 
     add_image_to_window(gState->uiPage, multWindowIndex, nextRoundBg1);
     add_image_to_window(gState->uiPage, multWindowIndex, nextRoundBg2);
@@ -3620,10 +3619,7 @@ void clear_game_ui() {
 
 u8 add_set_value_total(void *ptr) {
     Set *set = *(Set **)ptr;
-    if(gState->runData.currentRoundType == CURSED_RED) {
-        i32 cursedValue = get_cursed_color_values(set, 0);
-        hoveredSetValue -= cursedValue;
-    }
+    check_set_value_rules(set, &hoveredSetValue, gState->runData.currentRoundType);
 
     gState->roundData.roundScore += hoveredSetValue;
     hoveredSetValue = 0;
@@ -3656,10 +3652,7 @@ void push_set_bonus(Set *set, i32 value, CmdActionFuncPtr relicFn) {
 u64 calculate_set_bonuses(Set *set, u8 uiAnimation) {
     if(!uiAnimation) {
         hoveredSetValue = get_set_value(set);
-        if(gState->runData.currentRoundType == CURSED_RED) {
-            i32 cursedValue = get_cursed_color_values(set, 0);
-            hoveredSetValue -= cursedValue;
-        }
+        check_set_value_rules(set, &hoveredSetValue, gState->runData.currentRoundType);
     }
 
     //sort by addition first
@@ -4002,9 +3995,6 @@ void init_relics_ui() {
 }
 
 void add_game_ui_data(UIPage *uiPage) {
-    uiPage->numberOfActions = 0;
-    printf("NUMBER OF VALUES %i\n", uiPage->numberOfValues);
-
     uiPage->actions[uiPage->numberOfActions++] = &set_round_type; //NOT USED!!!!
     uiPage->actions[uiPage->numberOfActions++] = &add_options_ui;
     uiPage->actions[uiPage->numberOfActions++] = &go_back;
@@ -4234,9 +4224,8 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
     }
 
     if (key == 77 && action == 1) { //m
-        //add_map_ui();
+        add_map_ui();
         //add_end_game_ui();
-        __debugbreak();
     }
 
     if (key == 294 && action == 1) {

@@ -11,8 +11,51 @@ enum CONTRACTS {};
 // dynamic game data
 // turn limit
 // minimum score // depending on type
+i32 get_cursed_color_values(Set *set, u8 color) {
+    i32 cursedValue = 0;
+    for(i32 i = 0; i < set->numberOfTiles; ++i) {
+        Tile *t = set->tiles[i];
+        if(!t) continue;
+        if(t->details.tileColor == color) {
+            cursedValue += t->details.tileNumber;
+        }
+    }
 
-void update_round_data(RoundData *data) {
+    return cursedValue;
+}
+
+void check_set_value_rules(Set *set, u64* hoveredSetValue, ROUND_TYPE type) {
+    switch(type) {
+        case RUN_TOTALS: {
+            if(set->setType == GROUP) *hoveredSetValue = 0;
+            break;
+        }
+        case GROUP_TOTALS: {
+            if(set->setType == RUN) *hoveredSetValue = 0;
+            break;
+        }
+        case CURSED_RED: {
+            i32 cursedValue = get_cursed_color_values(set, 0);
+            *hoveredSetValue -= cursedValue;
+            printf("here!\n");
+            break;
+        }
+        case CURSED_BLUE: {
+            i32 cursedValue = get_cursed_color_values(set, 1);
+            *hoveredSetValue -= cursedValue;
+            break;
+        }
+        case CURSED_GREEN: {
+            i32 cursedValue = get_cursed_color_values(set, 2);
+            *hoveredSetValue -= cursedValue;
+            break;
+        }
+        case CURSED_BLACK: {
+            i32 cursedValue = get_cursed_color_values(set, 3);
+            *hoveredSetValue -= cursedValue;
+            break;
+        }
+    }
 }
 
 u8 check_challenge_condition(GameState *state) {
@@ -79,19 +122,6 @@ u8 check_every_color_endgame(void *ptr) {
     }
 
     return false;
-}
-
-i32 get_cursed_color_values(Set *set, u8 color) {
-    i32 cursedValue = 0;
-    for(i32 i = 0; i < set->numberOfTiles; ++i) {
-        Tile *t = set->tiles[i];
-        if(!t) continue;
-        if(t->details.tileColor == color) {
-            cursedValue += t->details.tileNumber;
-        }
-    }
-
-    return cursedValue;
 }
 
 void populate_round_types(i32 *arr) {
