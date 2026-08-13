@@ -335,6 +335,11 @@ void set_page_state(PAGE_STATE p) {
 
 void go_back() {
     PAGE_STATE p = gState->pageState;
+
+    if(gState->prevState == OPTIONS && gState->pageState == OPTIONS) {
+        gState->prevState = IN_GAME;
+    }
+
     gState->pageState = gState->prevState;
     gState->prevState = p;
     reinit_page_state();
@@ -2583,6 +2588,55 @@ void add_map_ui() {
     add_ui_element(gState->uiPage, blur);
 }
 
+void add_profile_ui() {
+    set_page_state(PROFILE);
+    clear_game_ui();
+
+    TextElement desc1 = TextElement{ CENTER, "", 0.5f, 0.2f, -1, true, DEFAULT_FONT_SCALE * 1.5f, vec3(1.0f)};
+    desc1.maxWidth = RENDERING_ASPECT * 0.2f;
+    snprintf(desc1.text, sizeof(desc1.text), "Runs Started: %llu", profile.runStarted);
+    
+    i32 desc1Id = add_text_element(gState->uiPage, desc1);
+  
+    desc1.posy += 0.1f;
+    snprintf(desc1.text, sizeof(desc1.text), "Rounds Completed: %llu", profile.roundsCompleted);
+    i32 desc2Id = add_text_element(gState->uiPage, desc1);
+
+    desc1.posy += 0.1f;
+    snprintf(desc1.text, sizeof(desc1.text), "Highest Round: %llu", profile.highestRound);
+    i32 desc3Id = add_text_element(gState->uiPage, desc1);
+
+    desc1.posy += 0.1f;
+    snprintf(desc1.text, sizeof(desc1.text), "Tiles Played: %llu", profile.tilesPlayed);
+    i32 desc4Id = add_text_element(gState->uiPage, desc1);
+
+    desc1.posy += 0.1f;
+    snprintf(desc1.text, sizeof(desc1.text), "Sets Created: %llu", profile.setsCreated);
+    i32 desc5Id = add_text_element(gState->uiPage, desc1);
+
+    desc1.posy += 0.1f;
+    snprintf(desc1.text, sizeof(desc1.text), "Money Earned: %llu", profile.moneyEarned);
+    i32 desc6Id = add_text_element(gState->uiPage, desc1);
+
+
+    i32 back = add_button(gState->uiPage, BUTTON_T, "Back", vec2(0.5f, 0.85f), vec2(0.075f, 0.45f), R_SILVER, 2);
+
+    i32 multWindowIndex = add_window(gState->uiPage, UI_BG_2_T, Anchor::CENTER, vec2(0.9f, 0.75f), vec2(0.5f, 1.2f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE, 0.25f); 
+
+    add_text_to_window(gState->uiPage, multWindowIndex, desc1Id);
+    add_text_to_window(gState->uiPage, multWindowIndex, desc2Id);
+    add_text_to_window(gState->uiPage, multWindowIndex, desc3Id);
+    add_text_to_window(gState->uiPage, multWindowIndex, desc4Id);
+    add_text_to_window(gState->uiPage, multWindowIndex, desc5Id);
+    add_text_to_window(gState->uiPage, multWindowIndex, desc6Id);
+    add_button_to_window(gState->uiPage, multWindowIndex, back);
+
+    UIElement blur = UIElement{CENTER, -1, -1, 0.5, 0.5, 1.0f, 1.0f};
+    blur.color = vec4(0.0f, 0.0f, 0.0f, 0.5);
+    blur.zIndex = 0;
+    add_ui_element(gState->uiPage, blur);
+}
+
 void set_round_complete_ui(i32 windowIndex) {
     TextElement score = TextElement{ Anchor::CENTER, "Score", 0.2f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
               //add_text_bob(&score);
@@ -3222,7 +3276,7 @@ void add_main_menu_ui() {
 
     i32 newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.5f, 0.625f), vec2(0.08f, 0.25f), R_GREEN, 0);
     i32 options = add_button(gState->uiPage, BUTTON_T, "Options", vec2(0.5f, 0.725f), vec2(0.08f, 0.25f), R_BLUE, 1);
-    i32 profile = add_button(gState->uiPage, BUTTON_T, "Profile", vec2(0.5f, 0.825f), vec2(0.08f, 0.25f), R_BLUE, 2);
+    i32 profile = add_button(gState->uiPage, BUTTON_T, "Profile", vec2(0.5f, 0.825f), vec2(0.08f, 0.25f), R_BLUE, 26);
     i32 quit = add_button(gState->uiPage, BUTTON_T, "Quit", vec2(0.5f, 0.925f), vec2(0.08f, 0.2f), R_RED, 3);
 
 
@@ -3281,11 +3335,6 @@ void add_main_menu_ui() {
 //    write_page(gState->uiPage, "main_menu.eui");
 }
 
-void add_profile_ui() {
-    set_page_state(PROFILE);
-    add_button(gState->uiPage, BUTTON_T, "TEST", vec2(0,0), vec2(0.1f), vec4(1.0f), 3);
-}
-
 void add_options_ui() {
     //add quit game and do some page_state_logic based on prev state
     set_page_state(OPTIONS);
@@ -3302,14 +3351,14 @@ void add_options_ui() {
     i32 relics = 0;
     i32 gameStats = 0;
 
-    if(gState->prevState == IN_GAME) {
-        newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.5f, 0.6f), vec2(0.1f, 0.4f), R_GREEN, 0);
-        relics = add_button(gState->uiPage, BUTTON_T, "View Relics", vec2(0.5f, 0.3f), vec2(0.1f, 0.4f), R_BLUE, 15);
-        profile = add_button(gState->uiPage, BUTTON_T, "Profile", vec2(0.5f, 0.45f), vec2(0.1f, 0.4f), R_BLUE, 12);
-        quitGame = add_button(gState->uiPage, BUTTON_T, "Main Menu", vec2(0.5f, 0.75f), vec2(0.1f, 0.4f), R_RED, 14);
-    } else {
+    if(gState->prevState == MAIN_MENU ) {
         relics = add_button(gState->uiPage, BUTTON_T, "Relics", vec2(0.5f, 0.3f), vec2(0.1f, 0.4f), R_BLUE, 15);
         gameStats = add_button(gState->uiPage, BUTTON_T, "Game Stats", vec2(0.5f, 0.45f), vec2(0.1f, 0.4f), R_BLUE, 15);
+    } else {
+        newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.5f, 0.6f), vec2(0.1f, 0.4f), R_GREEN, 0);
+        relics = add_button(gState->uiPage, BUTTON_T, "View Relics", vec2(0.5f, 0.3f), vec2(0.1f, 0.4f), R_BLUE, 15);
+        profile = add_button(gState->uiPage, BUTTON_T, "Profile", vec2(0.5f, 0.45f), vec2(0.1f, 0.4f), R_BLUE, 26);
+        quitGame = add_button(gState->uiPage, BUTTON_T, "Main Menu", vec2(0.5f, 0.75f), vec2(0.1f, 0.4f), R_RED, 14);
     }
 
     i32 back = add_button(gState->uiPage, BUTTON_T, "Back", vec2(0.5f, 0.9f), vec2(0.075f, 0.45f), R_SILVER, 2);
@@ -3382,14 +3431,14 @@ void add_options_ui() {
     add_element_to_tab(gState->uiPage, windowIndex, video, vsyncRadio);
     add_element_to_tab(gState->uiPage, windowIndex, video, applyChanges);
 
-    if(gState->prevState == IN_GAME) {
+    if(gState->prevState == MAIN_MENU) {
+        add_element_to_tab(gState->uiPage, windowIndex, general, relics);
+        add_element_to_tab(gState->uiPage, windowIndex, general, gameStats);
+    } else {
         add_element_to_tab(gState->uiPage, windowIndex, general, newGame);
         add_element_to_tab(gState->uiPage, windowIndex, general, relics);
         add_element_to_tab(gState->uiPage, windowIndex, general, profile);
         add_element_to_tab(gState->uiPage, windowIndex, general, quitGame);
-    } else {
-        add_element_to_tab(gState->uiPage, windowIndex, general, relics);
-        add_element_to_tab(gState->uiPage, windowIndex, general, gameStats);
     }
 
     add_element_to_tab(gState->uiPage, windowIndex, general, back);
@@ -3800,11 +3849,21 @@ void calculate_round_bonus(RunData *gd, PlayerData pd) {
 
 void complete_round() {
     clear_game_ui();
+   
+    i32 tilesPlayed = 0;
+    for(i32 i = 0; i < gState->table.numberOfSets; i++) {
+         tilesPlayed += gState->table.sets[i].numberOfTiles;
+    }
+
+    profile.tilesPlayed += tilesPlayed;
+    profile.setsCreated += gState->table.numberOfSets;
 
     if(check_round_lose_condition(gState)) {
+        if(profile.highestRound < gState->runData.rounds) profile.highestRound = gState->runData.rounds;
         gState->mode = GM_GAME_OVER;
         add_end_game_ui();
     } else {
+        profile.roundsCompleted++;
         add_round_complete_ui();
         gState->mode = GM_ROUND_COMPLETE;
 
@@ -3816,7 +3875,11 @@ void complete_round() {
         gState->roundData.roundScore = 0;
         //should be clear_player_data without updating the runMultipliers
         gState->player.playerData.timesDrawn = 0;
+
+        profile.moneyEarned += gState->roundData.cashReward;
     }
+
+    save_profile(activeProfile);
 }
 
 void sort_rack_by_color() {
@@ -4022,6 +4085,7 @@ void add_game_ui_data(UIPage *uiPage) {
     uiPage->actions[uiPage->numberOfActions++] = &paint_green; //23
     uiPage->actions[uiPage->numberOfActions++] = &paint_blue; //24
     uiPage->actions[uiPage->numberOfActions++] = &paint_black; //25
+    uiPage->actions[uiPage->numberOfActions++] = &add_profile_ui; //26
     
     uiPage->values[uiPage->numberOfValues++] = &gState->roundData.roundScore;//&gState->player.playerData.score;
     uiPage->values[uiPage->numberOfValues++] = &gState->roundData.turnLimit;
@@ -4067,7 +4131,6 @@ void reinit_page_state() {
         }
         case MAIN_MENU: {
             init_main_menu();
-
             break;
         }
         case PROFILE: {
@@ -4087,6 +4150,13 @@ void reinit_page_state() {
 }
 
 extern "C" GAME_DLL void game_init(GameMemory* memory, i32 preserveState) {
+    if(!init_profile_directories()) printf("ERROR CREATING DIRECTORIES\n");
+    if(!load_profile(0)) {
+        if(!create_profile(0)) {
+            printf("CREATE PROFILE FAILED");
+        }
+    }
+
     gMemory = memory;
     u8* memoryCursor = (u8*)memory->stateMemory;
     gState = (GameState*)memoryCursor;
@@ -4224,8 +4294,27 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
     }
 
     if (key == 77 && action == 1) { //m
-        add_map_ui();
+        //add_map_ui();
         //add_end_game_ui();
+        printf("\n");
+        printf("============================================================\n");
+        printf("                         PROFILE\n");
+        printf("============================================================\n");
+
+        printf("Active Profile:     %u\n", activeProfile);
+
+        printf("\n");
+        printf("STATISTICS\n");
+        printf("------------------------------------------------------------\n");
+        printf("Runs Started:       %llu\n", profile.runStarted);
+        printf("Rounds Completed:   %llu\n", profile.roundsCompleted);
+        printf("Highest Round:      %llu\n", profile.highestRound);
+        printf("Tiles Played:       %llu\n", profile.tilesPlayed);
+        printf("Sets Created:       %llu\n", profile.setsCreated);
+        printf("Money Earned:       %llu\n", profile.moneyEarned);
+
+        printf("============================================================\n");
+        printf("\n");
     }
 
     if (key == 294 && action == 1) {
@@ -4297,4 +4386,9 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
             }
         }
     }
+}
+
+extern "C" GAME_DLL void game_shutdown() {
+    printf("SHUTDOWN!\n");
+    save_profile(activeProfile);
 }

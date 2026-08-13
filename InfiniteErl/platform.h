@@ -82,9 +82,11 @@ extern "C" {
 	typedef void (*game_init_fn)(GameMemory* memory, i32 preserveState);
 	typedef void (*game_update_and_render_fn)();
 	typedef void (*game_update_input_fn)(i32 action, i32 key, f64 xpos, f64 ypos);
+	typedef void (*game_shutdown_fn)();
 
 	GAME_DLL void game_init(GameMemory* memory, i32 preserveState);
 	GAME_DLL void game_update_and_render();
 	GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 ypos);
+	GAME_DLL void game_shutdown();
 }
 #endif

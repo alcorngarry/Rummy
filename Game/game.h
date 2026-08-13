@@ -4,6 +4,7 @@
 #include <random>
 #include "platform.h"
 #include "rummy_colors.h"
+#include "profile.h"
 
 #define TOTAL_TILES 60
 #define TOTAL_RELICS 10

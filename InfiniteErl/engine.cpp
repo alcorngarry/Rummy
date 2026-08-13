@@ -59,6 +59,7 @@ struct GameDLL {
     game_init_fn game_init;
     game_update_and_render_fn game_update_and_render;
     game_update_input_fn game_update_input;
+    game_shutdown_fn game_shutdown;
 };
 
 GameDLL game = {};
@@ -77,6 +78,7 @@ void unload(GameDLL* g) {
         g->game_init = nullptr;
         g->game_update_and_render = nullptr;
         g->game_update_input = nullptr;
+        g->game_shutdown = nullptr;
         unload_renderer();
         load_shaders();
     }
@@ -91,6 +93,7 @@ void load(GameDLL* g, const char* dllPath) {
     g->game_init = (game_init_fn)GetProcAddress(g->dll, "game_init");
     g->game_update_and_render = (game_update_and_render_fn)GetProcAddress(g->dll, "game_update_and_render");
     g->game_update_input = (game_update_input_fn)GetProcAddress(g->dll, "game_update_input");
+    g->game_shutdown = (game_shutdown_fn)GetProcAddress(g->dll, "game_shutdown");
 }
 
 bool file_time_changed(FILETIME a, FILETIME b) {
@@ -117,6 +120,7 @@ boolean hot_reload(GameDLL* g, const char* dllPath) {
             (game_update_and_render_fn)GetProcAddress(g->dll, "game_update_and_render");
         g->game_update_input =
             (game_update_input_fn)GetProcAddress(g->dll, "game_update_input");
+        g->game_shutdown = (game_shutdown_fn)GetProcAddress(g->dll, "game_shutdown");
         g->lastWriteTime = newTime;
 
         return true;
@@ -233,6 +237,8 @@ i32 APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, i32 cmd
         glfwSwapBuffers(window);
     }
 
+
+    if(game.game_shutdown) game.game_shutdown();
     save_video_settings();
     glfwTerminate();
     return 0;

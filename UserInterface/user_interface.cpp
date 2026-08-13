@@ -1258,7 +1258,6 @@ void create_image_quad(UIMemory* mem) {
 }
 
 void load_self_actions() {
-    printf("number of self actions %i \n", numberOfSelfActions);
     numberOfSelfActions = 0;
 
     selfActions[numberOfSelfActions++] = &toggle_text_visibility;
