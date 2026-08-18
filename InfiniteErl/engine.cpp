@@ -497,6 +497,7 @@ void load_textures() {
     load_texture(TOOL_TIP_T, "./res/tooltip.png", true, false, false);
     load_texture(ROUND_TYPE_T, "./res/tile-bga.png", true, false, false);
     load_texture(ROUND_CHALLENGE_T, "./res/round-challenge.png", true, false, false);
+    load_texture(BUMP_BG_T, "./res/bump-bg.png", true, false, false);
 }
 
 VideoSettings load_video_settings() {

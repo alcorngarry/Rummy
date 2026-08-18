@@ -231,6 +231,7 @@ struct Active {
     u8 isHovered = false;
     mat4 originalPosition;
     vec2 grabOffset;
+    i32 id;
 };
 
 struct Player {
@@ -240,7 +241,7 @@ struct Player {
     u8 numberOfRelics = 0;
 
     i32 heldActiveId = -1;
-    i32 activeIds[MAX_ACTIVES];
+    Active actives[MAX_ACTIVES];
     u8 numberOfActives = 0;
 };
 

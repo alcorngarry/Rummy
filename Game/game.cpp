@@ -579,12 +579,12 @@ void create_actives() {
     obj.model = gState->pool.object.model;
 
     for(u8 i = 0; i < TOTAL_ACTIVES; ++i) {
-        gState->actives[i] = Active{obj, ACTIVE_TABLE[i], false, gState->pool.object.model};
+        gState->actives[i] = Active{obj, ACTIVE_TABLE[i], false, gState->pool.object.model, vec2(0.0f), i};
     }
 
     for(u8 i = 0; i < gState->player.numberOfActives; ++i) {
-        Active *active = &gState->actives[gState->player.activeIds[i]];
-        active->object.model = rackSpaces[i]; 
+        Active *active = &gState->player.actives[i];
+        active->object.model = rackSpaces[i];
     }
 }
 
@@ -657,12 +657,23 @@ void init_rack_space() {
         rackSpaces[i] = glm::translate(space, vec3((i % (RACK_SPACES / 2)), row, 0));
     }
 
-    mat4 model = glm::translate(mat4(1.0f), vec3(RENDERING_ASPECT * 0.5f, 1.0f - (defaultTileScale.y) + 0.001f, 0.0f)); 
-    model = glm::scale(model, vec3((defaultTileScale.x * 10.0f) + 0.1f, defaultTileScale.y * 2.0f, 1.0f));
+    //mat4 model = glm::translate(mat4(1.0f), vec3(RENDERING_ASPECT * 0.5f, 1.0f - (defaultTileScale.y) + 0.001f, 0.0f)); 
+    //mat4 model = rackSpaces[5];
+    //model = glm::scale(model, vec3((defaultTileScale.x * 10.0f) + 0.1f, defaultTileScale.y * 2.0f, 1.0f));
+
+    //gState->playerRack.object = racksSpaces[5];
+vec3 rackCenter =
+    (vec3(rackSpaces[5][3]) + vec3(rackSpaces[6][3])) * 0.5f;
+
+rackCenter.y =
+    (vec3(rackSpaces[5][3]).y + vec3(rackSpaces[17][3]).y) * 0.5f;
+
+    mat4 rackCenterModel = glm::translate(mat4(1.0f), rackCenter);
+    rackCenterModel = glm::scale(rackCenterModel, vec3((defaultTileScale.x * TABLE_SCALE * 12.0f), defaultTileScale.y * TABLE_SCALE * 2.0f, 1.0f));
 
     gState->playerRack.object = GameObject {
         vec3(0.0f),
-        model,
+        rackCenterModel,
         -1
     };
 }
@@ -991,9 +1002,6 @@ void draw_pool() {
  //   };
 
  //   gMemory->push_entity_fn(gMemory->renderBuffer, &face);
-
-    
-
 }
 
 void draw_player_rack() {
@@ -1008,20 +1016,28 @@ void draw_player_rack() {
         gMemory->push_entity_fn(gMemory->renderBuffer, &X);
     }
 
+//    RenderEntryEntity sides = RenderEntryEntity {
+//        gState->playerRack.object.model,
+//        gState->quadMesh,
+//        TILE_SLOT_T,
+//        vec4(1.0f)
+//    };
+//
+//    gMemory->push_entity_fn(gMemory->renderBuffer, &sides);
+
     if(activesShown) {
         for(i32 i = 0; i < gState->player.numberOfActives; ++i) {
-            if(gState->player.heldActiveId == gState->player.activeIds[i]) continue;
+            if(gState->player.heldActiveId == i) continue;
             
-            Active *active = &gState->actives[gState->player.activeIds[i]];
+            Active active = gState->player.actives[i];
 
             RenderEntryEntity activeEntry = RenderEntryEntity {
-                //glm::scale(rackSpaces[i], vec3(1.0f, TABLE_SCALE, 0.0f)),
-                active->object.model,
+                active.object.model,
                 gState->quadMesh,
                 ACTIVES_T,
                 vec4(1.0f),
                 true,
-                gState->player.activeIds[i],
+                active.id,
                 false,
                 vec2(0.0f),
                 ACTIVE_COLUMNS,
@@ -1127,7 +1143,7 @@ void draw_held_tile() {
 
 void draw_held_active() {
     if(gState->player.heldActiveId == -1) return;
-    Active *active = &gState->actives[gState->player.heldActiveId];
+    Active *active = &gState->player.actives[gState->player.heldActiveId];
     vec4 color = vec4(0.0f, 0.0f, 0.0f, 0.4f);
 
     mat4 model = glm::scale(active->object.model, vec3(1.0f));
@@ -1149,7 +1165,7 @@ void draw_held_active() {
         ACTIVES_T,
         vec4(1.0f),
         true,
-        gState->player.heldActiveId,
+        active->id,
         false,
         vec2(0.0f),
         ACTIVE_COLUMNS,
@@ -1174,7 +1190,7 @@ void check_active_hovered(f64 xpos, f64 ypos) {
     if(!name || !rarity || !desc) return;
 
     for(i32 i = 0; i < gState->player.numberOfActives; ++i) {
-        Active* active = &gState->actives[gState->player.activeIds[i]];
+        Active* active = &gState->player.actives[i];
         if(!active) {
             printf("ERROR RETRIEVING ACTIVE DURING HOVERING\n");
             return;
@@ -1338,7 +1354,7 @@ void check_tile_hovered(f64 xpos, f64 ypos) {
 
 void grab_active(f64 xpos, f64 ypos) {
     for(i32 i = 0; i < gState->player.numberOfActives; ++i) {
-        Active* active = &gState->actives[gState->player.activeIds[i]];
+        Active *active = &gState->player.actives[i];
 
         if(active->isHovered) {
             //active->originalPosition = active->object.model;
@@ -1346,7 +1362,7 @@ void grab_active(f64 xpos, f64 ypos) {
             vec3 pos = vec3(active->object.model[3]);
             active->grabOffset = vec2(pos.x - xpos, pos.y - ypos);
 
-            gState->player.heldActiveId = gState->player.activeIds[i];
+            gState->player.heldActiveId = i;//gState->player.activeIds[i];
             return;
         }
     }
@@ -1423,7 +1439,7 @@ void drag_tile(f64 xpos, f64 ypos) {
 
 void drag_active(f64 xpos, f64 ypos) {
     if (gState->player.heldActiveId == -1) return;
-    Active *active = &gState->actives[gState->player.heldActiveId];
+    Active *active = &gState->player.actives[gState->player.heldActiveId];
 
     vec2 pos = vec2(xpos, ypos) + active->grabOffset;
 
@@ -2288,36 +2304,34 @@ void release_tile() {
 }
 
 void remove_active() {
-    for (i32 i = 0; i < gState->player.numberOfActives; ++i) {
-        if (gState->player.activeIds[i] == gState->player.heldActiveId) {
-            for (i32 j = i; j < gState->player.numberOfActives - 1; ++j) {
-                gState->player.activeIds[j] = gState->player.activeIds[j + 1];
-            }
+    i32 index = gState->player.heldActiveId;
 
-            gState->player.activeIds[gState->player.numberOfActives - 1] = -1;
-
-            gState->player.numberOfActives--;
-            gState->player.heldActiveId = -1;
-            return;
-        }
+    for (i32 j = index; j < gState->player.numberOfActives - 1; ++j) {
+        //gState->player.activeIds[j] = gState->player.activeIds[j + 1];
+        gState->player.actives[j] = gState->player.actives[j + 1];
     }
+
+    //gState->player.activeIds[gState->player.numberOfActives - 1] = -1;
+
+    gState->player.numberOfActives--;
+    gState->player.heldActiveId = -1;
 }
 
 void sort_active_rack() {
-    for(i32 i = 0; i < gState->player.numberOfActives; ++i) {
-        Active *active = &gState->actives[gState->player.activeIds[i]];
-        active->object.model = rackSpaces[i];
-    } 
+    for (i32 i = 0; i < gState->player.numberOfActives; ++i) {
+        gState->player.actives[i].object.model = rackSpaces[i];
+        gState->player.actives[i].originalPosition = rackSpaces[i];
+    }
 }
 
 void release_active() {
     //check if inside pool
     if(gState->player.heldActiveId != -1) {
-        Active *active = &gState->actives[gState->player.heldActiveId];
+        Active *active = &gState->player.actives[gState->player.heldActiveId];
 
         if(is_inside_pool(active->object.model)) {
             active->item.action(nullptr);
-            active->object.model = gState->pool.object.model;
+            //active->object.model = gState->pool.object.model;
             active->originalPosition = gState->pool.object.model;
             remove_active();
             sort_active_rack();
@@ -2391,7 +2405,7 @@ void add_actives_ui(u8 animated) {
         };
 
         relic.sheetAnimation = {ACTIVE_COLUMNS, ACTIVE_ROWS};
-        relic.sheetAnimation.currentFrame = gState->player.activeIds[i];
+        relic.sheetAnimation.currentFrame = gState->player.actives[i].id;//gState->player.activeIds[i];
         relicIds[i] = add_ui_element(gState->uiPage, relic);
     }
 
@@ -2758,7 +2772,12 @@ void add_in_game_ui() {
     drawsRemaining.haveCountAnimation = false;
     add_text_bob(&drawsRemaining);
     drawsRemaining.animations[drawsRemaining.numberOfAnimations - 1].autoAnimate = true;
-    add_dynamic_text_element(gState->uiPage, drawsRemaining, "", 1, TextType::INT_32);
+    i32 test = add_dynamic_text_element(gState->uiPage, drawsRemaining, "", 1, INT_32);
+    
+    UIElement bckg = UIElement{ CENTER, -1, POOL_T, 0.88f, 0.135f, 0.021f * RENDERING_ASPECT, 0.03f};
+    bckg.sheetAnimation = panelSheet;
+    bckg.isPanel = true;
+    i32 test1 = add_ui_element(gState->uiPage, bckg);
 
     set_round_complete_ui(windowIndex);
 
@@ -2785,6 +2804,34 @@ void add_in_game_ui() {
     add_text_bob(&poolTiles);
     poolTiles.animations[poolTiles.numberOfAnimations - 1].autoAnimate = true;
     add_dynamic_text_element(gState->uiPage, poolTiles, "", 4, TextType::INT_32);
+
+    bckg.posx = 0.785f;
+    bckg.posy = 0.98f;
+    add_ui_element(gState->uiPage, bckg);
+
+    //vec3 rack = vec3(gState->playerRack.object.model[3]);
+
+    vec2 rack = world_to_ui(
+        gState->playerRack.object.model,
+        gMemory->renderBuffer->view,
+        gMemory->renderBuffer->projection        
+    );
+    UIElement bg = UIElement{ CENTER, -1, UI_BG_2_T, rack.x - 0.01f, rack.y, 0.24f, 0.7f};
+    bg.sheetAnimation = panelSheet;
+
+    bg.isPanel = true;
+    //add_ui_element(gState->uiPage, bg);
+
+
+    vec2 poolPos = world_to_ui(
+        gState->pool.object.model,
+        gMemory->renderBuffer->view,
+        gMemory->renderBuffer->projection        
+    );
+    UIElement pool = UIElement{ CENTER, -1, POOL_T, poolPos.x, poolPos.y, 0.1f * RENDERING_ASPECT, 0.1f};
+    pool.sheetAnimation = panelSheet;
+    pool.isPanel = true;
+    //add_ui_element(gState->uiPage, pool);
 }
 
 void add_end_game_ui() {
@@ -2952,7 +2999,7 @@ void add_active() {
         add_ui_element(gState->uiPage, blur);
     }
 
-    gState->player.activeIds[gState->player.numberOfActives] = frame;
+    gState->player.actives[gState->player.numberOfActives] = gState->actives[frame];
     
     //charge the player
     gState->runData.dollaBills -= ACTIVE_TABLE[frame].price;
@@ -3748,7 +3795,6 @@ u8 add_cash(void *ptr) {
 
 void calculate_round_cash(RunData *gd) {
     if(check_challenge_condition(gState)) {
-        printf("CALC R CASH\n");
         ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u64, execute_action);
         if (total) {
             total->action = add_cash;
@@ -3983,6 +4029,13 @@ void end_turn() {
                 if(draw_from_pool(gState->playerRack)) {
                     gState->player.playerData.timesDrawn++;
                     gState->roundData.turnLimit--;
+
+                    if(gState->roundData.turnLimit == 0 && 
+                        gState->uiPage->numberOfImageElements > 18 && 
+                        gState->uiPage->numberOfTextElements > 13) {
+                        gState->uiPage->uiElements[18].color = R_RED;
+                        gState->uiPage->textElements[13].color = R_RED;
+                    }
                 } 
             }
             snapshot_round_start();
@@ -4251,14 +4304,24 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
         gState->player.numberOfActives = 0;
 
         for (i32 i = 0; i < TOTAL_ACTIVES; ++i) {
-            gState->player.activeIds[i] = i;
+            //gState->player.activeIds[i] = i;
 
-            Active *active = &gState->actives[i];
-            active->object.model = rackSpaces[i];
-            active->originalPosition = rackSpaces[i];
+            Active active = gState->actives[i];
+            //active->object.model = rackSpaces[i];
+            //active->originalPosition = rackSpaces[i];
+            gState->player.actives[i] = active;
+            gState->player.actives[i].object.model = rackSpaces[i];
+            gState->player.actives[i].originalPosition = rackSpaces[i];
+
 
             gState->player.numberOfActives++;
         }
+
+        //gState->player.activeIds[8] = 3;
+        gState->player.actives[8] = gState->actives[3];
+        gState->player.actives[8].object.model = rackSpaces[8];
+        gState->player.actives[8].originalPosition = rackSpaces[8];
+        gState->player.numberOfActives++;
     }
 
     if(key == 297 && action == 1) {
@@ -4388,7 +4451,450 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
     }
 }
 
+void log_ui_page(UIPage *page) {
+    FILE *file = fopen("ui_page.log", "w");
+
+    if (!file) {
+        return;
+    }
+
+    fprintf(file, "========== UI PAGE ==========\n");
+
+    fprintf(file, "numberOfImageElements: %d\n", page->numberOfImageElements);
+    fprintf(file, "numberOfTextElements: %d\n", page->numberOfTextElements);
+
+    fprintf(file, "\n========== UI ELEMENTS ==========\n");
+
+    for (i32 i = 0; i < page->numberOfImageElements; ++i) {
+        UIElement *element = &page->uiElements[i];
+
+        fprintf(file, "\nUIElement[%d]\n", i);
+
+        // Print all fields here
+        fprintf(file, "  posx: %f\n", element->posx);
+        fprintf(file, "  posy: %f\n", element->posy);
+        fprintf(file, "  scalex: %f\n", element->width);
+        fprintf(file, "  scaley: %f\n", element->height);
+    }
+
+    fprintf(file, "\n========== TEXT ELEMENTS ==========\n");
+
+    for (i32 i = 0; i < page->numberOfTextElements; ++i) {
+        TextElement *element = &page->textElements[i];
+
+        fprintf(file, "\nTextElement[%d]\n", i);
+
+        fprintf(file, "  posx: %f\n", element->posx);
+        fprintf(file, "  posy: %f\n", element->posy);
+        fprintf(file, "  scale: %f\n", element->scale);
+        fprintf(file, "  valueId: %d\n", element->valueId);
+    }
+
+    fprintf(file, "\n========== END UI PAGE ==========\n");
+
+    fclose(file);
+}
+
+static void log_vec2(FILE *f, const char *name, vec2 v) {
+    fprintf(f, "%s = (%f, %f)\n", name, v.x, v.y);
+}
+
+static void log_vec3(FILE *f, const char *name, vec3 v) {
+    fprintf(f, "%s = (%f, %f, %f)\n", name, v.x, v.y, v.z);
+}
+
+static void log_mat4(FILE *f, const char *name, mat4 m) {
+    fprintf(f, "%s =\n", name);
+
+    for (i32 row = 0; row < 4; ++row) {
+        fprintf(f, "    ");
+
+        for (i32 col = 0; col < 4; ++col) {
+            fprintf(f, "%f ", m[col][row]);
+        }
+
+        fprintf(f, "\n");
+    }
+}
+
+static void log_game_object(FILE *f, const char *name, GameObject *o) {
+    fprintf(f, "\n--- %s ---\n", name);
+
+    log_vec3(f, "pos", o->pos);
+    log_mat4(f, "model", o->model);
+
+    fprintf(f, "textureName = %d\n", o->textureName);
+    fprintf(f, "isAnimated = %d\n", o->isAnimated);
+    fprintf(f, "cols = %d\n", o->cols);
+    fprintf(f, "rows = %d\n", o->rows);
+    fprintf(f, "fps = %d\n", o->fps);
+    fprintf(f, "animTimer = %f\n", o->animTimer);
+    fprintf(f, "currentFrame = %d\n", o->currentFrame);
+
+    log_mat4(f, "target", o->target);
+    log_mat4(f, "baseModel", o->baseModel);
+}
+
+static void log_tile_details(FILE *f, TileDetails *d) {
+    fprintf(f, "    type = %d\n", d->type);
+    fprintf(f, "    tileNumber = %d\n", d->tileNumber);
+    fprintf(f, "    tileColor = %d\n", d->tileColor);
+}
+
+static void log_tile(FILE *f, i32 index, Tile *tile) {
+    fprintf(f, "\n========== TILE[%d] ==========\n", index);
+
+    log_game_object(f, "object", &tile->object);
+
+    fprintf(f, "location = %d\n", tile->location);
+    fprintf(f, "locationIndex = %d\n", tile->locationIndex);
+
+    fprintf(f, "details:\n");
+    log_tile_details(f, &tile->details);
+
+    fprintf(f, "isHovered = %d\n", tile->isHovered);
+
+    log_vec2(f, "grabOffset", tile->grabOffset);
+    log_mat4(f, "originalPosition", tile->originalPosition);
+
+    fprintf(f, "setId = %d\n", tile->setId);
+
+    log_vec2(f, "tableSpace", tile->tableSpace);
+}
+
+static void log_item(FILE *f, i32 index, Item *item) {
+    fprintf(f, "\n---------- ITEM[%d] ----------\n", index);
+
+    fprintf(f, "rarity = %d\n", item->rarity);
+    fprintf(f, "name = %s\n", item->name ? item->name : "(null)");
+    fprintf(f, "description = %s\n",
+            item->description ? item->description : "(null)");
+
+    fprintf(f, "price = %d\n", item->price);
+    fprintf(f, "conditionValue = %d\n", item->conditionValue);
+    fprintf(f, "modifierValue = %d\n", item->modifierValue);
+
+    fprintf(f, "condition = %p\n", (void*)item->condition);
+    fprintf(f, "action = %p\n", (void*)item->action);
+}
+
+static void log_active(FILE *f, i32 index, Active *active) {
+    fprintf(f, "\n========== ACTIVE[%d] ==========\n", index);
+
+    log_game_object(f, "object", &active->object);
+
+    fprintf(f, "item:\n");
+    log_item(f, index, &active->item);
+
+    fprintf(f, "isHovered = %d\n", active->isHovered);
+
+    log_mat4(f, "originalPosition", active->originalPosition);
+    log_vec2(f, "grabOffset", active->grabOffset);
+
+    fprintf(f, "id = %d\n", active->id);
+}
+
+static void log_set(FILE *f, i32 index, Set *set) {
+    fprintf(f, "\n========== SET[%d] ==========\n", index);
+
+    log_game_object(f, "object", &set->object);
+
+    fprintf(f, "id = %d\n", set->id);
+    fprintf(f, "setType = %d\n", set->setType);
+    fprintf(f, "numberOfTiles = %d\n", set->numberOfTiles);
+
+    fprintf(f, "highTileNumber = %d\n", set->highTileNumber);
+    fprintf(f, "lowTileNumber = %d\n", set->lowTileNumber);
+
+    fprintf(f, "lowTileIndex = %d\n", set->lowTileIndex);
+    fprintf(f, "highTileIndex = %d\n", set->highTileIndex);
+
+    fprintf(f, "isComplete = %d\n", set->isComplete);
+    fprintf(f, "isHovered = %d\n", set->isHovered);
+
+    fprintf(f, "tiles:\n");
+
+    for (i32 i = 0; i < 13; ++i) {
+        fprintf(f, "    tiles[%d] = %p\n", i, (void*)set->tiles[i]);
+
+        if (set->tiles[i]) {
+            fprintf(f, "        tileNumber = %d\n",
+                    set->tiles[i]->details.tileNumber);
+            fprintf(f, "        tileColor = %d\n",
+                    set->tiles[i]->details.tileColor);
+            fprintf(f, "        location = %d\n",
+                    set->tiles[i]->location);
+            fprintf(f, "        locationIndex = %d\n",
+                    set->tiles[i]->locationIndex);
+            fprintf(f, "        setId = %d\n",
+                    set->tiles[i]->setId);
+        }
+    }
+
+    fprintf(f, "relicIds:\n");
+
+    for (i32 i = 0; i < MAX_RELICS; ++i) {
+        fprintf(f, "    relicIds[%d] = %d\n", i, set->relicIds[i]);
+    }
+}
+
+static void log_pool(FILE *f, Pool *pool) {
+    fprintf(f, "\n\n========== POOL ==========\n");
+
+    log_game_object(f, "object", &pool->object);
+
+    fprintf(f, "numberOfTiles = %d\n", pool->numberOfTiles);
+
+    fprintf(f, "tiles:\n");
+
+    for (i32 i = 0; i < TOTAL_TILES; ++i) {
+        fprintf(f, "    tiles[%d] = %p\n", i, (void*)pool->tiles[i]);
+    }
+}
+
+static void log_rack(FILE *f, Rack *rack) {
+    fprintf(f, "\n\n========== RACK ==========\n");
+
+    log_game_object(f, "object", &rack->object);
+
+    fprintf(f, "numberOfTiles = %d\n", rack->numberOfTiles);
+
+    fprintf(f, "tiles:\n");
+
+    for (i32 i = 0; i < TOTAL_TILES; ++i) {
+        fprintf(f, "    tiles[%d] = %p\n", i, (void*)rack->tiles[i]);
+    }
+}
+
+static void log_table_space(FILE *f, i32 row, i32 col, TableSpace *space) {
+    fprintf(f, "\nTableSpace[%d][%d]\n", row, col);
+
+    log_mat4(f, "object", space->object);
+
+    fprintf(f, "isOccupied = %d\n", space->isOccupied);
+    fprintf(f, "isHovered = %d\n", space->isHovered);
+}
+
+static void log_table(FILE *f, Table *table) {
+    fprintf(f, "\n\n========== TABLE ==========\n");
+
+    log_game_object(f, "object", &table->object);
+
+    fprintf(f, "numberOfSets = %d\n", table->numberOfSets);
+    fprintf(f, "value = %llu\n", table->value);
+    fprintf(f, "isValid = %d\n", table->isValid);
+    fprintf(f, "longestRunSize = %d\n", table->longestRunSize);
+    fprintf(f, "numberOfTileColors = %d\n", table->numberOfTileColors);
+
+    fprintf(f, "\nSETS:\n");
+
+    for (i32 i = 0; i < TOTAL_TILES; ++i) {
+        log_set(f, i, &table->sets[i]);
+    }
+
+    fprintf(f, "\nTABLE SPACES:\n");
+
+    for (i32 row = 0; row < TABLE_ROWS; ++row) {
+        for (i32 col = 0; col < TABLE_COLUMNS; ++col) {
+            log_table_space(f, row, col, &table->tableSpaces[row][col]);
+        }
+    }
+}
+
+static void log_round_data(FILE *f, RoundData *data) {
+    fprintf(f, "\n========== ROUND DATA ==========\n");
+
+    fprintf(f, "turnLimit = %d\n", data->turnLimit);
+    fprintf(f, "minimumScore = %llu\n", data->minimumScore);
+    fprintf(f, "roundScore = %llu\n", data->roundScore);
+
+    fprintf(f, "roundWinCondition = %p\n",
+            (void*)data->roundWinCondition);
+
+    fprintf(f, "roundLoseCondition = %p\n",
+            (void*)data->roundLoseCondition);
+
+    fprintf(f, "desc = \"%s\"\n", data->desc);
+    fprintf(f, "cashReward = %llu\n", data->cashReward);
+    fprintf(f, "difficulty = %d\n", data->difficulty);
+    fprintf(f, "value = %d\n", data->value);
+}
+
+static void log_player(FILE *f, Player *player) {
+    fprintf(f, "\n\n========== PLAYER ==========\n");
+
+    fprintf(f, "playerData.timesDrawn = %d\n",
+            player->playerData.timesDrawn);
+
+    fprintf(f, "playerData.runMultipliers = %d\n",
+            player->playerData.runMultipliers);
+
+    fprintf(f, "playerData.groupMultipliers = %d\n",
+            player->playerData.groupMultipliers);
+
+    fprintf(f, "heldTile = %p\n", (void*)player->heldTile);
+
+    fprintf(f, "numberOfRelics = %d\n", player->numberOfRelics);
+
+    fprintf(f, "\nRELICS:\n");
+
+    for (i32 i = 0; i < MAX_RELICS; ++i) {
+        fprintf(f, "    relics[%d] = %d\n", i, player->relics[i]);
+    }
+
+    fprintf(f, "\nheldActiveId = %d\n", player->heldActiveId);
+    fprintf(f, "numberOfActives = %d\n", player->numberOfActives);
+
+    fprintf(f, "\nACTIVES:\n");
+
+    for (i32 i = 0; i < MAX_ACTIVES; ++i) {
+        log_active(f, i, &player->actives[i]);
+    }
+}
+
+static void log_run_data(FILE *f, RunData *data) {
+    fprintf(f, "\n========== RUN DATA ==========\n");
+
+    fprintf(f, "dollaBills = %llu\n", data->dollaBills);
+    fprintf(f, "rounds = %llu\n", data->rounds);
+    fprintf(f, "currentRoundType = %d\n", data->currentRoundType);
+}
+
+static void log_rules(FILE *f, ValidationRules *rules) {
+    fprintf(f, "\n========== VALIDATION RULES ==========\n");
+
+    fprintf(f, "minSetSize = %d\n", rules->minSetSize);
+    fprintf(f, "rainbowRunEnabled = %d\n", rules->rainbowRunEnabled);
+    fprintf(f, "rainbowRunSetId = %d\n", rules->rainbowRunSetId);
+}
+
+void log_game_state(GameState *state) {
+    FILE *f = fopen("game_state.log", "w");
+
+    if (!f) {
+        return;
+    }
+
+    fprintf(f, "############################################################\n");
+    fprintf(f, "#                    GAME STATE LOG                        #\n");
+    fprintf(f, "############################################################\n");
+
+    fprintf(f, "\n========== BASIC ==========\n");
+
+    fprintf(f, "GameState address = %p\n", (void*)state);
+    fprintf(f, "quadMesh = %u\n", state->quadMesh);
+    fprintf(f, "deltaTime = %f\n", state->deltaTime);
+
+    fprintf(f, "\nRNG:\n");
+    fprintf(f, "    state = %llu\n", state->rng.state);
+
+    fprintf(f, "\nuiPage = %p\n", (void*)state->uiPage);
+
+    fprintf(f, "\nmode = %d\n", state->mode);
+    fprintf(f, "pageState = %d\n", state->pageState);
+    fprintf(f, "prevState = %d\n", state->prevState);
+
+    /*
+        ALL TILES
+    */
+    fprintf(f, "\n\n############################################################\n");
+    fprintf(f, "#                         TILES                            #\n");
+    fprintf(f, "############################################################\n");
+
+    for (i32 i = 0; i < TOTAL_TILES; ++i) {
+        log_tile(f, i, &state->tiles[i]);
+    }
+
+    /*
+        RELICS
+    */
+    fprintf(f, "\n\n############################################################\n");
+    fprintf(f, "#                         RELICS                           #\n");
+    fprintf(f, "############################################################\n");
+
+    for (i32 i = 0; i < TOTAL_RELICS; ++i) {
+        log_item(f, i, &state->relics[i]);
+    }
+
+    /*
+        ACTIVES
+    */
+    fprintf(f, "\n\n############################################################\n");
+    fprintf(f, "#                         ACTIVES                          #\n");
+    fprintf(f, "############################################################\n");
+
+    for (i32 i = 0; i < TOTAL_ACTIVES; ++i) {
+        log_active(f, i, &state->actives[i]);
+    }
+
+    /*
+        PLAYER
+    */
+    log_player(f, &state->player);
+
+    /*
+        ROUND SNAPSHOT
+    */
+    fprintf(f, "\n\n############################################################\n");
+    fprintf(f, "#                     ROUND SNAPSHOT                       #\n");
+    fprintf(f, "############################################################\n");
+
+    fprintf(f, "\nROUND SNAPSHOT TILES:\n");
+
+    for (i32 i = 0; i < TOTAL_TILES; ++i) {
+        log_tile(f, i, &state->roundStart.tiles[i]);
+    }
+
+    fprintf(f, "\nROUND SNAPSHOT TABLE:\n");
+    log_table(f, &state->roundStart.table);
+
+    fprintf(f, "\nROUND SNAPSHOT POOL:\n");
+    log_pool(f, &state->roundStart.pool);
+
+    fprintf(f, "\nROUND SNAPSHOT RACK:\n");
+    log_rack(f, &state->roundStart.rack);
+
+    /*
+        RUN DATA
+    */
+    log_run_data(f, &state->runData);
+
+    /*
+        ROUND DATA
+    */
+    log_round_data(f, &state->roundData);
+
+    /*
+        RULES
+    */
+    log_rules(f, &state->rules);
+
+    /*
+        CURRENT POOL / RACK / TABLE
+    */
+    log_pool(f, &state->pool);
+    log_rack(f, &state->playerRack);
+    log_table(f, &state->table);
+
+    /*
+        COMMAND QUEUE
+    */
+    fprintf(f, "\n\n========== COMMAND QUEUE ==========\n");
+
+    fprintf(f, "base = %p\n", (void*)state->cmdQueue.base);
+    fprintf(f, "size = %llu\n", state->cmdQueue.size);
+    fprintf(f, "readIndex = %llu\n", state->cmdQueue.readIndex);
+    fprintf(f, "writeIndex = %llu\n", state->cmdQueue.writeIndex);
+
+    fprintf(f, "\n############################################################\n");
+    fprintf(f, "#                       END LOG                            #\n");
+    fprintf(f, "############################################################\n");
+
+    fclose(f);
+}
+
 extern "C" GAME_DLL void game_shutdown() {
-    printf("SHUTDOWN!\n");
     save_profile(activeProfile);
+    log_ui_page(gState->uiPage);
+    log_game_state(gState);
 }

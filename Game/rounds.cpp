@@ -37,7 +37,6 @@ void check_set_value_rules(Set *set, u64* hoveredSetValue, ROUND_TYPE type) {
         case CURSED_RED: {
             i32 cursedValue = get_cursed_color_values(set, 0);
             *hoveredSetValue -= cursedValue;
-            printf("here!\n");
             break;
         }
         case CURSED_BLUE: {
