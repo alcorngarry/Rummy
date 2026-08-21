@@ -442,10 +442,10 @@ Item RELIC_TABLE[TOTAL_RELICS] = {
     { EXCEEDINGLY_RARE, "Ruler 8", "Every set with exactly eight tiles gets eight times the points.", 3, 8, 4, size_equals_condition, multiplier_action },
     //these need to change names..
     { COMMON, "Even Steven", "Every even set gets +20.", 1, 2, 20, set_even_condition, addition_action },
-    { COMMON, "Odd Todd", "Every odd set gets +20.", 1, 2, 20, set_odd_condition, addition_action },
+    { COMMON, "Odd Todd", "Every odd set gets +20.", 1, 2, 20, set_odd_condition, addition_action }
     //These need to be added
-    { RARE, "SkullDuggery", "TO DO ADD HERE", 2, 1, 1, set_even_condition, addition_action },
-    { RARE, "Crok Jock", "TO DO ADD HERE", 2, 1, 1, set_even_condition, addition_action }
+  //  { RARE, "SkullDuggery", "TO DO ADD HERE", 2, 1, 1, set_even_condition, addition_action },
+   // { RARE, "Crok Jock", "TO DO ADD HERE", 2, 1, 1, set_even_condition, addition_action }
 };
 
 u64 get_set_value(Set *set) {
@@ -564,12 +564,12 @@ u8 allow_rainbow_run(void *ptr) {
 }
 
 Item ACTIVE_TABLE[TOTAL_ACTIVES] = {
-    { COMMON, "Pawn Shop", "Sell any relic or active for $$$.", 1, 1, 1, nullptr, sell_item},
+    //{ COMMON, "Pawn Shop", "Sell any relic or active for $$$.", 1, 1, 1, nullptr, sell_item},
     { RARE, "Wild Joker", "One 'FREE' joker added to the rack.", 2, 1, 1, nullptr, add_new_joker},
-    { EXCEEDINGLY_RARE, "Wrap", "Allows '12' Tiles to connect to '1' tiles", 3, 1, 1, nullptr, nullptr},
+    //{ EXCEEDINGLY_RARE, "Wrap", "Allows '12' Tiles to connect to '1' tiles", 3, 1, 1, nullptr, nullptr},
     { EXCEEDINGLY_RARE, "Twins Basil", "Sets of two are allowed for the current round.", 3, 1, 1, nullptr, allow_twins_for_round},
     { COMMON, "Discard", "Discard one tile from the rack.", 1, 1, 1, nullptr, discard},
-    { COMMON, "Peak Next 5", "'Peak' at next five draws from the pool.", 1, 1, 1, nullptr, show_next_five_in_pool},
+    { COMMON, "'Peak' Next 5", "'Peak' at next five draws from the pool.", 1, 1, 1, nullptr, show_next_five_in_pool},
     { RARE, "Color Wheel", "Repaint one tile's color.", 2, 1, 1, nullptr, repaint_tile},
     { RARE, "Rainbow Run", "One run on the table is able to ignore tile color.", 2, 1, 1, nullptr, allow_rainbow_run}
 };
@@ -1252,7 +1252,7 @@ void check_active_hovered(f64 xpos, f64 ypos) {
 }
 
 void show_paint_hovered_window(vec2 pos) {
-    UIElement* bg = get_element_by_parent_id(gState->uiPage, 97);
+    UIElement* bg = get_element_by_parent_id(gState->uiPage, 93);
     if (!bg) return;
 
     pos.x = pos.x / RENDERING_ASPECT;
@@ -1290,7 +1290,7 @@ void show_paint_hovered_window(vec2 pos) {
 }
 
 void hide_paint_hovered_window() {
-    UIElement* bg = get_element_by_parent_id(gState->uiPage, 97);
+    UIElement* bg = get_element_by_parent_id(gState->uiPage, 93);
     if (!bg) return;
 
     bg->visible = false;
@@ -2445,6 +2445,8 @@ void add_actives_ui(u8 animated) {
 void set_round_type() {
     if(gState->pageState == MAIN_MENU || gState->pageState == END_GAME || gState->pageState == OPTIONS) {
         gState->runData.currentRoundType = MIN_SCORE;
+        gState->runData.rounds = 1;
+        gState->runData.dollaBills = 0;
         clear_player_data();
         start_transition();
     } else {
@@ -3517,17 +3519,16 @@ void add_item_window() {
 }
 
 void add_paint_window() {
-    UIElement relicDesc = UIElement{ CENTER, 97, TOOL_TIP_T, 0, 0, 0.1f, 0.15f};
-    //relicDesc.color = R_DARK_GRAY;
+    UIElement relicDesc = UIElement{ CENTER, 93, TOOL_TIP_T, 0, 0, 0.1f, 0.15f};
     relicDesc.visible = false;
     relicDesc.sheetAnimation = SheetAnimation{3, 3};
     relicDesc.isPanel = true;
 
 
-    i32 red = add_button(gState->uiPage, BUTTON_T, "", vec2(0.0f), vec2(0.05f, 0.02f), R_RED, 22, 3);
-    i32 green = add_button(gState->uiPage, BUTTON_T, "", vec2(0.0f), vec2(0.05f, 0.02f), R_GREEN, 23, 3);
-    i32 blue = add_button(gState->uiPage, BUTTON_T, "", vec2(0.0f), vec2(0.05f, 0.02f), R_BLUE, 24, 3);
-    i32 black = add_button(gState->uiPage, BUTTON_T, "", vec2(0.0f), vec2(0.05f, 0.02f), R_BLACK, 25, 3);
+    i32 red = add_button(gState->uiPage, BUTTON_T, "", vec2(0.0f), vec2(0.05f, 0.02f), R_RED, 22);
+    i32 green = add_button(gState->uiPage, BUTTON_T, "", vec2(0.0f), vec2(0.05f, 0.02f), R_GREEN, 23);
+    i32 blue = add_button(gState->uiPage, BUTTON_T, "", vec2(0.0f), vec2(0.05f, 0.02f), R_BLUE, 24);
+    i32 black = add_button(gState->uiPage, BUTTON_T, "", vec2(0.0f), vec2(0.05f, 0.02f), R_BLACK, 25);
 
     relicDesc.dependentElements[relicDesc.numberOfDependentElements++] = &gState->uiPage->uiElements[red];
     relicDesc.dependentElements[relicDesc.numberOfDependentElements++] = &gState->uiPage->uiElements[green];
@@ -3540,14 +3541,7 @@ void add_paint_window() {
     gState->uiPage->uiElements[green].visible = false;
     gState->uiPage->uiElements[blue].visible = false;
     gState->uiPage->uiElements[black].visible = false;
-    
-    //name
-    //add_dependent_text_element(gState->uiPage, relicDescId, add_text_element(gState->uiPage, relicDetails)); 
-    //rarity
-    //add_dependent_text_element(gState->uiPage, relicDescId, add_text_element(gState->uiPage, relicDetails)); 
-    //description
-    //add_dependent_text_element(gState->uiPage, relicDescId, add_text_element(gState->uiPage, relicDetails)); 
-}
+ }
 
 void add_relics_ui() {
     set_page_state(RELIC);

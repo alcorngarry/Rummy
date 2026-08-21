@@ -7,12 +7,12 @@
 #include "profile.h"
 
 #define TOTAL_TILES 60
-#define TOTAL_RELICS 10
+#define TOTAL_RELICS 8
 #define MAX_RELICS 50
 #define RELIC_ROWS 4
 #define RELIC_COLUMNS 3
 
-#define TOTAL_ACTIVES 8
+#define TOTAL_ACTIVES 6
 #define MAX_ACTIVES 24
 #define ACTIVE_ROWS 3
 #define ACTIVE_COLUMNS 3
