@@ -3219,48 +3219,45 @@ void add_shop_purchase_menu(u8 isRelic) {
 
     TextElement relicName = TextElement{ Anchor::CENTER, "", 0.26f, 0.3f, -1, true, DEFAULT_FONT_SCALE, vec3(R_WHITE)}; 
     snprintf(relicName.text, sizeof(relicName.text), "%s", name1);
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicName));
+    add_dependent_text_element(gState->uiPage, relicBg1, add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicName)));
     relicName.posx += 0.24f;
     snprintf(relicName.text, sizeof(relicName.text), "%s", name2);
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicName));
+    add_dependent_text_element(gState->uiPage, relicBg2, add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicName)));
     relicName.posx += 0.24f;
     snprintf(relicName.text, sizeof(relicName.text), "%s", name3);
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicName));
+    add_dependent_text_element(gState->uiPage, relicBg3, add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicName)));
 
     TextElement relicRarity = TextElement{ Anchor::CENTER, "", 0.26f, 0.5f, -1, true, DEFAULT_FONT_SCALE * 2.0f, vec3(R_WHITE)}; 
     snprintf(relicRarity.text, sizeof(relicRarity.text), "%s", rarity1);
-    //relicRarity.color = rarity_to_color(rarity1);
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicRarity));
+    add_dependent_text_element(gState->uiPage, relicBg1, add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicRarity)));
     relicRarity.posx += 0.24f;
     snprintf(relicRarity.text, sizeof(relicRarity.text), "%s", rarity2);
-    //relicRarity.color = rarity_to_color(gState->relics[relicIds[1]].rarity);
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicRarity));
+    add_dependent_text_element(gState->uiPage,  relicBg2, add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicRarity)));
     relicRarity.posx += 0.24f;
     snprintf(relicRarity.text, sizeof(relicRarity.text), "%s", rarity3);
-    //relicRarity.color = rarity_to_color(gState->relics[relicIds[2]].rarity);
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicRarity));
+    add_dependent_text_element(gState->uiPage, relicBg3,  add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicRarity)));
 
     TextElement relicDesc = TextElement{ Anchor::CENTER, "", 0.26f, 0.575f, -1, true, DEFAULT_FONT_SCALE, vec3(R_WHITE)}; 
     relicDesc.maxWidth = 0.3f;
     snprintf(relicDesc.text, sizeof(relicDesc.text), "%s", desc1);
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicDesc));
+    add_dependent_text_element(gState->uiPage, relicBg1, add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicDesc)));
     relicDesc.posx += 0.24f;
     snprintf(relicDesc.text, sizeof(relicDesc.text), "%s", desc2);
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicDesc));
+    add_dependent_text_element(gState->uiPage, relicBg2,  add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicDesc)));
     relicDesc.posx += 0.24f;
     snprintf(relicDesc.text, sizeof(relicDesc.text), "%s", desc3);
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicDesc));
+    add_dependent_text_element(gState->uiPage, relicBg3,  add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicDesc)));
 
     TextElement relicPrice = TextElement{ Anchor::CENTER, "", 0.26f, 0.725f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_YELLOW)}; 
     relicPrice.maxWidth = 0.3f;
     snprintf(relicPrice.text, sizeof(relicPrice.text), "$%d", price1);
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicPrice));
+    add_dependent_text_element(gState->uiPage, relicBg1, add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicPrice)));
     relicPrice.posx += 0.24f;
     snprintf(relicPrice.text, sizeof(relicPrice.text), "$%d", price2);
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicPrice));
+    add_dependent_text_element(gState->uiPage, relicBg2, add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicPrice)));
     relicPrice.posx += 0.24f;
     snprintf(relicPrice.text, sizeof(relicPrice.text), "$%d", price3);
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicPrice));
+    add_dependent_text_element(gState->uiPage, relicBg3, add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicPrice)));
 
 
     add_image_to_window(gState->uiPage, windowIndex, relic1);

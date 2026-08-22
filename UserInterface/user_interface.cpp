@@ -104,10 +104,10 @@ void check_elements_hovered(UIPage* page, f64 xpos, f64 ypos) {
         if (ui_point_inside(page->uiElements[i], xpos, ypos) && page->uiElements[i].visible) {
             page->uiElements[i].hovered = true;
             page->elementHovered = i; 
-
             break;
         } else {
             page->uiElements[i].hovered = false;
+            if(page->uiElements[i].basePos.x != -1) button_release(page, &page->uiElements[i]);
         }
     }
 
@@ -792,6 +792,7 @@ i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 
     button.hasShadow = true;
     button.isPanel = true;
     button.zIndex = zIndex;
+    button.hoverColor = color * vec4(0.8f, 0.8f, 0.8f, 1.0f);
 
     //Animation buttonClick = Animation{vec2(button.posx, button.posy + 0.01f), pos};
     //button.animations[button.numberOfAnimations++] = buttonClick;
@@ -1030,7 +1031,7 @@ void add_image_to_window(UIPage *page, i32 windowId, i32 elementId) {
     }
 }
 
-void add_text_to_window(UIPage *page, i32 windowId, i32 elementId) {
+i32 add_text_to_window(UIPage *page, i32 windowId, i32 elementId) {
     UIElement *window = &page->uiElements[windowId];
     TextElement *text = &page->textElements[elementId];
 
@@ -1048,6 +1049,7 @@ void add_text_to_window(UIPage *page, i32 windowId, i32 elementId) {
     textAnimation->autoAnimate = true;
 
     *add_dependent_text_element(window->dependentTextElements, &window->numberOfDependentTextElements) = text;
+    return elementId;
 }
 
 void add_button_to_window(UIPage *page, i32 windowId, i32 elementId) {
@@ -1098,33 +1100,44 @@ void add_button_to_window(UIPage *page, i32 windowId, i32 elementId) {
 
 void button_press(UIPage *page, void* ptr) {
     UIElement* el = (UIElement*)ptr;
+    
+    el->basePos = vec2(el->posx, el->posy);
 
-    // for options will likely use an imageChild
-    if(el->onCompleteActionId != -1) {
-    } else {
-        //vec2 destination = el->animations[0].destination;
-        //el->posy = destination.y;
-        //// only for actual buttons
-        //if(el->textChild) {
-        //    el->textChild->posy = destination.y;
-        //}
+    el->posy += 0.01f;
+    for(i32 i = 0; i < el->numberOfDependentElements; ++i) {
+       el->dependentElements[i]->posy += 0.01f;
     }
+    
+    for(i32 i = 0; i < el->numberOfDependentTextElements; ++i) {
+       el->dependentTextElements[i]->posy += 0.01f;
+    }
+    if(el->textChild) el->textChild->posy += 0.01f;
+    if(el->imageChildId != -1) page->uiElements[el->imageChildId].posy += 0.01f;
+
 }
 
 void button_release(UIPage *page, void* ptr) {
     UIElement* el = (UIElement*)ptr;
-    // for options will likely use an imageChild
-    if(el->onCompleteActionId != -1) {
-        RUN_ON_COMPLETE_ACTION(page, el);
-    } else {
-      //  vec2 start = el->animations[0].start;
-      //  el->posy = start.y;
+    if(el->basePos.x == -1.0f) return;
 
-      //  // only for actual buttons
-      //  if(el->textChild) {
-      //      el->textChild->posy = start.y;
-      //  }
+    el->posy -= 0.01f;
+
+    for(i32 i = 0; i < el->numberOfDependentElements; ++i) {
+       el->dependentElements[i]->posy -= 0.01f;
     }
+    
+    for(i32 i = 0; i < el->numberOfDependentTextElements; ++i) {
+       el->dependentTextElements[i]->posy -= 0.01f;
+    }
+
+    if(el->textChild) el->textChild->posy -= 0.01f;
+    
+    if(el->onCompleteActionId != -1) RUN_ON_COMPLETE_ACTION(page, el);
+    if(el->imageChildId != -1) page->uiElements[el->imageChildId].posy -= 0.01f;
+
+    el->posx = el->basePos.x;
+    el->posy = el->basePos.y;
+    el->basePos = vec2(-1.0f);
 }
 
 i32 add_text_element(UIPage* page, TextElement text) {

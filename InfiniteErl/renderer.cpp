@@ -145,7 +145,6 @@ void sort_ui_draw_items(UIDrawItem* items, i32 count) {
 }
 
 void push_ui_page(RenderBuffer* buffer, UIPage* uiPage) {
-    //sort_ui_elements(uiPage->uiElements, uiPage->numberOfImageElements);
     UIDrawItem items[200];
     i32 itemCount = 0;
 
@@ -156,7 +155,6 @@ void push_ui_page(RenderBuffer* buffer, UIPage* uiPage) {
                 uiPage->uiElements[i].zIndex,
                 &uiPage->uiElements[i]
             };
-            //push_ui_image(buffer, &image);
         }
     }
 
@@ -167,7 +165,6 @@ void push_ui_page(RenderBuffer* buffer, UIPage* uiPage) {
                 element.zIndex,
                 &element
             };
-            //push_ui_text(buffer, &text);
         }
     }
 
@@ -192,7 +189,7 @@ void push_ui_page(RenderBuffer* buffer, UIPage* uiPage) {
                     element->sheetAnimation.currentFrame,
                     element->meshHandle,
                     element->isPanel,
-                    element->color,
+                    element->hovered && element->hoverColor.x != -1 ? element->hoverColor : element->color,
                     element->hovered,
                     element->hasShadow
                 };

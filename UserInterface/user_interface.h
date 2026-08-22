@@ -117,6 +117,8 @@ struct UIElement {
   u8 hasShadow = false;
   u8 zIndex = 0;
   i32 val = -1;
+  vec4 hoverColor = vec4(-1.0f);
+  vec2 basePos = vec2(-1.0f);
 };
 
 enum TextType {
@@ -206,7 +208,7 @@ i32 add_ui_element(UIPage* page, UIElement element, bool actionable = false);
 i32 add_text_element(UIPage* page, TextElement text);
 i32 add_dynamic_text_element(UIPage* page, TextElement text, const char* label, i32 valueId, TextType t, f32 mult = 1.0f);
 void add_value_to_text(UIPage* page, TextElement *text, const char* label, i32 valueId, TextType t);
-void add_text_to_window(UIPage *page, i32 windowId, i32 elementId);
+i32 add_text_to_window(UIPage *page, i32 windowId, i32 elementId);
 void add_button_to_window(UIPage *page, i32 windowId, i32 elementId);
 void add_image_to_window(UIPage *page, i32 windowId, i32 elementId);
 void add_move_animation(UIPage *page, i32 elementId, vec2 destination);
