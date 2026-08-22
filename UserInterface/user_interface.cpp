@@ -107,7 +107,7 @@ void check_elements_hovered(UIPage* page, f64 xpos, f64 ypos) {
             break;
         } else {
             page->uiElements[i].hovered = false;
-            if(page->uiElements[i].basePos.x != -1) button_release(page, &page->uiElements[i]);
+            if(page->uiElements[i].pressed) button_release(page, &page->uiElements[i]);
         }
     }
 
@@ -1113,11 +1113,12 @@ void button_press(UIPage *page, void* ptr) {
     }
     if(el->textChild) el->textChild->posy += 0.01f;
     if(el->imageChildId != -1) page->uiElements[el->imageChildId].posy += 0.01f;
-
+    el->pressed = true;
 }
 
 void button_release(UIPage *page, void* ptr) {
     UIElement* el = (UIElement*)ptr;
+    el->pressed = false;
     if(el->basePos.x == -1.0f) return;
 
     el->posy -= 0.01f;
@@ -1132,7 +1133,7 @@ void button_release(UIPage *page, void* ptr) {
 
     if(el->textChild) el->textChild->posy -= 0.01f;
     
-    if(el->onCompleteActionId != -1) RUN_ON_COMPLETE_ACTION(page, el);
+    if(el->onCompleteActionId != -1 && el->hovered) RUN_ON_COMPLETE_ACTION(page, el);
     if(el->imageChildId != -1) page->uiElements[el->imageChildId].posy -= 0.01f;
 
     el->posx = el->basePos.x;

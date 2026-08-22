@@ -22,7 +22,7 @@ typedef void (*ValueToTextFn)(void* value, i32 index, char* out, i32 outSize);
     do { \
         if ((el).actionId != -1) { \
             button_release(gState->uiPage, (void*)&(el)); \
-            gState->uiPage->actions[(el).actionId](); \
+            if((el).hovered) gState->uiPage->actions[(el).actionId](); \
         } \
     } while(0)
 
@@ -119,6 +119,7 @@ struct UIElement {
   i32 val = -1;
   vec4 hoverColor = vec4(-1.0f);
   vec2 basePos = vec2(-1.0f);
+  u8 pressed = false;
 };
 
 enum TextType {
