@@ -67,8 +67,10 @@ extern "C" {
 		void (*push_ui_text_fn)(RenderBuffer*, RenderEntryUIText*);
 		void (*push_ui_image_fn)(RenderBuffer*, RenderEntryUIImage*);
 		void (*push_ui_page_fn)(RenderBuffer*, UIPage*);
-    void (*play_audio_fn)(const char* filename);
+    void (*play_audio_fn)(i32 id);
+    void (*play_audio_pitch_fn)(i32 id, f32 pitch);
     void (*load_home_music_fn)(const char* filename);
+
     void (*set_resolution_fn)(i32 resolutionId);
     void (*format_resolution_fn)(void* value, i32 index, char* out, i32 outSize);
 

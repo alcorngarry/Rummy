@@ -189,8 +189,8 @@ struct UIMemory {
   u32 used;
 
   u32(*load_ui_quad_buffer_fn)(f32* vertices, i32 vertexCount, u32* indices, i32 indexCount);
-  void (*play_audio_fn)(const char* filename);
-  void (*play_audio_pitch_fn)(const char* filename, f32 pitch);
+  void (*play_audio_fn)(i32 id);
+  void (*play_audio_pitch_fn)(i32 id, f32 pitch);
 };
 
 void ui_reset(UIMemory* mem);

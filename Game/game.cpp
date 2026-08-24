@@ -755,7 +755,7 @@ u8 move_tile(void* ptr) {
     self->model[2][2] = currentScale.z;
 
     if (current == target && currentScale == targetScale) {
-        gMemory->play_audio_fn("./audio/place_tile.wav");
+        gMemory->play_audio_pitch_fn(0, 1.0f);
         return true;
     }
 
@@ -789,7 +789,7 @@ u8 add_tile_amount(void* ptr) {
 
     if (t >= 1.0f) {
         self->model = self->baseModel;
-        gMemory->play_audio_fn("./audio/place_tile.wav");
+        gMemory->play_audio_fn(0);
 
         return true;
     }
@@ -1205,6 +1205,7 @@ void check_active_hovered(f64 xpos, f64 ypos) {
             if (!active->isHovered) {
                 active->isHovered = true;
                 active->originalPosition = active->object.model;
+                gMemory->play_audio_pitch_fn(0, 2.0f);
             }
 
             mat4 hovered = active->originalPosition;
@@ -1317,6 +1318,7 @@ void check_tile_hovered(f64 xpos, f64 ypos) {
             if (!tile->isHovered) {
                 tile->isHovered = true;
                 tile->originalPosition = tile->object.model;
+                gMemory->play_audio_pitch_fn(0, 2.0f);
             }
 
             mat4 hovered = tile->originalPosition;
@@ -1344,6 +1346,7 @@ void check_tile_hovered(f64 xpos, f64 ypos) {
                           ypos > pos.y - half && ypos < pos.y + half;
 
             if(inside && !tile->isHovered) {
+                gMemory->play_audio_pitch_fn(0, 1.6f);
                 tile->isHovered = true;
             } else if(!inside && tile->isHovered) {
                 tile->isHovered = false;
@@ -2293,7 +2296,7 @@ void release_tile() {
                 tile->object.model = tile->originalPosition;
             }
         }
-        gMemory->play_audio_fn("./audio/place_tile.wav");
+        gMemory->play_audio_fn(0);
     }
     //maybe add set value calculation with relics here?
 
@@ -4325,50 +4328,22 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
     }
 
     if(key == 296 && action == 1) {//home key
-        //gState->player.relics[gState->player.numberOfRelics++] = TYPE_1;
-        //__debugbreak();
-        //add_shop_purchase_menu();
-        //gState->player.activeIds[gState->player.numberOfActives] = 0;
-        //gState->player.numberOfActives++;
-
-        //charge the player
-
-        //gState->runData.dollaBills -= ACTIVE_TABLE[frame].price;
     }
 
     if (key == 78 && action == 1) {
 
-        gMemory->play_audio_fn("./audio/place_tile.wav");
+        gMemory->play_audio_fn(0);
         sort_rack_by_number();
     }
 
     if (key == 67 && action == 1) {
-        gMemory->play_audio_fn("./audio/place_tile.wav");
+        gMemory->play_audio_fn(0);
         sort_rack_by_color();
     }
 
     if (key == 77 && action == 1) { //m
         //add_map_ui();
         //add_end_game_ui();
-        printf("\n");
-        printf("============================================================\n");
-        printf("                         PROFILE\n");
-        printf("============================================================\n");
-
-        printf("Active Profile:     %u\n", activeProfile);
-
-        printf("\n");
-        printf("STATISTICS\n");
-        printf("------------------------------------------------------------\n");
-        printf("Runs Started:       %llu\n", profile.runStarted);
-        printf("Rounds Completed:   %llu\n", profile.roundsCompleted);
-        printf("Highest Round:      %llu\n", profile.highestRound);
-        printf("Tiles Played:       %llu\n", profile.tilesPlayed);
-        printf("Sets Created:       %llu\n", profile.setsCreated);
-        printf("Money Earned:       %llu\n", profile.moneyEarned);
-
-        printf("============================================================\n");
-        printf("\n");
     }
 
     if (key == 294 && action == 1) {
@@ -4420,7 +4395,7 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
 
             if(gState->uiPage->elementHovered != -1 && !gState->player.heldTile) {
                 BUTTON_RELEASE(gState->uiPage->uiElements[gState->uiPage->elementHovered]);
-                gMemory->play_audio_fn("./audio/button_click.wav");
+                gMemory->play_audio_fn(1);
             }
         }
     }
@@ -4442,450 +4417,6 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
     }
 }
 
-void log_ui_page(UIPage *page) {
-    FILE *file = fopen("ui_page.log", "w");
-
-    if (!file) {
-        return;
-    }
-
-    fprintf(file, "========== UI PAGE ==========\n");
-
-    fprintf(file, "numberOfImageElements: %d\n", page->numberOfImageElements);
-    fprintf(file, "numberOfTextElements: %d\n", page->numberOfTextElements);
-
-    fprintf(file, "\n========== UI ELEMENTS ==========\n");
-
-    for (i32 i = 0; i < page->numberOfImageElements; ++i) {
-        UIElement *element = &page->uiElements[i];
-
-        fprintf(file, "\nUIElement[%d]\n", i);
-
-        // Print all fields here
-        fprintf(file, "  posx: %f\n", element->posx);
-        fprintf(file, "  posy: %f\n", element->posy);
-        fprintf(file, "  scalex: %f\n", element->width);
-        fprintf(file, "  scaley: %f\n", element->height);
-    }
-
-    fprintf(file, "\n========== TEXT ELEMENTS ==========\n");
-
-    for (i32 i = 0; i < page->numberOfTextElements; ++i) {
-        TextElement *element = &page->textElements[i];
-
-        fprintf(file, "\nTextElement[%d]\n", i);
-
-        fprintf(file, "  posx: %f\n", element->posx);
-        fprintf(file, "  posy: %f\n", element->posy);
-        fprintf(file, "  scale: %f\n", element->scale);
-        fprintf(file, "  valueId: %d\n", element->valueId);
-    }
-
-    fprintf(file, "\n========== END UI PAGE ==========\n");
-
-    fclose(file);
-}
-
-static void log_vec2(FILE *f, const char *name, vec2 v) {
-    fprintf(f, "%s = (%f, %f)\n", name, v.x, v.y);
-}
-
-static void log_vec3(FILE *f, const char *name, vec3 v) {
-    fprintf(f, "%s = (%f, %f, %f)\n", name, v.x, v.y, v.z);
-}
-
-static void log_mat4(FILE *f, const char *name, mat4 m) {
-    fprintf(f, "%s =\n", name);
-
-    for (i32 row = 0; row < 4; ++row) {
-        fprintf(f, "    ");
-
-        for (i32 col = 0; col < 4; ++col) {
-            fprintf(f, "%f ", m[col][row]);
-        }
-
-        fprintf(f, "\n");
-    }
-}
-
-static void log_game_object(FILE *f, const char *name, GameObject *o) {
-    fprintf(f, "\n--- %s ---\n", name);
-
-    log_vec3(f, "pos", o->pos);
-    log_mat4(f, "model", o->model);
-
-    fprintf(f, "textureName = %d\n", o->textureName);
-    fprintf(f, "isAnimated = %d\n", o->isAnimated);
-    fprintf(f, "cols = %d\n", o->cols);
-    fprintf(f, "rows = %d\n", o->rows);
-    fprintf(f, "fps = %d\n", o->fps);
-    fprintf(f, "animTimer = %f\n", o->animTimer);
-    fprintf(f, "currentFrame = %d\n", o->currentFrame);
-
-    log_mat4(f, "target", o->target);
-    log_mat4(f, "baseModel", o->baseModel);
-}
-
-static void log_tile_details(FILE *f, TileDetails *d) {
-    fprintf(f, "    type = %d\n", d->type);
-    fprintf(f, "    tileNumber = %d\n", d->tileNumber);
-    fprintf(f, "    tileColor = %d\n", d->tileColor);
-}
-
-static void log_tile(FILE *f, i32 index, Tile *tile) {
-    fprintf(f, "\n========== TILE[%d] ==========\n", index);
-
-    log_game_object(f, "object", &tile->object);
-
-    fprintf(f, "location = %d\n", tile->location);
-    fprintf(f, "locationIndex = %d\n", tile->locationIndex);
-
-    fprintf(f, "details:\n");
-    log_tile_details(f, &tile->details);
-
-    fprintf(f, "isHovered = %d\n", tile->isHovered);
-
-    log_vec2(f, "grabOffset", tile->grabOffset);
-    log_mat4(f, "originalPosition", tile->originalPosition);
-
-    fprintf(f, "setId = %d\n", tile->setId);
-
-    log_vec2(f, "tableSpace", tile->tableSpace);
-}
-
-static void log_item(FILE *f, i32 index, Item *item) {
-    fprintf(f, "\n---------- ITEM[%d] ----------\n", index);
-
-    fprintf(f, "rarity = %d\n", item->rarity);
-    fprintf(f, "name = %s\n", item->name ? item->name : "(null)");
-    fprintf(f, "description = %s\n",
-            item->description ? item->description : "(null)");
-
-    fprintf(f, "price = %d\n", item->price);
-    fprintf(f, "conditionValue = %d\n", item->conditionValue);
-    fprintf(f, "modifierValue = %d\n", item->modifierValue);
-
-    fprintf(f, "condition = %p\n", (void*)item->condition);
-    fprintf(f, "action = %p\n", (void*)item->action);
-}
-
-static void log_active(FILE *f, i32 index, Active *active) {
-    fprintf(f, "\n========== ACTIVE[%d] ==========\n", index);
-
-    log_game_object(f, "object", &active->object);
-
-    fprintf(f, "item:\n");
-    log_item(f, index, &active->item);
-
-    fprintf(f, "isHovered = %d\n", active->isHovered);
-
-    log_mat4(f, "originalPosition", active->originalPosition);
-    log_vec2(f, "grabOffset", active->grabOffset);
-
-    fprintf(f, "id = %d\n", active->id);
-}
-
-static void log_set(FILE *f, i32 index, Set *set) {
-    fprintf(f, "\n========== SET[%d] ==========\n", index);
-
-    log_game_object(f, "object", &set->object);
-
-    fprintf(f, "id = %d\n", set->id);
-    fprintf(f, "setType = %d\n", set->setType);
-    fprintf(f, "numberOfTiles = %d\n", set->numberOfTiles);
-
-    fprintf(f, "highTileNumber = %d\n", set->highTileNumber);
-    fprintf(f, "lowTileNumber = %d\n", set->lowTileNumber);
-
-    fprintf(f, "lowTileIndex = %d\n", set->lowTileIndex);
-    fprintf(f, "highTileIndex = %d\n", set->highTileIndex);
-
-    fprintf(f, "isComplete = %d\n", set->isComplete);
-    fprintf(f, "isHovered = %d\n", set->isHovered);
-
-    fprintf(f, "tiles:\n");
-
-    for (i32 i = 0; i < 13; ++i) {
-        fprintf(f, "    tiles[%d] = %p\n", i, (void*)set->tiles[i]);
-
-        if (set->tiles[i]) {
-            fprintf(f, "        tileNumber = %d\n",
-                    set->tiles[i]->details.tileNumber);
-            fprintf(f, "        tileColor = %d\n",
-                    set->tiles[i]->details.tileColor);
-            fprintf(f, "        location = %d\n",
-                    set->tiles[i]->location);
-            fprintf(f, "        locationIndex = %d\n",
-                    set->tiles[i]->locationIndex);
-            fprintf(f, "        setId = %d\n",
-                    set->tiles[i]->setId);
-        }
-    }
-
-    fprintf(f, "relicIds:\n");
-
-    for (i32 i = 0; i < MAX_RELICS; ++i) {
-        fprintf(f, "    relicIds[%d] = %d\n", i, set->relicIds[i]);
-    }
-}
-
-static void log_pool(FILE *f, Pool *pool) {
-    fprintf(f, "\n\n========== POOL ==========\n");
-
-    log_game_object(f, "object", &pool->object);
-
-    fprintf(f, "numberOfTiles = %d\n", pool->numberOfTiles);
-
-    fprintf(f, "tiles:\n");
-
-    for (i32 i = 0; i < TOTAL_TILES; ++i) {
-        fprintf(f, "    tiles[%d] = %p\n", i, (void*)pool->tiles[i]);
-    }
-}
-
-static void log_rack(FILE *f, Rack *rack) {
-    fprintf(f, "\n\n========== RACK ==========\n");
-
-    log_game_object(f, "object", &rack->object);
-
-    fprintf(f, "numberOfTiles = %d\n", rack->numberOfTiles);
-
-    fprintf(f, "tiles:\n");
-
-    for (i32 i = 0; i < TOTAL_TILES; ++i) {
-        fprintf(f, "    tiles[%d] = %p\n", i, (void*)rack->tiles[i]);
-    }
-}
-
-static void log_table_space(FILE *f, i32 row, i32 col, TableSpace *space) {
-    fprintf(f, "\nTableSpace[%d][%d]\n", row, col);
-
-    log_mat4(f, "object", space->object);
-
-    fprintf(f, "isOccupied = %d\n", space->isOccupied);
-    fprintf(f, "isHovered = %d\n", space->isHovered);
-}
-
-static void log_table(FILE *f, Table *table) {
-    fprintf(f, "\n\n========== TABLE ==========\n");
-
-    log_game_object(f, "object", &table->object);
-
-    fprintf(f, "numberOfSets = %d\n", table->numberOfSets);
-    fprintf(f, "value = %llu\n", table->value);
-    fprintf(f, "isValid = %d\n", table->isValid);
-    fprintf(f, "longestRunSize = %d\n", table->longestRunSize);
-    fprintf(f, "numberOfTileColors = %d\n", table->numberOfTileColors);
-
-    fprintf(f, "\nSETS:\n");
-
-    for (i32 i = 0; i < TOTAL_TILES; ++i) {
-        log_set(f, i, &table->sets[i]);
-    }
-
-    fprintf(f, "\nTABLE SPACES:\n");
-
-    for (i32 row = 0; row < TABLE_ROWS; ++row) {
-        for (i32 col = 0; col < TABLE_COLUMNS; ++col) {
-            log_table_space(f, row, col, &table->tableSpaces[row][col]);
-        }
-    }
-}
-
-static void log_round_data(FILE *f, RoundData *data) {
-    fprintf(f, "\n========== ROUND DATA ==========\n");
-
-    fprintf(f, "turnLimit = %d\n", data->turnLimit);
-    fprintf(f, "minimumScore = %llu\n", data->minimumScore);
-    fprintf(f, "roundScore = %llu\n", data->roundScore);
-
-    fprintf(f, "roundWinCondition = %p\n",
-            (void*)data->roundWinCondition);
-
-    fprintf(f, "roundLoseCondition = %p\n",
-            (void*)data->roundLoseCondition);
-
-    fprintf(f, "desc = \"%s\"\n", data->desc);
-    fprintf(f, "cashReward = %llu\n", data->cashReward);
-    fprintf(f, "difficulty = %d\n", data->difficulty);
-    fprintf(f, "value = %d\n", data->value);
-}
-
-static void log_player(FILE *f, Player *player) {
-    fprintf(f, "\n\n========== PLAYER ==========\n");
-
-    fprintf(f, "playerData.timesDrawn = %d\n",
-            player->playerData.timesDrawn);
-
-    fprintf(f, "playerData.runMultipliers = %d\n",
-            player->playerData.runMultipliers);
-
-    fprintf(f, "playerData.groupMultipliers = %d\n",
-            player->playerData.groupMultipliers);
-
-    fprintf(f, "heldTile = %p\n", (void*)player->heldTile);
-
-    fprintf(f, "numberOfRelics = %d\n", player->numberOfRelics);
-
-    fprintf(f, "\nRELICS:\n");
-
-    for (i32 i = 0; i < MAX_RELICS; ++i) {
-        fprintf(f, "    relics[%d] = %d\n", i, player->relics[i]);
-    }
-
-    fprintf(f, "\nheldActiveId = %d\n", player->heldActiveId);
-    fprintf(f, "numberOfActives = %d\n", player->numberOfActives);
-
-    fprintf(f, "\nACTIVES:\n");
-
-    for (i32 i = 0; i < MAX_ACTIVES; ++i) {
-        log_active(f, i, &player->actives[i]);
-    }
-}
-
-static void log_run_data(FILE *f, RunData *data) {
-    fprintf(f, "\n========== RUN DATA ==========\n");
-
-    fprintf(f, "dollaBills = %llu\n", data->dollaBills);
-    fprintf(f, "rounds = %llu\n", data->rounds);
-    fprintf(f, "currentRoundType = %d\n", data->currentRoundType);
-}
-
-static void log_rules(FILE *f, ValidationRules *rules) {
-    fprintf(f, "\n========== VALIDATION RULES ==========\n");
-
-    fprintf(f, "minSetSize = %d\n", rules->minSetSize);
-    fprintf(f, "rainbowRunEnabled = %d\n", rules->rainbowRunEnabled);
-    fprintf(f, "rainbowRunSetId = %d\n", rules->rainbowRunSetId);
-}
-
-void log_game_state(GameState *state) {
-    FILE *f = fopen("game_state.log", "w");
-
-    if (!f) {
-        return;
-    }
-
-    fprintf(f, "############################################################\n");
-    fprintf(f, "#                    GAME STATE LOG                        #\n");
-    fprintf(f, "############################################################\n");
-
-    fprintf(f, "\n========== BASIC ==========\n");
-
-    fprintf(f, "GameState address = %p\n", (void*)state);
-    fprintf(f, "quadMesh = %u\n", state->quadMesh);
-    fprintf(f, "deltaTime = %f\n", state->deltaTime);
-
-    fprintf(f, "\nRNG:\n");
-    fprintf(f, "    state = %llu\n", state->rng.state);
-
-    fprintf(f, "\nuiPage = %p\n", (void*)state->uiPage);
-
-    fprintf(f, "\nmode = %d\n", state->mode);
-    fprintf(f, "pageState = %d\n", state->pageState);
-    fprintf(f, "prevState = %d\n", state->prevState);
-
-    /*
-        ALL TILES
-    */
-    fprintf(f, "\n\n############################################################\n");
-    fprintf(f, "#                         TILES                            #\n");
-    fprintf(f, "############################################################\n");
-
-    for (i32 i = 0; i < TOTAL_TILES; ++i) {
-        log_tile(f, i, &state->tiles[i]);
-    }
-
-    /*
-        RELICS
-    */
-    fprintf(f, "\n\n############################################################\n");
-    fprintf(f, "#                         RELICS                           #\n");
-    fprintf(f, "############################################################\n");
-
-    for (i32 i = 0; i < TOTAL_RELICS; ++i) {
-        log_item(f, i, &state->relics[i]);
-    }
-
-    /*
-        ACTIVES
-    */
-    fprintf(f, "\n\n############################################################\n");
-    fprintf(f, "#                         ACTIVES                          #\n");
-    fprintf(f, "############################################################\n");
-
-    for (i32 i = 0; i < TOTAL_ACTIVES; ++i) {
-        log_active(f, i, &state->actives[i]);
-    }
-
-    /*
-        PLAYER
-    */
-    log_player(f, &state->player);
-
-    /*
-        ROUND SNAPSHOT
-    */
-    fprintf(f, "\n\n############################################################\n");
-    fprintf(f, "#                     ROUND SNAPSHOT                       #\n");
-    fprintf(f, "############################################################\n");
-
-    fprintf(f, "\nROUND SNAPSHOT TILES:\n");
-
-    for (i32 i = 0; i < TOTAL_TILES; ++i) {
-        log_tile(f, i, &state->roundStart.tiles[i]);
-    }
-
-    fprintf(f, "\nROUND SNAPSHOT TABLE:\n");
-    log_table(f, &state->roundStart.table);
-
-    fprintf(f, "\nROUND SNAPSHOT POOL:\n");
-    log_pool(f, &state->roundStart.pool);
-
-    fprintf(f, "\nROUND SNAPSHOT RACK:\n");
-    log_rack(f, &state->roundStart.rack);
-
-    /*
-        RUN DATA
-    */
-    log_run_data(f, &state->runData);
-
-    /*
-        ROUND DATA
-    */
-    log_round_data(f, &state->roundData);
-
-    /*
-        RULES
-    */
-    log_rules(f, &state->rules);
-
-    /*
-        CURRENT POOL / RACK / TABLE
-    */
-    log_pool(f, &state->pool);
-    log_rack(f, &state->playerRack);
-    log_table(f, &state->table);
-
-    /*
-        COMMAND QUEUE
-    */
-    fprintf(f, "\n\n========== COMMAND QUEUE ==========\n");
-
-    fprintf(f, "base = %p\n", (void*)state->cmdQueue.base);
-    fprintf(f, "size = %llu\n", state->cmdQueue.size);
-    fprintf(f, "readIndex = %llu\n", state->cmdQueue.readIndex);
-    fprintf(f, "writeIndex = %llu\n", state->cmdQueue.writeIndex);
-
-    fprintf(f, "\n############################################################\n");
-    fprintf(f, "#                       END LOG                            #\n");
-    fprintf(f, "############################################################\n");
-
-    fclose(f);
-}
-
 extern "C" GAME_DLL void game_shutdown() {
     save_profile(activeProfile);
-    log_ui_page(gState->uiPage);
-    log_game_state(gState);
 }

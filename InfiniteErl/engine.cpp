@@ -158,6 +158,7 @@ GameMemory allocate_game_memory(RenderBuffer* buffer) {
     memory.uiMem.load_ui_quad_buffer_fn = load_ui_quad_buffer;
     memory.uiMem.play_audio_fn = play_audio;
     memory.uiMem.play_audio_pitch_fn = play_audio_pitch;
+
     memory.shouldWindowClose = false;
     memory.toggleFullScreen = false;
     memory.toggleVsync = false;
@@ -167,6 +168,7 @@ GameMemory allocate_game_memory(RenderBuffer* buffer) {
     memory.numberOfSupportedResolutions = numberOfSupportedResolutions;
   
     memory.play_audio_fn = play_audio;
+    memory.play_audio_pitch_fn = play_audio_pitch;
     memory.load_home_music_fn = load_home_music;
     memory.set_resolution_fn = set_resolution;
     memory.format_resolution_fn = format_resolution;
@@ -194,7 +196,7 @@ i32 main() {
 i32 APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, i32 cmdshow) {
 #endif
     window = create_window();
-    //load_window_icon();
+    load_window_icon();
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     load_textures();
     load_fonts();
@@ -407,7 +409,7 @@ void toggle_fullscreen(GLFWwindow* window) {
 
 void load_window_icon() {
     i32 width, height, channels;
-    unsigned char* pixels = stbi_load("./res/watt-ico.png", &width, &height, &channels, 0);
+    unsigned char* pixels = stbi_load("./res/icon.png", &width, &height, &channels, 0);
     if (!pixels) {
         printf("Unable to load window icon!\n");
     }

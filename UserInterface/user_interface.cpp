@@ -4,8 +4,8 @@
 typedef void (*ValueToTextFn)(void* value, i32 index, char* out, i32 outSize);
 
 i32 imageMeshHandle = -1;
-void (*play_audio)(const char* filename);
-void (*play_audio_pitch)(const char* filename, f32 pitch);
+void (*play_audio)(i32 id);
+void (*play_audio_pitch)(i32 id, f32 pitch);
 
 //note these are used for prebaked actions only for UI.
 UISelfActionFuncPtr selfActions[20];
@@ -102,8 +102,15 @@ void check_elements_hovered(UIPage* page, f64 xpos, f64 ypos) {
 
         //ANCHOR EFFECTS THIS LETS ASSUME ANCHOR IS CENTER
         if (ui_point_inside(page->uiElements[i], xpos, ypos) && page->uiElements[i].visible) {
+            if(!page->uiElements[i].hovered && page->uiElements[i].hoverColor.x != -1) {
+                if(!play_audio_pitch) printf("play audio null!\n");
+                play_audio_pitch(1, 2.0f);
+                printf("HERE!\n");
+            }
+
             page->uiElements[i].hovered = true;
             page->elementHovered = i; 
+
             break;
         } else {
             page->uiElements[i].hovered = false;
@@ -1284,8 +1291,8 @@ void load_self_actions() {
 
 UIPage* create_ui_page(UIMemory* mem) {
     if(imageMeshHandle == -1) create_image_quad(mem);
-    play_audio = mem->play_audio_fn;
-    play_audio_pitch = mem->play_audio_pitch_fn;
+    if(!play_audio) play_audio = mem->play_audio_fn;
+    if(!play_audio_pitch) play_audio_pitch = mem->play_audio_pitch_fn;
     load_self_actions();
     
     UIPage* page = (UIPage*)ui_push_size(mem, sizeof(UIPage));
