@@ -24,6 +24,37 @@ i32 get_cursed_color_values(Set *set, u8 color) {
     return cursedValue;
 }
 
+i32 check_cursed_value(Tile *tile, ROUND_TYPE type) {
+    i32 tileValue = (i32)tile->details.tileNumber;
+    switch(type) {
+        case CURSED_RED: {
+            if(tile->details.tileColor == 0) {
+                tileValue = 0; 
+            }
+            break;
+        }
+        case CURSED_BLUE: {
+            if(tile->details.tileColor == 1) {
+                tileValue = 0; 
+            }
+            break;
+        }
+        case CURSED_GREEN: {
+            if(tile->details.tileColor == 2) {
+                tileValue = 0; 
+            }
+            break;
+        }
+        case CURSED_BLACK: {
+            if(tile->details.tileColor == 3) {
+                tileValue = 0; 
+            }
+            break;
+        }
+    }
+    return tileValue;
+}
+
 void check_set_value_rules(Set *set, u64* hoveredSetValue, ROUND_TYPE type) {
     switch(type) {
         case RUN_TOTALS: {
@@ -81,7 +112,7 @@ u8 check_min_score_endgame(void *ptr) {
 u8 check_min_score_lose(void *ptr) {
     GameState *state = (GameState *)ptr;
     RoundData data = state->roundData;
-    return data.turnLimit == 0 && (gState->playerRack.numberOfTiles > 0 || data.minimumScore > data.roundScore);
+    return data.turnLimit == -1 && (gState->playerRack.numberOfTiles > 0 || data.minimumScore > data.roundScore);
 }
 
 u8 check_run_six_endgame(void *ptr) {
@@ -196,9 +227,6 @@ RoundData create_round_data(ROUND_TYPE roundType, u64 round) {
         case CURSED_BLACK: {
             return RoundData {20, 100 * round, 0, nullptr, check_min_score_lose, "Reach target score when black tiles are not counted towards the total.", 8, 3};
         }
-//        case EMPTY_RACK: {
-//            return RoundData {20, 100 * round, 0, nullptr, check_min_score_lose, "Reach target score and clear your rack", 8, 3};
-//        }
         case NO_ACTIVES: {
             return RoundData {20, 100 * round, 0, nullptr, check_min_score_lose, "Reach target score when actives are ignored.", 8, 3};
         }

@@ -87,6 +87,7 @@ RoundData create_round_data(ROUND_TYPE roundType, u64 rounds);
 u8 check_min_score_endgame(void *ptr);
 void difficulty_to_text(u8 value, char *text);
 void check_set_value_rules(Set *set, u64* hoveredSetValue, ROUND_TYPE type);
+i32 check_cursed_value(Tile *tile, ROUND_TYPE type);
 // game_queue.cpp
 void* push(CommandQueue *b, u64 size);
 void* push_command(CommandQueue *q, u32 totalSize, CmdActionFuncPtr executeFn);
@@ -755,7 +756,7 @@ u8 move_tile(void* ptr) {
     self->model[2][2] = currentScale.z;
 
     if (current == target && currentScale == targetScale) {
-        gMemory->play_audio_pitch_fn(0, 1.0f);
+        gMemory->play_audio_pitch_fn(0, (target.x * 0.08f) + 1.0f);
         return true;
     }
 
@@ -821,7 +822,7 @@ u8 add_set_amount(void *ptr) {
     GameObject *self = *(GameObject **)ptr;
     Tile* tile = (Tile*)self;
     //Set *set = &gState->table.sets[tile->setId];
-    hoveredSetValue += tile->details.tileNumber;
+    hoveredSetValue += check_cursed_value(tile, gState->runData.currentRoundType);
     return true;
 }
 
@@ -850,6 +851,8 @@ u8 draw_from_pool(Rack &rack) {
     if(gState->playerRack.numberOfTiles == RACK_SPACES) {
         return false;
     }
+
+    if(activesShown) activesShown = false;
 
     Tile* tileDrawn = gState->pool.tiles[gState->pool.numberOfTiles - 1];
     gState->pool.numberOfTiles == 0 ? 0 : gState->pool.numberOfTiles--;
@@ -1057,11 +1060,16 @@ void draw_player_rack() {
 }
 
 void draw_background() {
+    vec4 color = R_GREEN;
+    //if(gState->roundData.difficulty == 0) R_GREEN;
+    //if(gState->roundData.difficulty == 1) color = R_GOLDEN;
+    //if(gState->roundData.difficulty == 2) color = R_RED;
+
     RenderEntryEntity table = RenderEntryEntity{
       glm::scale(glm::translate(mat4(1.0f), vec3(0.5f * RENDERING_ASPECT, 0.5f, 1.0f)), vec3(1.0f * RENDERING_ASPECT, 1.0f, 1.0f)),
         gState->quadMesh,
         BG_PATTERN_T,
-        R_GREEN,
+        color,
         //vec4(0.95, 0.388, 0.388, 1.0f),
         false,
         0,
@@ -2568,7 +2576,7 @@ void add_map_ui() {
              (u64)option3.cashReward);
     i32 reward3 = add_text_element(gState->uiPage, reward);
 
-    i32 multWindowIndex = add_window(gState->uiPage, UI_BG_2_T, Anchor::CENTER, vec2(0.9f, 0.75f), vec2(0.5f, 1.2f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE, 0.25f); 
+    i32 multWindowIndex = add_window(gState->uiPage, UI_BG_2_T, Anchor::CENTER, vec2(0.9f, 0.75f), vec2(0.5f, 1.2f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE); 
     gState->uiPage->uiElements[multWindowIndex].zIndex = 3;
     gState->uiPage->uiElements[multWindowIndex + 1].zIndex = 3;
 
@@ -2599,7 +2607,6 @@ void add_map_ui() {
     add_text_to_window(gState->uiPage, multWindowIndex, reward1);
     add_text_to_window(gState->uiPage, multWindowIndex, reward2);
     add_text_to_window(gState->uiPage, multWindowIndex, reward3);
-
 
     UIElement blur = UIElement{CENTER, -1, -1, 0.5, 0.5, 1.0f, 1.0f};
     blur.color = vec4(0.0f, 0.0f, 0.0f, 0.5);
@@ -2640,7 +2647,7 @@ void add_profile_ui() {
 
     i32 back = add_button(gState->uiPage, BUTTON_T, "Back", vec2(0.5f, 0.85f), vec2(0.075f, 0.45f), R_SILVER, 2);
 
-    i32 multWindowIndex = add_window(gState->uiPage, UI_BG_2_T, Anchor::CENTER, vec2(0.9f, 0.75f), vec2(0.5f, 1.2f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE, 0.25f); 
+    i32 multWindowIndex = add_window(gState->uiPage, UI_BG_2_T, Anchor::CENTER, vec2(0.9f, 0.75f), vec2(0.5f, 1.2f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE); 
 
     add_text_to_window(gState->uiPage, multWindowIndex, desc1Id);
     add_text_to_window(gState->uiPage, multWindowIndex, desc2Id);
@@ -2730,6 +2737,54 @@ void set_round_complete_ui(i32 windowIndex) {
             add_text_bob(&scoreMinVal);
             scoreMinVal.color = R_RED;
             add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, scoreMinVal));
+            break;
+        }
+        case CURSED_GREEN: {
+            TextElement score = TextElement{ CENTER, "Reach Round Minimum Score when GREEN tiles aren't counted towards total score.", 0.375f, 0.075f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+            score.visible = false;
+            add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, score));
+            break;
+        }
+        case CURSED_RED: {
+            TextElement score = TextElement{ CENTER, "Reach Round Minimum Score when RED tiles aren't counted towards total score.", 0.375f, 0.075f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+            score.visible = false;
+            add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, score));
+            break;
+        }
+        case CURSED_BLUE: {
+            TextElement score = TextElement{ CENTER, "Reach Round Minimum Score when BLUE tiles aren't counted towards total score.", 0.375f, 0.075f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+            score.visible = false;
+            add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, score));
+            break;
+        }
+        case CURSED_BLACK: {
+            TextElement score = TextElement{ CENTER, "Reach Round Minimum Score when BLACK tiles aren't counted towards total score.", 0.375f, 0.075f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+            score.visible = false;
+            add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, score));
+            break;
+        }
+        case RUN_TOTALS: {
+            TextElement score = TextElement{ CENTER, "Reach Round Minimum Score using RUNS only.", 0.375f, 0.075f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+            score.visible = false;
+            add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, score));
+            break;
+        }
+        case GROUP_TOTALS: {
+            TextElement score = TextElement{ CENTER, "Reach Round Minimum Score using GROUPS only.", 0.375f, 0.075f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+            score.visible = false;
+            add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, score));
+            break;
+        }
+        case NO_ACTIVES: {
+            TextElement score = TextElement{ CENTER, "Reach Round Minimum Score without the use of ACTIVES.", 0.375f, 0.075f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+            score.visible = false;
+            add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, score));
+            break;
+        }
+        case NO_PASSIVES: {
+            TextElement score = TextElement{ CENTER, "Reach Round Minimum Score without the use of PASSIVES.", 0.375f, 0.075f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+            score.visible = false;
+            add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, score));
             break;
         }
     }
@@ -2862,7 +2917,7 @@ void add_end_game_ui() {
 
     i32 menuBg = add_ui_element(gState->uiPage, a);
 
-    i32 windowIndex = add_window(gState->uiPage, UI_BG_2_T, Anchor::CENTER, vec2(0.9f, 0.75f), vec2(0.5f, 1.2f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE, 0.25f); 
+    i32 windowIndex = add_window(gState->uiPage, UI_BG_2_T, Anchor::CENTER, vec2(0.9f, 0.75f), vec2(0.5f, 1.2f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE, 1.25f); 
     add_text_to_window(gState->uiPage, windowIndex, gameOverText);
     add_button_to_window(gState->uiPage, windowIndex, newGame);
     add_button_to_window(gState->uiPage, windowIndex, mainMenu);
@@ -2967,6 +3022,9 @@ void add_relic() {
         blur.color = vec4(0.2f);
         blur.zIndex = 3;
         add_ui_element(gState->uiPage, blur);
+
+        gState->uiPage->uiElements[6].visible = false;
+        gState->uiPage->uiElements[6].textChild->visible = false;
     }
 
     if(RELIC_TABLE[frame].price > gState->runData.dollaBills) return;
@@ -3002,6 +3060,9 @@ void add_active() {
         blur.color = vec4(0.2f);
         blur.zIndex = 3;
         add_ui_element(gState->uiPage, blur);
+
+        gState->uiPage->uiElements[6].visible = false;
+        gState->uiPage->uiElements[6].textChild->visible = false;
     }
 
     gState->player.actives[gState->player.numberOfActives] = gState->actives[frame];
@@ -3166,7 +3227,7 @@ void add_shop_purchase_menu(u8 isRelic) {
     relicBg.imageChildId = relic3;
     i32 relicBg3 = add_ui_element(gState->uiPage, relicBg);
 
-    i32 nextRoundId = add_button(gState->uiPage, BUTTON_T, "Skip", vec2(0.5f, 0.9f), vec2(0.05f, 0.705f), R_GRAY, isRelic ? 16 : 20);
+    i32 nextRoundId = add_button(gState->uiPage, BUTTON_T, "SKIP", vec2(0.5f, 0.9f), vec2(0.05f, 0.705f), R_GRAY, isRelic ? 16 : 20);
 
     i32 windowIndex = add_window(gState->uiPage, UI_BG_2_T, CENTER, vec2(0.9f, 0.75f), vec2(0.5f, 2.0f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE); 
 
@@ -3220,7 +3281,7 @@ void add_shop_purchase_menu(u8 isRelic) {
         price3 = (i32)gState->actives[relicIds[2]].item.price;
     }
 
-    TextElement relicName = TextElement{ Anchor::CENTER, "", 0.26f, 0.3f, -1, true, DEFAULT_FONT_SCALE, vec3(R_WHITE)}; 
+    TextElement relicName = TextElement{ Anchor::CENTER, "", 0.26f, 0.25f, -1, true, DEFAULT_FONT_SCALE * 2.5f, vec3(R_WHITE)}; 
     snprintf(relicName.text, sizeof(relicName.text), "%s", name1);
     add_dependent_text_element(gState->uiPage, relicBg1, add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicName)));
     relicName.posx += 0.24f;
@@ -3230,7 +3291,7 @@ void add_shop_purchase_menu(u8 isRelic) {
     snprintf(relicName.text, sizeof(relicName.text), "%s", name3);
     add_dependent_text_element(gState->uiPage, relicBg3, add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicName)));
 
-    TextElement relicRarity = TextElement{ Anchor::CENTER, "", 0.26f, 0.5f, -1, true, DEFAULT_FONT_SCALE * 2.0f, vec3(R_WHITE)}; 
+    TextElement relicRarity = TextElement{ Anchor::CENTER, "", 0.26f, 0.525f, -1, true, DEFAULT_FONT_SCALE * 1.75f, vec3(R_WHITE)}; 
     snprintf(relicRarity.text, sizeof(relicRarity.text), "%s", rarity1);
     add_dependent_text_element(gState->uiPage, relicBg1, add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicRarity)));
     relicRarity.posx += 0.24f;
@@ -3592,7 +3653,7 @@ void add_relics_ui() {
         slotIds[i] = add_ui_element(gState->uiPage, slot, false);
     }
 
-    i32 multWindowIndex = add_window(gState->uiPage, UI_BG_2_T, Anchor::CENTER, vec2(0.9f, 0.75f), vec2(0.5f, 1.2f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE, 0.25f); 
+    i32 multWindowIndex = add_window(gState->uiPage, UI_BG_2_T, Anchor::CENTER, vec2(0.9f, 0.75f), vec2(0.5f, 1.2f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE, 0.75f); 
     //add_button_to_window(gState->uiPage, multWindowIndex, back);
 
     for(i32 i = 0; i < MAX_RELICS; ++i) {
@@ -3826,7 +3887,7 @@ void count_table() {
             );
 
             TextElement bonus = TextElement{ Anchor::CENTER, "", tilePos.x / RENDERING_ASPECT, tilePos.y, -1, true, DEFAULT_FONT_SCALE * 2.0 };
-            snprintf(bonus.text, sizeof(bonus.text), "+%d", (i32)tile->details.tileNumber);
+            snprintf(bonus.text, sizeof(bonus.text), "+%d", check_cursed_value(tile, gState->runData.currentRoundType));
             add_move_animation(&bonus, vec2(tilePos.x / RENDERING_ASPECT, tilePos.y - 0.1f), 0.25f);
             bonus.color = R_BLACK;
 
@@ -4016,7 +4077,6 @@ void end_turn() {
         // can still end turn when round complete...
         if(is_table_valid()) {
             //gState->player.playerData.score = gState->table.value;
-            
             if(check_min_score_endgame(gState)) {
                 complete_round();
             } else {
@@ -4328,10 +4388,10 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
     }
 
     if(key == 296 && action == 1) {//home key
+        init_round(CURSED_GREEN);
     }
 
     if (key == 78 && action == 1) {
-
         gMemory->play_audio_fn(0);
         sort_rack_by_number();
     }
@@ -4344,6 +4404,7 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
     if (key == 77 && action == 1) { //m
         //add_map_ui();
         //add_end_game_ui();
+        add_shop_purchase_menu(false);
     }
 
     if (key == 294 && action == 1) {
@@ -4354,14 +4415,14 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
         } 
     }
 
-    if(key == 258 && action == 1) {
+    if(key == 258 && action == 1) { // TAB
         //tabs
         if(gState->pageState == OPTIONS) {
             switch_tab(gState->uiPage);
         } else if(gState->pageState == RELIC){
             gState->pageState = IN_GAME; 
             reinit_page_state();
-        } else {
+        } else if(gState->pageState == IN_GAME){
             gState->pageState = RELIC;
             reinit_page_state();
         }

@@ -201,6 +201,7 @@ i32 APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, i32 cmd
     load_textures();
     load_fonts();
     load_shaders();
+    init_audio();
     init_post_process(1280, 720); // bad gross, ewww
 
     load(&game, "../build/Game.dll");
@@ -214,6 +215,7 @@ i32 APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, i32 cmd
     game.game_init(&memory, false);
     
     while (!memory.shouldWindowClose) {
+        update_audio();
         update_video_settings(&memory);
 
         if (hot_reload(&game, "../build/Game.dll")) {
@@ -242,6 +244,7 @@ i32 APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, i32 cmd
 
     if(game.game_shutdown) game.game_shutdown();
     save_video_settings();
+    shutdown_audio();
     glfwTerminate();
     return 0;
 }

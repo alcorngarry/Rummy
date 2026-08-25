@@ -26,10 +26,18 @@ f32 ease(f32 t, EaseType type) {
             return t < 0.5f
                 ? 2.0f * t * t
                 : 1.0f - pow(-2.0f * t + 2.0f, 2.0f) / 2.0f;
+        case EaseType::BOUNCE: {
+            f32 amplitude = 0.02f;
 
-        case EaseType::BOUNCE:
-            return abs(sin(6.28f * (t + 1.0f) * (1.0f - t)));
+            f32 base = 1.0f - powf(1.0f - t, 3.0f);
 
+            f32 bounce =
+                sinf(t * PI32 * 3.0f)
+                * amplitude
+                * sinf(t * PI32);
+
+            return base + bounce;
+        }
         default:
             return t;
     }
@@ -103,9 +111,7 @@ void check_elements_hovered(UIPage* page, f64 xpos, f64 ypos) {
         //ANCHOR EFFECTS THIS LETS ASSUME ANCHOR IS CENTER
         if (ui_point_inside(page->uiElements[i], xpos, ypos) && page->uiElements[i].visible) {
             if(!page->uiElements[i].hovered && page->uiElements[i].hoverColor.x != -1) {
-                if(!play_audio_pitch) printf("play audio null!\n");
                 play_audio_pitch(1, 2.0f);
-                printf("HERE!\n");
             }
 
             page->uiElements[i].hovered = true;
@@ -264,6 +270,36 @@ void set_text_value(TextElement* text, f64 value) {
             break;
         default:
             break;
+    }
+}
+
+f64 get_text_value(TextElement* text) {
+    const char* value = text->text + strlen(text->prefix);
+
+    switch (text->type) {
+        case TextType::INT_32:
+            return (f64)atoi(value);
+
+        case TextType::INT_64:
+            return (f64)atoll(value);
+
+        case TextType::UINT_64: {
+            u64 result = 0;
+
+            for (const char* p = value; *p; ++p) {
+                if (*p >= '0' && *p <= '9') {
+                    result = result * 10 + (*p - '0');
+                }
+            }
+
+            return (f64)result;
+        }
+
+        case TextType::FLOAT_32:
+            return atof(value);
+
+        default:
+            return 0.0;
     }
 }
 
@@ -428,14 +464,13 @@ void update(UIPage *page, TextElement* text, f32 deltaTime) {
 
         f32 eased = ease(t, a->ease);
         f64 current = a->valueStart + (a->valueDestination - a->valueStart) * eased;
+        f64 old = get_text_value(text);
 
         set_text_value(text, current);
 
-        //play_audio("./audio/place_tile.wav");
-
-//        if(((i32)(a->elapsed * 20.0f)) != ((i32)((a->elapsed - deltaTime) * 20.0f))) {
-//            f32 pitch = 0.8f + (a->elapsed / a->duration) * 0.7f;
-//        } 
+        for(i32 i = 1; i < fabs(old - current); ++i) {
+            play_audio_pitch(0, 1.5f + i);
+        }
     }
 
     if (!page->values[text->valueId] || text->type == TextType::NONE) return;
@@ -827,6 +862,9 @@ i32 add_button(UIPage *page, i32 buttonHandle, i32 buttonImageHandle, vec2 pos, 
     button.imageChildId = buttonImageId;
     button.hasShadow = true;
 
+
+    button.hoverColor = color * vec4(0.8f, 0.8f, 0.8f, 1.0f);
+
     Animation buttonClick = Animation{vec2(button.posx, button.posy + 0.01f), pos};
     *add_animation(button.animations, &button.numberOfAnimations) = buttonClick;
 
@@ -939,7 +977,7 @@ i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 s
     Animation moveWindow = Animation{destination, start};
     moveWindow.autoAnimate = true;
     moveWindow.duration = duration;
-    //border.animations[border.numberOfAnimations++] = moveWindow; 
+    moveWindow.ease = BOUNCE; 
     *add_animation(border.animations, &border.numberOfAnimations) = moveWindow;
 
     border.hasShadow = true;
@@ -1021,6 +1059,7 @@ void add_image_to_window(UIPage *page, i32 windowId, i32 elementId) {
     imageAnimation->destination = vec2(image->posx, image->posy);
     imageAnimation->duration = speed;
     imageAnimation->autoAnimate = true;
+    imageAnimation->ease = BOUNCE;
 
     *add_dependent_element(window->dependentElements, &window->numberOfDependentElements) = image;
 
@@ -1033,6 +1072,7 @@ void add_image_to_window(UIPage *page, i32 windowId, i32 elementId) {
         childAnimation->destination = vec2(childImage->posx, childImage->posy);
         childAnimation->duration = speed;
         childAnimation->autoAnimate = true;
+        childAnimation->ease = BOUNCE;
 
         *add_dependent_element(window->dependentElements, &window->numberOfDependentElements) = childImage;
     }
@@ -1054,6 +1094,7 @@ i32 add_text_to_window(UIPage *page, i32 windowId, i32 elementId) {
     textAnimation->destination = vec2(text->posx, text->posy);
     textAnimation->duration = speed;
     textAnimation->autoAnimate = true;
+    textAnimation->ease = BOUNCE;
 
     *add_dependent_text_element(window->dependentTextElements, &window->numberOfDependentTextElements) = text;
     return elementId;
@@ -1074,6 +1115,7 @@ void add_button_to_window(UIPage *page, i32 windowId, i32 elementId) {
     buttonAnimation->destination = vec2(button->posx, button->posy);
     buttonAnimation->duration = speed;
     buttonAnimation->autoAnimate = true;
+    buttonAnimation->ease = BOUNCE;
 
     *add_dependent_element(window->dependentElements, &window->numberOfDependentElements) = button;
 
@@ -1086,6 +1128,7 @@ void add_button_to_window(UIPage *page, i32 windowId, i32 elementId) {
         buttonAnimation->destination = vec2(text->posx, text->posy);
         buttonAnimation->duration = speed;
         buttonAnimation->autoAnimate = true;
+        buttonAnimation->ease = BOUNCE;
 
         *add_dependent_text_element(window->dependentTextElements, &window->numberOfDependentTextElements) = text;
     }
@@ -1099,6 +1142,7 @@ void add_button_to_window(UIPage *page, i32 windowId, i32 elementId) {
         imageAnimation->destination = vec2(buttonImage->posx, buttonImage->posy);
         imageAnimation->duration = speed;
         imageAnimation->autoAnimate = true;
+        imageAnimation->ease = BOUNCE;
 
         *add_dependent_element(window->dependentElements, &window->numberOfDependentElements) = buttonImage;
     }
