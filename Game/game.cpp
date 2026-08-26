@@ -141,32 +141,6 @@ void create_quad() {
     gState->quadMesh = gMemory->load_quad_buffer_fn(vertices, 20, indices, 6);
 }
 
-inline u64 rng_next() {
-    u64 x = gState->rng.state;
-    x ^= x >> 12;
-    x ^= x << 25;
-    x ^= x >> 27;
-    gState->rng.state = x;
-    return x * 2685821657736338717ULL;
-}
-
-inline f32 rng_next_f32() {
-    return (rng_next() >> 40) * (1.0f / (1ULL << 24));
-}
-
-inline i32 rng_range(i32 min, i32 max) {
-    if (max < min) {
-        i32 tmp = min;
-        min = max;
-        max = tmp;
-    }
-
-    i32 range = max - min + 1;
-    if (range == 0) return min;
-    u64 r = rng_next();                
-    return (i32)(r % range) + min;        
-}
-
 f32 timeLeft = 0.25f;
 
 u8 screen_shake(void *ptr) {
@@ -207,6 +181,7 @@ void set_seed() {
     GetSystemTimeAsFileTime(&ft);
 
     gState->rng = RNG{(u64(ft.dwHighDateTime) << 32) | u64(ft.dwLowDateTime)};
+    init_rng(&gState->rng);
 }
 
 void snapshot_round_start() {
@@ -2495,6 +2470,7 @@ void add_map_ui() {
     gState->uiPage->highestZ = frontIndex;
 
     TextElement selectMessage = TextElement{ CENTER, "Select Next Round Challenge", 0.5, 0.1f, -1, true, DEFAULT_FONT_SCALE * 2.0f, vec3(1.0f)};
+    selectMessage.bounce = true;
     selectMessage.zIndex = frontIndex;  
     i32 selectMessageId = add_text_element(gState->uiPage, selectMessage);
 
@@ -2693,6 +2669,7 @@ void set_round_complete_ui(i32 windowIndex) {
         case MIN_SCORE: {
             TextElement score = TextElement{ CENTER, "Clear Rack or Reach Round Minimum Score", 0.375f, 0.075f, -1, true, DEFAULT_FONT_SCALE * 2.0f, vec3(1.0f)};
             score.visible = false;
+            score.bounce = true;
             add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, score));
             break;
         }
@@ -2742,48 +2719,56 @@ void set_round_complete_ui(i32 windowIndex) {
         case CURSED_GREEN: {
             TextElement score = TextElement{ CENTER, "Reach Round Minimum Score when GREEN tiles aren't counted towards total score.", 0.375f, 0.075f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
             score.visible = false;
+            score.bounce = true;
             add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, score));
             break;
         }
         case CURSED_RED: {
             TextElement score = TextElement{ CENTER, "Reach Round Minimum Score when RED tiles aren't counted towards total score.", 0.375f, 0.075f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
             score.visible = false;
+            score.bounce = true;
             add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, score));
             break;
         }
         case CURSED_BLUE: {
             TextElement score = TextElement{ CENTER, "Reach Round Minimum Score when BLUE tiles aren't counted towards total score.", 0.375f, 0.075f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
             score.visible = false;
+            score.bounce = true;
             add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, score));
             break;
         }
         case CURSED_BLACK: {
             TextElement score = TextElement{ CENTER, "Reach Round Minimum Score when BLACK tiles aren't counted towards total score.", 0.375f, 0.075f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
             score.visible = false;
+            score.bounce = true;
             add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, score));
             break;
         }
         case RUN_TOTALS: {
             TextElement score = TextElement{ CENTER, "Reach Round Minimum Score using RUNS only.", 0.375f, 0.075f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
             score.visible = false;
+            score.bounce = true;
             add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, score));
             break;
         }
         case GROUP_TOTALS: {
             TextElement score = TextElement{ CENTER, "Reach Round Minimum Score using GROUPS only.", 0.375f, 0.075f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
             score.visible = false;
+            score.bounce = true;
             add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, score));
             break;
         }
         case NO_ACTIVES: {
             TextElement score = TextElement{ CENTER, "Reach Round Minimum Score without the use of ACTIVES.", 0.375f, 0.075f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
             score.visible = false;
+            score.bounce = true;
             add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, score));
             break;
         }
         case NO_PASSIVES: {
             TextElement score = TextElement{ CENTER, "Reach Round Minimum Score without the use of PASSIVES.", 0.375f, 0.075f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
             score.visible = false;
+            score.bounce = true;
             add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, score));
             break;
         }
@@ -3282,6 +3267,7 @@ void add_shop_purchase_menu(u8 isRelic) {
     }
 
     TextElement relicName = TextElement{ Anchor::CENTER, "", 0.26f, 0.25f, -1, true, DEFAULT_FONT_SCALE * 2.5f, vec3(R_WHITE)}; 
+    relicName.bounce = true;
     snprintf(relicName.text, sizeof(relicName.text), "%s", name1);
     add_dependent_text_element(gState->uiPage, relicBg1, add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicName)));
     relicName.posx += 0.24f;
@@ -3381,7 +3367,6 @@ void add_round_complete_ui() {
 }
 
 void add_main_menu_ui() {
-//    read_page(gState->uiPage, "main_menu.eui");
     set_page_state(MAIN_MENU);
 
     i32 newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.5f, 0.625f), vec2(0.08f, 0.25f), R_GREEN, 0);
@@ -3400,7 +3385,6 @@ void add_main_menu_ui() {
     add_button_to_window(gState->uiPage, windowIndex, profile);
     add_button_to_window(gState->uiPage, windowIndex, quit);
 
-    //add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::TOP_LEFT, "", 0.0f, 0.0f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)}, "", &gState->deltaTime, TextType::FLOAT_32);
     vec2 tPos[8] = {
         {0.35f, 0.2f},
         {0.45f, 0.175f},
@@ -3439,10 +3423,8 @@ void add_main_menu_ui() {
         add_ui_element(gState->uiPage, side);
     }
 
-
-
+    
     add_text_element(gState->uiPage, TextElement{ CENTER, "v-0.0.01", 0.95f, 0.95f, -1, true, DEFAULT_FONT_SCALE});
-//    write_page(gState->uiPage, "main_menu.eui");
 }
 
 void add_options_ui() {
@@ -3606,12 +3588,11 @@ void add_paint_window() {
 
 void add_relics_ui() {
     set_page_state(RELIC);
-
     //i32 back = add_button(gState->uiPage, BUTTON_T, BACK_T, vec2(0.15f, 0.075f), vec2(0.035f, 0.035f), R_PURPLE, 2);
-    add_item_window();
 
     i32 relicIds[MAX_RELICS];
     i32 slotIds[MAX_RELICS];
+    i32 sheenIds[MAX_RELICS];
 
     for(i32 i = 0; i < MAX_RELICS; ++i) {
         relicIds[i] = -1;
@@ -3622,6 +3603,13 @@ void add_relics_ui() {
     layout_grid(relicSlotPositions, MAX_RELICS / 10, MAX_RELICS / 5, CENTER, vec2(0.5f), vec2(0.75f, 0.9f), vec2(0.05f));
 
     for(i32 i = 0; i < gState->player.numberOfRelics; ++i) {
+        UIElement sheen = UIElement{ CENTER, -1, SHEEN_T, relicSlotPositions[i].x, relicSlotPositions[i].y, 0.045f * RENDERING_ASPECT, 0.045f};
+        sheen.sheetAnimation = SheetAnimation{6, 1};
+
+        sheen.sheetAnimation.currentFrame = 4;
+        sheen.sheetAnimation.fps = 6;
+        sheenIds[i] = add_ui_element(gState->uiPage, sheen);
+
         UIElement relic = {
             CENTER,
             -1,
@@ -3631,6 +3619,7 @@ void add_relics_ui() {
             0.045f * RENDERING_ASPECT,
             0.045f
         };
+
         relic.actionId = 12;//nothing
 
         relic.sheetAnimation = {RELIC_COLUMNS, RELIC_ROWS};
@@ -3669,8 +3658,19 @@ void add_relics_ui() {
                 multWindowIndex,
                 relicIds[i]
             );
+
+            add_image_to_window(
+                gState->uiPage,
+                multWindowIndex,
+                sheenIds[i]
+            );
         }
     }
+
+    TextElement vsync = TextElement{ CENTER, "Relics", 0.5f, 0.1f, -1, true, DEFAULT_FONT_SCALE * 2, vec3(1.0f)};
+    vsync.bounce = true;
+    i32 test = add_text_element(gState->uiPage, vsync);
+    add_text_to_window(gState->uiPage, multWindowIndex, test);
 
     UIElement blur = UIElement{CENTER, -1, -1, 0.5, 0.5, 1.0f, 1.0f};
     blur.color = vec4(0.0f, 0.0f, 0.0f, 0.5);
@@ -4099,7 +4099,21 @@ void end_turn() {
     }
 }
 
+void update_randomized_ui_elements() {
+    for (i32 i = 0; i < gState->uiPage->numberOfImageElements; ++i) {
+        SheetAnimation* anim = &gState->uiPage->uiElements[i].sheetAnimation;
+        
+        if (anim->fps == 0) continue;
+        if (anim->currentFrame == 0) {
+            if (rng_range(0, 9999) < 5) {
+                anim->trigger = true;
+            }
+        }
+    }
+}
+
 void draw_ui() {
+    update_randomized_ui_elements();
     update(gState->uiPage, gState->deltaTime);
     gMemory->push_ui_page_fn(gMemory->renderBuffer, gState->uiPage);
 }

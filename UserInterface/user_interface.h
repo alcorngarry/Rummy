@@ -86,6 +86,7 @@ struct SheetAnimation {
 	i32 fps = 0;
 	f32 animTimer = 0.0f;
 	i32 currentFrame = 0;
+  u8 trigger = false;
 };
 
 struct TextElement;
@@ -158,6 +159,7 @@ struct TextElement {
   f32 maxWidth = 16777216.0f; //max f32
   u8 hasShadow = true;
   u8 zIndex = 2;
+  u8 bounce = false;
 };
 
 struct UIPage {

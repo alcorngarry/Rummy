@@ -208,7 +208,8 @@ void push_ui_page(RenderBuffer* buffer, UIPage* uiPage) {
                     element->scale,
                     element->maxWidth,
                     element->color,
-                    element->hasShadow
+                    element->hasShadow,
+                    element->bounce
                 };
                 //ugly
                 strcpy_s(text.text, element->text);
@@ -488,7 +489,8 @@ void render_buffer(RenderBuffer* buffer) {
                 entry->maxWidth,
                 entry->color,
                 buffer->projection,
-                entry->hasShadow
+                entry->hasShadow,
+                entry->bounce
               );
               break;
           }
@@ -567,7 +569,7 @@ void draw_entity(mat4 model, mat4 view, mat4 projection, u32 vao, i32 textureId,
     glDepthMask(GL_TRUE);
 }
 
-void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 maxWidth, vec3 color, mat4 projection, u8 hasShadow) {
+void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 maxWidth, vec3 color, mat4 projection, u8 hasShadow, u8 bounce) {
     if (!text) return;
 
     glEnable(GL_BLEND);
@@ -576,6 +578,8 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
 
     textShader->use();
     textShader->setMat4("projection", projection);
+    textShader->setBool("bounce", bounce);
+    textShader->setFloat("time", T);
     
     f32 shadowOffset = 0.002f;
 
@@ -660,6 +664,7 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
 
         f32 x = startX;    
         const char* wordStart = text;
+        i32 characterIndex = 0;
         
         while (*wordStart) {
             const char* wordEnd = wordStart;
@@ -678,6 +683,7 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
             }
 
             for (const char* c = wordStart; c < wordEnd; c++) {
+                textShader->setFloat("charIndex", (f32)characterIndex);
                 Character* ch = characters[*c];
 
                 f32 xpos = x + ch->Bearing.x * pixelScale;
@@ -702,6 +708,7 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
                 glDrawArrays(GL_TRIANGLES, 0, 6);
 
                 x += (ch->Advance >> 6) * pixelScale;
+                characterIndex++;
             }
 
             if (*wordEnd == ' ') {

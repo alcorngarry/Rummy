@@ -1,5 +1,5 @@
 #include "user_interface.h"
-#include "../InfiniteErl/renderer.h" 
+#include "../InfiniteErl/renderer.h"
 
 typedef void (*ValueToTextFn)(void* value, i32 index, char* out, i32 outSize);
 
@@ -404,6 +404,35 @@ void update_animation(UIPage *page, UIElement* element, f32 deltaTime) {
 //    }
     for(i32 i = 0; i < (i32)element->numberOfAnimations; ++i) {
         if(element->animations[i].autoAnimate) move_element(page, element, deltaTime);
+    }
+
+    if (element->sheetAnimation.fps != 0) {
+        SheetAnimation* anim = &element->sheetAnimation;
+
+        i32 totalFrames = anim->cols * anim->rows;
+        if (anim->trigger) {
+            anim->trigger = false;
+
+            if (anim->currentFrame == 0) {
+                anim->currentFrame = 1;
+                anim->animTimer = 0.0f;
+            }
+        }
+
+        if (anim->currentFrame > 0) {
+            anim->animTimer += deltaTime;
+
+            f32 frameDuration = 1.0f / (f32)anim->fps;
+
+            if (anim->animTimer >= frameDuration) {
+                anim->animTimer -= frameDuration;
+                anim->currentFrame++;
+
+                if (anim->currentFrame >= totalFrames) {
+                    anim->currentFrame = 0;
+                }
+            }
+        }
     }
 };
 
