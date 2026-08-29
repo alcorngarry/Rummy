@@ -39,6 +39,8 @@
 #define ROUND_CHALLENGE_T 31
 #define BUMP_BG_T 32
 #define SHEEN_T 33
+#define ROUND_SHEEN_T 34
+#define LOCKED_T 36
 
 #ifdef BUILD_DLL
 #define GAME_DLL __declspec(dllexport)
@@ -68,6 +70,7 @@ extern "C" {
 		void (*push_ui_text_fn)(RenderBuffer*, RenderEntryUIText*);
 		void (*push_ui_image_fn)(RenderBuffer*, RenderEntryUIImage*);
 		void (*push_ui_page_fn)(RenderBuffer*, UIPage*);
+		void (*push_post_process_fn)(RenderBuffer*, RenderEntryPostProcess*);
     void (*play_audio_fn)(i32 id);
     void (*play_audio_pitch_fn)(i32 id, f32 pitch);
     void (*load_home_music_fn)(const char* filename);

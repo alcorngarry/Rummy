@@ -199,6 +199,15 @@ void push_ui_page(RenderBuffer* buffer, UIPage* uiPage) {
             }
             case RenderEntryType_RenderEntryUIText: {
                 TextElement* element = (TextElement*)items[i].element;
+                if(element->visible && 
+                    element->typeWriter && 
+                    element->typeWriterStart < 0.0f) {
+                    element->typeWriterStart = T;
+                }
+
+                if(element->typeWriter && !element->visible) {
+                    element->typeWriterStart = -1.0f;
+                }
 
                 RenderEntryUIText text = RenderEntryUIText{
                     element->anchor,
@@ -209,11 +218,13 @@ void push_ui_page(RenderBuffer* buffer, UIPage* uiPage) {
                     element->maxWidth,
                     element->color,
                     element->hasShadow,
-                    element->bounce
+                    element->bounce,
+                    element->typeWriter,
+                    element->typeWriterStart
                 };
+
                 //ugly
                 strcpy_s(text.text, element->text);
-
                 push_ui_text(buffer, &text);
                 break;
             }
@@ -265,6 +276,11 @@ void push_ui_text(RenderBuffer* buffer, RenderEntryUIText* text) {
 void push_ui_image(RenderBuffer* buffer, RenderEntryUIImage* image) {
     RenderEntryUIImage* entry = push_render_element(buffer, RenderEntryUIImage);
     *entry = *image;
+}
+
+void push_post_process(RenderBuffer* buffer, RenderEntryPostProcess* postProcess) {
+    RenderEntryPostProcess* entry = push_render_element(buffer, RenderEntryPostProcess);
+    *entry = *postProcess;
 }
 
 f32 get_render_buffer_usage_percent(RenderBuffer* buffer) {
@@ -416,16 +432,23 @@ void draw_post_process(vec2 res) {
     glDisable(GL_DEPTH_TEST);
 
     ppShader->use();
-
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, post.colorTexture);
 
     ppShader->setInt("screenTexture", 0);
     ppShader->setVec2("resolution", res);
 
+    post.shake -= dT * 2.0f;
+    if(post.shake < 0.0f)
+        post.shake = 0.0f;
+
+    f32 shakeAmount = post.shake * post.shake;
+    vec2 shakeOffset = vec2(sin(T * 47.0f) * shakeAmount, cos(T * 61.0f) * shakeAmount);
+
+    shakeOffset *= 0.015f;
+    ppShader->setVec2("shakeOffset", shakeOffset);
     glBindVertexArray(post.quadVAO);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
     glEnable(GL_DEPTH_TEST);
 }
 
@@ -450,7 +473,7 @@ void render_buffer(RenderBuffer* buffer) {
         }
 
         if (header->type < RenderEntryType_RenderEntryEntity ||
-            header->type > RenderEntryType_RenderEntryUIImage) {
+            header->type > RenderEntryType_RenderEntryPostProcess) {
             printf("BAD HEADER TYPE: %d\n", header->type);
             __debugbreak();
         }
@@ -490,7 +513,9 @@ void render_buffer(RenderBuffer* buffer) {
                 entry->color,
                 buffer->projection,
                 entry->hasShadow,
-                entry->bounce
+                entry->bounce,
+                entry->typeWriter,
+                entry->typeWriterStart
               );
               break;
           }
@@ -516,6 +541,14 @@ void render_buffer(RenderBuffer* buffer) {
                 buffer->windowSize,
                 entry->hasShadow
               );
+              break;
+          }
+          case RenderEntryType_RenderEntryPostProcess: {
+              RenderEntryPostProcess* entry = (RenderEntryPostProcess*)at;
+
+              post.shake = entry->shake;
+
+              at += sizeof(RenderEntryPostProcess);
               break;
           }
         }
@@ -569,7 +602,7 @@ void draw_entity(mat4 model, mat4 view, mat4 projection, u32 vao, i32 textureId,
     glDepthMask(GL_TRUE);
 }
 
-void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 maxWidth, vec3 color, mat4 projection, u8 hasShadow, u8 bounce) {
+void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 maxWidth, vec3 color, mat4 projection, u8 hasShadow, u8 bounce, u8 typeWriter, f32 typeWriterStart) {
     if (!text) return;
 
     glEnable(GL_BLEND);
@@ -582,6 +615,12 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
     textShader->setFloat("time", T);
     
     f32 shadowOffset = 0.002f;
+    i32 visibleCharacters = INT_MAX;
+
+    if (typeWriter) {
+        f32 elapsed = T - typeWriterStart;
+        visibleCharacters = (i32)(elapsed * 20.0f);
+    }
 
     for (i32 pass = hasShadow ? 0 : 1; pass < 2; ++pass) {
         u8 shadowPass = (pass == 0);
@@ -668,8 +707,7 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
         
         while (*wordStart) {
             const char* wordEnd = wordStart;
-            while (*wordEnd && *wordEnd != ' ')
-                wordEnd++;
+            while (*wordEnd && *wordEnd != ' ') wordEnd++;
 
             f32 wordWidth = 0.0f;
             for (const char* c = wordStart; c < wordEnd; c++) {
@@ -683,6 +721,10 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
             }
 
             for (const char* c = wordStart; c < wordEnd; c++) {
+                if (characterIndex > visibleCharacters) {
+                    break;
+                }
+
                 textShader->setFloat("charIndex", (f32)characterIndex);
                 Character* ch = characters[*c];
 
@@ -709,6 +751,31 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
 
                 x += (ch->Advance >> 6) * pixelScale;
                 characterIndex++;
+
+                if (characterIndex == visibleCharacters && c != wordEnd - 1) {
+                    Character* star = characters['x'];
+
+                    f32 xpos = x + star->Bearing.x * pixelScale;
+                    f32 ypos = y - star->Bearing.y * pixelScale;
+
+                    f32 w = star->Size.x * pixelScale;
+                    f32 h = star->Size.y * pixelScale;
+
+                    f32 vertices[6][4] = {
+                        { xpos,     ypos + h, 0.0f, 0.0f },
+                        { xpos,     ypos,     0.0f, 1.0f },
+                        { xpos + w, ypos,     1.0f, 1.0f },
+
+                        { xpos,     ypos + h, 0.0f, 0.0f },
+                        { xpos + w, ypos,     1.0f, 1.0f },
+                        { xpos + w, ypos + h, 1.0f, 0.0f }
+                    };
+
+                    glBindTexture(GL_TEXTURE_2D, star->TextureID);
+                    glBindBuffer(GL_ARRAY_BUFFER, textVBO);
+                    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+                    glDrawArrays(GL_TRIANGLES, 0, 6);
+                }
             }
 
             if (*wordEnd == ' ') {

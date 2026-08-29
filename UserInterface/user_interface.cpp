@@ -496,10 +496,10 @@ void update(UIPage *page, TextElement* text, f32 deltaTime) {
         f64 old = get_text_value(text);
 
         set_text_value(text, current);
-
-        for(i32 i = 1; i < fabs(old - current); ++i) {
-            play_audio_pitch(0, 1.5f + i);
-        }
+// kind of broken at the moment
+//        for(i32 i = 1; i < fabs(old - current); ++i) {
+//            play_audio_pitch(0, 1.5f + i);
+//        }
     }
 
     if (!page->values[text->valueId] || text->type == TextType::NONE) return;

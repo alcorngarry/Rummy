@@ -8,9 +8,9 @@
 #include "erl_math.h"
 
 #define TOTAL_TILES 60
-#define TOTAL_RELICS 8
+#define TOTAL_RELICS 9
 #define MAX_RELICS 50
-#define RELIC_ROWS 4
+#define RELIC_ROWS 3
 #define RELIC_COLUMNS 3
 
 #define TOTAL_ACTIVES 6
@@ -24,6 +24,16 @@ const i32 RACK_SPACES = 24;
 
 void default_action();
 
+struct ObjSheetAnimation {
+    i32 textureName;
+    i32 cols = 0;
+    i32 rows = 0;
+    i32 fps = 0;
+    f32 timer = 0.0f;
+    i32 currentFrame = 0;
+    u8 triggered = false;
+};
+
 struct GameObject {
     vec3 pos;
     mat4 model;
@@ -36,16 +46,7 @@ struct GameObject {
     i32 currentFrame = 0;
     mat4 target;
     mat4 baseModel;
-
-    void update_animation(f32 deltaTime) {
-        f32 frameTime = 1.0f / f32(fps);
-
-        animTimer += deltaTime;
-        while (animTimer >= frameTime) {
-            animTimer -= frameTime;
-            currentFrame = (currentFrame + 1) % fps;
-        }
-    };
+    ObjSheetAnimation animation;
 };
 
 #define PUSH_COMMAND(queue, cmdType, payloadType, execFn) \
@@ -78,19 +79,16 @@ struct CommandQueue {
     u64 writeIndex;
 };
 
-
-
-//phase this out...
-enum GAME_MODE {
+enum GAME_MODE : u8 {
     GM_START_MENU,
-    GM_PLAYING,
+    GM_IN_GAME,
     GM_GAME_OVER,
     GM_OPTIONS,
     GM_PROFILE,
     GM_ROUND_COMPLETE
 };
 
-enum PAGE_STATE {
+enum PAGE_STATE : u8 {
     IN_GAME,
     END_GAME,
     RELICS_PURCHASE,
@@ -102,19 +100,19 @@ enum PAGE_STATE {
     ACTIVES_PURCHASE
 };
 
-enum SET_TYPE {
+enum SET_TYPE : u8 {
     GROUP,
     RUN,
     INVALID
 };
 
-enum TILE_TYPE {
+enum TILE_TYPE : u8 {
     NORMAL,
     JOKER,
     BRIDGE
 };
 
-enum TILE_LOCATION {
+enum TILE_LOCATION : u8 {
     POOL,
     P_RACK,
     TABLE,
@@ -154,15 +152,8 @@ struct Set {
     Tile* tiles[13];
     u8 numberOfTiles = 0;
 
-    u8 highTileNumber = 1;
-    u8 lowTileNumber = 13;
-
-    u8 lowTileIndex = 0;
-    u8 highTileIndex = 0;
-
     u8 isComplete = false;
     u8 isHovered = false;
-    u8 relicIds[MAX_RELICS];
 };
 
 struct Pool {
@@ -196,7 +187,6 @@ struct Table {
 
 struct PlayerData {
     i32 timesDrawn = 0;
-    //u64 score = 0;
     i32 runMultipliers = 1;
     i32 groupMultipliers = 1;
 };
@@ -251,7 +241,7 @@ struct RoundSnapshot {
     Rack rack;
 };
 
-enum ROUND_TYPE {
+enum ROUND_TYPE : u8{
     MIN_SCORE,
     RUN_TOTALS,
     RUN_MAX_SIZE,

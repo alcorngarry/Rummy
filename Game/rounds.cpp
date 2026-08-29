@@ -1,16 +1,7 @@
 #include "game.h"
 
 #define TOTAL_ROUND_TYPES = 20
-//contracts, contract/modifier/reward
-//ignore for now
-enum CONTRACTS {};
 
-//const RunData[TOTAL_ROUND_TYPES] = {
-//}
-
-// dynamic game data
-// turn limit
-// minimum score // depending on type
 i32 get_cursed_color_values(Set *set, u8 color) {
     i32 cursedValue = 0;
     for(i32 i = 0; i < set->numberOfTiles; ++i) {
@@ -106,13 +97,13 @@ RunData create_run_data() {
 u8 check_min_score_endgame(void *ptr) {
     GameState *state = (GameState *)ptr;
     RoundData data = state->roundData;
-    return (state->playerRack.numberOfTiles == 0 || data.turnLimit == 0 || data.minimumScore <= data.roundScore); 
+    return (state->playerRack.numberOfTiles == 0 || (data.turnLimit == 0 && state->playerRack.numberOfTiles != 24) || data.minimumScore <= data.roundScore); 
 }
 
 u8 check_min_score_lose(void *ptr) {
     GameState *state = (GameState *)ptr;
     RoundData data = state->roundData;
-    return data.turnLimit == -1 && (gState->playerRack.numberOfTiles > 0 || data.minimumScore > data.roundScore);
+    return gState->playerRack.numberOfTiles > 0 && data.minimumScore > data.roundScore;
 }
 
 u8 check_run_six_endgame(void *ptr) {

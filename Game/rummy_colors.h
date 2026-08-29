@@ -1,28 +1,24 @@
 #ifndef RUMMY_COLORS_H
 #define RUMMY_COLORS_H
 
-#define R_RED vec4(0.995, 0.388, 0.388, 1.0f) 
-//#define R_BLUE vec4(0.588, 0.706, 0.839, 1.0f)
-#define R_PURPLE vec4(0.845, 0.547, 0.939, 1.0f)
-#define R_GREEN vec4(0.527, 0.984, 0.667, 1.0f)
-#define R_GOLDEN vec4(0.9980f, 0.8631f, 0.1137f, 1.0f)
+#define R_RED vec4(0.995f, 0.360f, 0.360f, 1.0f) 
+#define R_PURPLE vec4(0.855f, 0.520f, 0.950f, 1.0f)
+#define R_GREEN vec4(0.527f, 0.984f, 0.667f, 1.0f)
+#define R_GREEN_TWO vec4(0.527f, 0.984f, 0.667f, 1.0f)
+#define R_GOLDEN vec4(1.000f, 0.845f, 0.095f, 1.0f)
 #define R_GRAY vec4(0.6f, 0.6f, 0.6f, 1.0f)
 #define R_WHITE vec4(1.0f)
 #define R_BLACK vec4(0.0f, 0.0f, 0.0f, 1.0f)
 
-#define R_DARK_GREEN vec4(0.353, 0.549, 0.353, 1.0f)
-#define R_DARK_GRAY vec4(0.2, 0.2, 0.2, 1.0f) 
-#define R_DARK_PURPLE vec4(0.36,   0.22,  0.50,  1.0f)
-//#define R_DARK_BLUE   vec4(0.18,   0.28,  0.55,  1.0f)
-#define R_DARK_RED    vec4(0.55, 0.18, 0.18, 1.0f)
+#define R_DARK_GREEN vec4(0.353f, 0.549f, 0.353f, 1.0f)
+#define R_DARK_GRAY vec4(0.2f, 0.2f, 0.2f, 1.0f) 
+#define R_DARK_PURPLE vec4(0.375f, 0.205f, 0.515f, 1.0f)
+#define R_DARK_RED vec4(0.575f, 0.155f, 0.155f, 1.0f)
 
-
-#define R_PINK vec4(1.0f, 0.5647f, 0.9059f, 1.0f)
-#define R_BLUE vec4(0.0f, 0.5412f, 0.7804f, 1.0f)
-#define R_YELLOW vec4(0.9020f, 0.9020f, 0.3843f, 1.0f)
-#define R_DARK_BLUE vec4(0.0314f, 0.1608f, 0.2235f, 1.0f)
-#define R_SILVER vec4(0.8706f, 0.8706f, 1.0000f, 1.0f)
-
-
+#define R_PINK vec4(1.000f, 0.545f, 0.915f, 1.0f)
+#define R_BLUE vec4(0.0f, 0.525f, 0.810f, 1.0f)
+#define R_YELLOW vec4(0.925f, 0.925f, 0.360f, 1.0f)
+#define R_DARK_BLUE vec4(0.025f, 0.150f, 0.230f, 1.0f)
+#define R_SILVER vec4(0.860f, 0.860f, 1.000f, 1.0f)
 
 #endif

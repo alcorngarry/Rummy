@@ -1,5 +1,29 @@
 #include "game.h"
 
+i32 get_high_tile_number(Set *set) {
+    // reset tile number value
+    i32 highTile = -1;
+    for(i32 i = 0; i < set->numberOfTiles; ++i) {
+        if(!set->tiles[i] || set->tiles[i]->details.type != TILE_TYPE::NORMAL) continue;
+        if(highTile < set->tiles[i]->details.tileNumber) {
+            highTile = set->tiles[i]->details.tileNumber;
+        }
+    }
+
+    return highTile;
+}
+
+i32 get_low_tile_number(Set *set) {
+    i32 lowTile = I32_MAX; //if a tile with number 20 come around this is broken. 
+    for(i32 i = 0; i < set->numberOfTiles; i++) {
+        if(!set->tiles[i] || set->tiles[i]->details.type != TILE_TYPE::NORMAL) continue;
+        if(lowTile > set->tiles[i]->details.tileNumber) {
+            lowTile = set->tiles[i]->details.tileNumber;
+        }
+    }
+    return lowTile == I32_MAX ? -1 : lowTile;
+}
+
 i32 get_joker_array(Set *set, Tile** jokerArray) {
     i32 jokerCount = 0;
     if(set->numberOfTiles > 13) {
@@ -158,7 +182,7 @@ u8 tile_valid_in_run(ValidationRules *rules, Set *set, Tile *tile) {
 }
 
 u8 tile_valid_in_group(Set *set, Tile *tile) {
-    u8 group = tile->details.tileNumber == set->highTileNumber && set->numberOfTiles < 4;
+    u8 group = tile->details.tileNumber == get_high_tile_number(set) && set->numberOfTiles < 4;
     return group;
 }
 

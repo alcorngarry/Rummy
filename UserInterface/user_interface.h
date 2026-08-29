@@ -160,6 +160,8 @@ struct TextElement {
   u8 hasShadow = true;
   u8 zIndex = 2;
   u8 bounce = false;
+  u8 typeWriter = false;
+  f32 typeWriterStart = -1.0f;
 };
 
 struct UIPage {

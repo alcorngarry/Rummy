@@ -147,6 +147,7 @@ GameMemory allocate_game_memory(RenderBuffer* buffer) {
     memory.push_ui_text_fn = push_ui_text;
     memory.push_ui_image_fn = push_ui_image;
     memory.push_ui_page_fn = push_ui_page;
+    memory.push_post_process_fn = push_post_process;
       
     memory.load_quad_buffer_fn = load_quad_buffer;
     memory.load_walls_buffer_fn = load_walls_buffer;
@@ -504,6 +505,8 @@ void load_textures() {
     load_texture(ROUND_CHALLENGE_T, "./res/round-challenge.png", true, false, false);
     load_texture(BUMP_BG_T, "./res/bump-bg.png", true, false, false);
     load_texture(SHEEN_T, "./res/sheen.png", true, false, false);
+    load_texture(ROUND_SHEEN_T, "./res/round-sheen.png", true, false, false);
+    load_texture(LOCKED_T, "./res/locked-tile.png", true, false, false);
 }
 
 VideoSettings load_video_settings() {

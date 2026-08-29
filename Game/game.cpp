@@ -67,6 +67,8 @@ void add_map_ui();
 void populate_challenges(i32 *arr);
 
 // validations.cpp
+i32 get_high_tile_number(Set *set);
+i32 get_low_tile_number(Set *set);
 i32 get_joker_array(Set *set, Tile** jokerArray);
 i32 get_normal_array_sorted(Set *set, Tile** normalArray);
 i32 get_bridge_array(Set *set, Tile** bridgeArray);
@@ -95,7 +97,6 @@ void push_wait(CommandQueue *q, f32 duration);
 void execute_queue(CommandQueue *b);
 u8 execute_action(void *ptr);
 void create_queue(CommandQueue *q, u8 *start, u64 size);
-
 u8 execute_wait(void *ptr);
   
 u8 add_text_to_page(void *ptr) {
@@ -141,30 +142,10 @@ void create_quad() {
     gState->quadMesh = gMemory->load_quad_buffer_fn(vertices, 20, indices, 6);
 }
 
-f32 timeLeft = 0.25f;
-
 u8 screen_shake(void *ptr) {
-    mat4 *camera = *(mat4 **)ptr;
-
-    f32 duration  = 0.3f;
-    f32 magnitude = 0.005f;
-
-    if (timeLeft <= 0.0f) {
-        timeLeft = 0.25f;
-        return true;
-    }
-
-    timeLeft -= gState->deltaTime;
-
-    f32 t = timeLeft / duration;
-    f32 strength = magnitude * t;
-
-    f32 x = (rng_range(0, 1) * 2.0f - 1.0f) * strength;
-    f32 y = (rng_range(0, 1) * 2.0f - 1.0f) * strength;
-
-    *camera = glm::translate(*camera, vec3(x, y, 0.0f));
-
-    return false;
+    f32 shakeAmount = *(f32 *)ptr;
+    gMemory->push_post_process_fn(gMemory->renderBuffer, &RenderEntryPostProcess{shakeAmount});
+    return true;
 }
 
 void shuffle_tiles(Tile** tiles, i32 count) {
@@ -245,8 +226,6 @@ void clear_table() {
         s->numberOfTiles = 0;
         s->id = -1;
         s->setType = SET_TYPE::INVALID;
-        s->lowTileNumber = 20;
-        s->highTileNumber = 0;
         s->isComplete = false;
 
         for (i32 j = 0; j < 13; j++) {
@@ -418,9 +397,9 @@ Item RELIC_TABLE[TOTAL_RELICS] = {
     { EXCEEDINGLY_RARE, "Ruler 8", "Every set with exactly eight tiles gets eight times the points.", 3, 8, 4, size_equals_condition, multiplier_action },
     //these need to change names..
     { COMMON, "Even Steven", "Every even set gets +20.", 1, 2, 20, set_even_condition, addition_action },
-    { COMMON, "Odd Todd", "Every odd set gets +20.", 1, 2, 20, set_odd_condition, addition_action }
+    { COMMON, "Odd Todd", "Every odd set gets +20.", 1, 2, 20, set_odd_condition, addition_action },
     //These need to be added
-  //  { RARE, "SkullDuggery", "TO DO ADD HERE", 2, 1, 1, set_even_condition, addition_action },
+    { RARE, "Wrap", "TO DO ADD HERE", 2, 1, 1, set_even_condition, addition_action }
    // { RARE, "Crok Jock", "TO DO ADD HERE", 2, 1, 1, set_even_condition, addition_action }
 };
 
@@ -439,6 +418,7 @@ void create_relics() {
 
 void create_tiles() {
     GameObject obj = GameObject{};
+    obj.animation = {SHEEN_T, 6, 1, 6};
 
     i32 tileIndex = 0;
     for(u8 color = 0; color < 4; ++color) {
@@ -553,6 +533,7 @@ Item ACTIVE_TABLE[TOTAL_ACTIVES] = {
 void create_actives() {
     GameObject obj = GameObject{};
     obj.model = gState->pool.object.model;
+    obj.animation = {SHEEN_T, 6, 1, 6};
 
     for(u8 i = 0; i < TOTAL_ACTIVES; ++i) {
         gState->actives[i] = Active{obj, ACTIVE_TABLE[i], false, gState->pool.object.model, vec2(0.0f), i};
@@ -886,7 +867,7 @@ vec3 get_tile_color(i32 colorId) {
           break;
       }
       case 2: {
-          return vec3(R_GREEN);//vec3(0.353, 0.549, 0.353);
+          return vec3(R_GREEN_TWO);//vec3(0.353, 0.549, 0.353);
           break;
       }
       case 3: {
@@ -953,6 +934,66 @@ void create_tile_render_entry(Tile* tile, vec4 color, u8 isShadow = false) {
         }
 
         gMemory->push_entity_fn(gMemory->renderBuffer, &type);
+  
+        i32 cursedColor = -1;
+        if(gState->runData.currentRoundType == CURSED_BLACK) cursedColor = 3; 
+        if(gState->runData.currentRoundType == CURSED_BLUE) cursedColor = 1; 
+        if(gState->runData.currentRoundType == CURSED_RED) cursedColor = 0; 
+        if(gState->runData.currentRoundType == CURSED_GREEN) cursedColor = 2; 
+
+        if(cursedColor == tile->details.tileColor) {
+            RenderEntryEntity locked = RenderEntryEntity{
+                tile->object.model,
+                gState->quadMesh,
+                LOCKED_T,
+                color
+            };
+
+            gMemory->push_entity_fn(gMemory->renderBuffer, &locked);
+        }
+
+        ObjSheetAnimation* a = &tile->object.animation;
+
+        if(!a->triggered) {
+            if(rng_range(0, 9999) < 5) {
+                a->triggered = true;
+                a->timer = 0.0f;
+                a->currentFrame = 0;
+            }
+        }
+        if(a->triggered) {
+            a->timer += gState->deltaTime;
+
+            f32 frameTime = 1.0f / (f32)a->fps;
+
+            if(a->timer >= frameTime) {
+                a->timer -= frameTime;
+                a->currentFrame++;
+
+                i32 frameCount = a->cols * a->rows;
+
+                if(a->currentFrame >= frameCount) {
+                    a->currentFrame = 0;
+                    a->triggered = false;
+                }
+            }
+        }
+        if(a->triggered) {
+            RenderEntryEntity sheen = RenderEntryEntity{
+              glm::scale(tile->object.model, vec3(0.8f, 1.0f, 1.0f)),
+                gState->quadMesh,
+                a->textureName,
+                R_WHITE,
+                true,
+                a->currentFrame,
+                false,
+                vec2(0.0f),
+                a->cols,
+                a->rows
+            };
+
+            gMemory->push_entity_fn(gMemory->renderBuffer, &sheen);
+        }
     }
 }
 
@@ -1447,28 +1488,6 @@ void drag_active(f64 xpos, f64 ypos) {
     active->object.model = model;
 }
 
-void get_high_tile_number(Set *set) {
-    // reset tile number value
-    set->highTileNumber = 0;
-    for(i32 i = 0; i < set->numberOfTiles; i++) {
-        if(!set->tiles[i] || set->tiles[i]->details.type != TILE_TYPE::NORMAL) continue;
-        if(set->highTileNumber < set->tiles[i]->details.tileNumber) {
-            set->highTileNumber = set->tiles[i]->details.tileNumber;
-            set->highTileIndex = i;
-        }
-    }
-}
-
-void get_low_tile_number(Set *set) {
-    for(i32 i = 0; i < set->numberOfTiles; i++) {
-        if(!set->tiles[i] || set->tiles[i]->details.type != TILE_TYPE::NORMAL) continue;
-        if(set->lowTileNumber > set->tiles[i]->details.tileNumber) {
-            set->lowTileNumber = set->tiles[i]->details.tileNumber;
-            set->lowTileIndex = i;
-        }
-    }
-}
-
 void calculate_joker_values(Tile** normals, i32 normalCount, Tile** jokers, i32 jokerCount) {
     if (jokerCount == 0) return;
 
@@ -1651,37 +1670,16 @@ void create_new_set_model(Set *set) {
     Tile* left = find_left_most_tile(set);
     Tile* right = find_right_most_tile(set);
 
-   // if(!(set->numberOfTiles % 2)) {
-   //     model = set->tiles[set->numberOfTiles / 2]->object.model;
-   //     model = glm::translate(model, vec3(-(model[3].x * 0.5f), 0.0f, 0.0f));
-   //     model = glm::scale(model, vec3(set->numberOfTiles, 1.0f, 1.0f));
-   // } else {
-   //     model = set->tiles[set->numberOfTiles / 2]->object.model;
-   //     model = glm::scale(model, vec3(set->numberOfTiles, 1.0f, 1.0f));
-   // }
     model = glm::scale(((right->object.model + left->object.model) / 2.0f), vec3(set->numberOfTiles, 1.0f, 1.0f));
-
     set->object.model = model;
 }
 
 u8 is_table_space_occupied(vec2 space) {
-   // for (i32 s = 0; s < gState->table.numberOfSets; ++s) {
-   //     Set* set = &gState->table.sets[s];
-   //     for (i32 t = 0; t < set->numberOfTiles; ++t) {
-   //         Tile* tile = set->tiles[t];
-   //         if(!tile) continue;
-   //         if (tile->tableSpace.x == space.x && tile->tableSpace.y == space.y) {
-   //             return true;
-   //         }
-   //     }
-   // }
-
     return gState->table.tableSpaces[(i32)space.x][(i32)space.y].isOccupied;
-    //return false;
 }
 
 u8 calculate_tile_tablespace(Set *set, Tile *tile) {
-    u8 isHigh = tile->details.tileNumber >= set->highTileNumber;
+    u8 isHigh = tile->details.tileNumber >= get_high_tile_number(set);
     vec2 targetSpace;
 
     if (isHigh) {
@@ -1701,7 +1699,7 @@ u8 calculate_tile_tablespace(Set *set, Tile *tile) {
 }
 
 void add_table_space_to_tile(Set *set, Tile *tile) {
-    u8 isHigh = tile->details.tileNumber >= set->highTileNumber;
+    u8 isHigh = tile->details.tileNumber >= get_high_tile_number(set); 
     vec2 targetSpace;
 
     if (isHigh) {
@@ -1846,17 +1844,11 @@ void validate_set(Set* set) {
         }
     }
 
-    //updates location
     for (i32 i = 0; i < set->numberOfTiles; i++) {
         set->tiles[i]->locationIndex = i;
     }
 
-    //may not be necessary
-    //if(set->numberOfTiles == 1) set->setType = SET_TYPE::INVALID;
-
     create_new_set_model(set); 
-    get_high_tile_number(set);
-    get_low_tile_number(set);
 }
 
 void validate_table() {
@@ -2114,9 +2106,6 @@ u8 add_tile_to_set(Set *set, Tile *tile) {
 
     create_new_set_model(set);
 
-    get_low_tile_number(set);
-    get_high_tile_number(set);
-
     if(is_group(set)) {
       set->setType = GROUP;
       if(set->numberOfTiles == 4) set->isComplete = true;
@@ -2134,11 +2123,6 @@ u8 add_tile_to_set(Set *set, Tile *tile) {
 void remove_tile_from_set(Set *set, Tile *tile) {
     set->tiles[tile->locationIndex] = nullptr;
     set->numberOfTiles--;
-
-    if(set->numberOfTiles != 0) {
-        get_high_tile_number(set);
-        get_low_tile_number(set);
-    }
 
     if(set->setType != GROUP && gState->rules.rainbowRunEnabled && set->id == gState->rules.rainbowRunSetId) {
         if(!is_rainbow_run(set)) {
@@ -2167,7 +2151,7 @@ u8 is_there_table_space(Set *set, Tile *tile) {
         return true;
     }
 
-    u8 isHigh = tile->details.tileNumber > set->highTileNumber;
+    u8 isHigh = tile->details.tileNumber > get_high_tile_number(set);
     vec2 targetSpace;
 
     if (isHigh) {
@@ -2184,8 +2168,9 @@ u8 is_there_table_space(Set *set, Tile *tile) {
 }
 
 void split_set(Set *set, i32 originalIndex, i32 originalCount) {
-    //watch out!
     Set* newSet = create_new_set();
+
+    if(!newSet) return;
 
     for(i32 i = originalIndex + 1; i < originalCount; ++i) {
         Tile* t = set->tiles[i];
@@ -2196,8 +2181,6 @@ void split_set(Set *set, i32 originalIndex, i32 originalCount) {
         remove_tile_from_set(set, t);
         add_tile_to_set(newSet, t);
     }
-
-    set->numberOfTiles = originalIndex;
 }
 
 void shift_set_left(Set *set) {
@@ -2208,26 +2191,23 @@ void shift_set_left(Set *set) {
             set->tiles[i]->locationIndex = i;
         }
     }
-    get_low_tile_number(set);
-    get_high_tile_number(set);
+    set->tiles[set->numberOfTiles] = nullptr;
 }
 
 void handle_tile_removal(Set *set, Tile *tile) {
-    i32 originalIndex = tile->locationIndex;
-    i32 originalCount = set->numberOfTiles;
+    i32 index = tile->locationIndex;
+    i32 count = set->numberOfTiles;
 
-    u8 isStart  = originalIndex == 0;
-    u8 isEnd    = originalIndex == originalCount - 1;
-    u8 isMiddle = !isStart && !isEnd;
+    if(index == 0) {
+        remove_tile_from_set(set, tile);
+        if(set->numberOfTiles > 0) shift_set_left(set);
 
-    remove_tile_from_set(set, tile);
+    } else if(index == count - 1) {
+        remove_tile_from_set(set, tile);
 
-    if(isMiddle) {
-        split_set(set, originalIndex, originalCount);
-    }
-
-    if(isStart && set->numberOfTiles > 0) {
-        shift_set_left(set);
+    } else {
+        split_set(set, index, count);
+        remove_tile_from_set(set, tile);
     }
 }
 
@@ -2237,15 +2217,9 @@ void release_tile() {
         Set *hoveredSet = get_hovered_set();
         u8 wasFromTable = tile->location == TABLE && tile->setId >= 0;
 
-        //so removing from set in middle and adding new one needs good logic
-        //the order of the removed set needs to be updated, and split into two
-        //
-        //if the beginning is removed the order needs to be updated to start with new tile
-        //null, 2, 3, 4 from:
-        //2, 3, 4 to:
         if(hoveredSet) {
             if(is_tile_playable_in_set(&gState->rules, hoveredSet, tile) && is_there_table_space(hoveredSet, tile)) {
-                //clear previous set
+                //remove from previous set
                 if(wasFromTable) handle_tile_removal(&gState->table.sets[tile->setId], tile);
 
                 gState->table.tableSpaces[(i32)tile->tableSpace.x][(i32)tile->tableSpace.y].isOccupied = false;
@@ -2264,7 +2238,6 @@ void release_tile() {
                 Set *set = create_new_set();
                 snap_tile_to_table_space(tile);
                 add_tile_to_set(set, tile);
-                //calculate_tile_tablespace(set, tile);
             } else if(is_tile_released_inside_rack(tile) && verify_tile_was_not_played(tile) && wasFromTable) {
                 handle_tile_removal(&gState->table.sets[tile->setId], tile);
                 gState->table.tableSpaces[(i32)tile->tableSpace.x][(i32)tile->tableSpace.y].isOccupied = false;
@@ -2428,22 +2401,22 @@ void add_actives_ui(u8 animated) {
     }
 }
 
-void set_round_type() {
-    if(gState->pageState == MAIN_MENU || gState->pageState == END_GAME || gState->pageState == OPTIONS) {
-        gState->runData.currentRoundType = MIN_SCORE;
-        gState->runData.rounds = 1;
-        gState->runData.dollaBills = 0;
-        clear_player_data();
-        start_transition();
-    } else {
-        i32 frame = gState->uiPage->uiElements[gState->uiPage->elementHovered].val;
-        gState->runData.currentRoundType = (ROUND_TYPE)frame;
+void start_new_run() {
+    gState->runData.currentRoundType = MIN_SCORE;
+    gState->runData.rounds = 1;
+    gState->runData.dollaBills = 0;
+    clear_player_data();
+    start_transition();
+}
 
-        ActionCommand *nextRound = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, ROUND_TYPE, execute_action);
-        if (nextRound) { 
-            nextRound->action = start_round;
-            *COMMAND_PAYLOAD(nextRound, ROUND_TYPE) = gState->runData.currentRoundType;
-        }
+void set_round_type() {
+    i32 frame = gState->uiPage->uiElements[gState->uiPage->elementHovered].val;
+    gState->runData.currentRoundType = (ROUND_TYPE)frame;
+
+    ActionCommand *nextRound = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, ROUND_TYPE, execute_action);
+    if (nextRound) { 
+        nextRound->action = start_round;
+        *COMMAND_PAYLOAD(nextRound, ROUND_TYPE) = gState->runData.currentRoundType;
     }
 }
 
@@ -2471,10 +2444,11 @@ void add_map_ui() {
 
     TextElement selectMessage = TextElement{ CENTER, "Select Next Round Challenge", 0.5, 0.1f, -1, true, DEFAULT_FONT_SCALE * 2.0f, vec3(1.0f)};
     selectMessage.bounce = true;
+    selectMessage.typeWriter = true;
     selectMessage.zIndex = frontIndex;  
     i32 selectMessageId = add_text_element(gState->uiPage, selectMessage);
 
-    UIElement challengeImage = UIElement{ CENTER, -1, ROUND_CHALLENGE_T, 0.2575f, 0.5f, 0.1f * RENDERING_ASPECT, 0.1f};
+    UIElement challengeImage = UIElement{ CENTER, -1, ROUND_CHALLENGE_T, 0.2575f, 0.275f, 0.08f * RENDERING_ASPECT, 0.08f};
     challengeImage.sheetAnimation = SheetAnimation{3,1};
     challengeImage.zIndex = frontIndex;
 
@@ -2493,7 +2467,7 @@ void add_map_ui() {
     RoundData option2 = create_round_data((ROUND_TYPE)challengeIds[0], gState->runData.rounds);
     RoundData option3 = create_round_data((ROUND_TYPE)challengeIds[1], gState->runData.rounds);
 
-    TextElement desc1 = TextElement{ CENTER, "", (f32)nextRoundBg.posx, 0.2f, -1, true, DEFAULT_FONT_SCALE * 1.5f, vec3(1.0f)};
+    TextElement desc1 = TextElement{ CENTER, "", (f32)nextRoundBg.posx, 0.5f, -1, true, DEFAULT_FONT_SCALE * 1.5f, vec3(1.0f)};
     desc1.zIndex = frontIndex;  
     desc1.maxWidth = RENDERING_ASPECT * 0.2f;
     strcpy(desc1.text, option1.desc);
@@ -2641,7 +2615,6 @@ void add_profile_ui() {
 
 void set_round_complete_ui(i32 windowIndex) {
     TextElement score = TextElement{ Anchor::CENTER, "Score", 0.2f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
-              //add_text_bob(&score);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, score));
 
     TextElement scoreVal = TextElement{ Anchor::CENTER, "", 0.2f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f)};
@@ -2670,6 +2643,7 @@ void set_round_complete_ui(i32 windowIndex) {
             TextElement score = TextElement{ CENTER, "Clear Rack or Reach Round Minimum Score", 0.375f, 0.075f, -1, true, DEFAULT_FONT_SCALE * 2.0f, vec3(1.0f)};
             score.visible = false;
             score.bounce = true;
+            score.typeWriter = true;
             add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, score));
             break;
         }
@@ -2887,7 +2861,7 @@ void add_end_game_ui() {
 
     i32 gameOverText = add_text_element(gState->uiPage, gameOver);
 
-    i32 newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.35f, 0.725f), vec2(0.08f, 0.3f), R_GREEN, 0);
+    i32 newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.35f, 0.725f), vec2(0.08f, 0.3f), R_GREEN, 27);
     i32 mainMenu = add_button(gState->uiPage, BUTTON_T, "Main menu", vec2(0.35f, 0.825f), vec2(0.08f, 0.3f), R_RED, 14);
     UIElement a = UIElement{ Anchor::CENTER, -1, BUTTON_T, 0.7f, 0.57f, 0.65f, 0.25f};
     a.sheetAnimation = SheetAnimation{3,3};
@@ -3169,6 +3143,8 @@ void add_shop_purchase_menu(u8 isRelic) {
     UIElement relic;
 
     i32 relicIds[3];
+    i32 sheenIds[3];
+
     if(isRelic) {
       populate_relics_in_shop(relicIds);
       relic = UIElement{ Anchor::CENTER, -1, RELICS_T, 0.26f, 0.4f, 0.08f * RENDERING_ASPECT, 0.08f};
@@ -3179,18 +3155,32 @@ void add_shop_purchase_menu(u8 isRelic) {
       relic = UIElement{ Anchor::CENTER, -1, ACTIVES_T, 0.26f, 0.4f, 0.08f * RENDERING_ASPECT, 0.08f};
       relicSheet = SheetAnimation{ACTIVE_COLUMNS, ACTIVE_ROWS};
     }
+    vec2 sheenScale = !isRelic ? vec2(0.07f) : vec2(0.08f);
 
-    //SheetAnimation relicSheet = SheetAnimation{RELIC_COLUMNS, RELIC_ROWS};
+    UIElement sheen = UIElement{ CENTER, -1, !isRelic ? SHEEN_T : ROUND_SHEEN_T,  0.26f, 0.4f, sheenScale.x * RENDERING_ASPECT, sheenScale.y};
+    sheen.sheetAnimation = SheetAnimation{6, 1};
+
+    sheen.sheetAnimation.currentFrame = 4;
+    sheen.sheetAnimation.fps = 6;
+
     relic.sheetAnimation = relicSheet;
     relic.sheetAnimation.currentFrame = relicIds[0];
 
+    //sheenIds[0] = add_ui_element(gState->uiPage, sheen);
     i32 relic1 = add_ui_element(gState->uiPage, relic);
+
     relic.sheetAnimation.currentFrame = relicIds[1];
     relic.posx += 0.24f;
+    sheen.posx += 0.24f;
 
+    //sheenIds[1] = add_ui_element(gState->uiPage, sheen);
     i32 relic2 = add_ui_element(gState->uiPage, relic);
+
     relic.sheetAnimation.currentFrame = relicIds[2];
     relic.posx += 0.24f;
+    sheen.posx += 0.24f;
+
+    //sheenIds[2] = add_ui_element(gState->uiPage, sheen);
     i32 relic3 = add_ui_element(gState->uiPage, relic);
 
     SheetAnimation panelSheet = SheetAnimation{3, 3};
@@ -3314,6 +3304,10 @@ void add_shop_purchase_menu(u8 isRelic) {
     add_image_to_window(gState->uiPage, windowIndex, relic2);
     add_image_to_window(gState->uiPage, windowIndex, relic3);
 
+    //add_image_to_window(gState->uiPage, windowIndex, sheenIds[0]);
+    //add_image_to_window(gState->uiPage, windowIndex, sheenIds[1]);
+    //add_image_to_window(gState->uiPage, windowIndex, sheenIds[2]);
+
     add_image_to_window(gState->uiPage, windowIndex, relicBg1);
     add_image_to_window(gState->uiPage, windowIndex, relicBg2);
     add_image_to_window(gState->uiPage, windowIndex, relicBg3);
@@ -3369,7 +3363,7 @@ void add_round_complete_ui() {
 void add_main_menu_ui() {
     set_page_state(MAIN_MENU);
 
-    i32 newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.5f, 0.625f), vec2(0.08f, 0.25f), R_GREEN, 0);
+    i32 newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.5f, 0.625f), vec2(0.08f, 0.25f), R_GREEN_TWO, 27);
     i32 options = add_button(gState->uiPage, BUTTON_T, "Options", vec2(0.5f, 0.725f), vec2(0.08f, 0.25f), R_BLUE, 1);
     i32 profile = add_button(gState->uiPage, BUTTON_T, "Profile", vec2(0.5f, 0.825f), vec2(0.08f, 0.25f), R_BLUE, 26);
     i32 quit = add_button(gState->uiPage, BUTTON_T, "Quit", vec2(0.5f, 0.925f), vec2(0.08f, 0.2f), R_RED, 3);
@@ -3447,7 +3441,7 @@ void add_options_ui() {
         relics = add_button(gState->uiPage, BUTTON_T, "Relics", vec2(0.5f, 0.3f), vec2(0.1f, 0.4f), R_BLUE, 15);
         gameStats = add_button(gState->uiPage, BUTTON_T, "Game Stats", vec2(0.5f, 0.45f), vec2(0.1f, 0.4f), R_BLUE, 15);
     } else {
-        newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.5f, 0.6f), vec2(0.1f, 0.4f), R_GREEN, 0);
+        newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.5f, 0.6f), vec2(0.1f, 0.4f), R_GREEN_TWO, 27);
         relics = add_button(gState->uiPage, BUTTON_T, "View Relics", vec2(0.5f, 0.3f), vec2(0.1f, 0.4f), R_BLUE, 15);
         profile = add_button(gState->uiPage, BUTTON_T, "Profile", vec2(0.5f, 0.45f), vec2(0.1f, 0.4f), R_BLUE, 26);
         quitGame = add_button(gState->uiPage, BUTTON_T, "Main Menu", vec2(0.5f, 0.75f), vec2(0.1f, 0.4f), R_RED, 14);
@@ -3603,7 +3597,7 @@ void add_relics_ui() {
     layout_grid(relicSlotPositions, MAX_RELICS / 10, MAX_RELICS / 5, CENTER, vec2(0.5f), vec2(0.75f, 0.9f), vec2(0.05f));
 
     for(i32 i = 0; i < gState->player.numberOfRelics; ++i) {
-        UIElement sheen = UIElement{ CENTER, -1, SHEEN_T, relicSlotPositions[i].x, relicSlotPositions[i].y, 0.045f * RENDERING_ASPECT, 0.045f};
+        UIElement sheen = UIElement{ CENTER, -1, ROUND_SHEEN_T, relicSlotPositions[i].x, relicSlotPositions[i].y, 0.045f * RENDERING_ASPECT, 0.045f};
         sheen.sheetAnimation = SheetAnimation{6, 1};
 
         sheen.sheetAnimation.currentFrame = 4;
@@ -3667,10 +3661,11 @@ void add_relics_ui() {
         }
     }
 
-    TextElement vsync = TextElement{ CENTER, "Relics", 0.5f, 0.1f, -1, true, DEFAULT_FONT_SCALE * 2, vec3(1.0f)};
-    vsync.bounce = true;
-    i32 test = add_text_element(gState->uiPage, vsync);
-    add_text_to_window(gState->uiPage, multWindowIndex, test);
+    TextElement header = TextElement{ CENTER, "Relics", 0.5f, 0.1f, -1, true, DEFAULT_FONT_SCALE * 2, vec3(1.0f)};
+    header.bounce = true;
+    header.typeWriter = true;
+    i32 headerId = add_text_element(gState->uiPage, header);
+    add_text_to_window(gState->uiPage, multWindowIndex, headerId);
 
     UIElement blur = UIElement{CENTER, -1, -1, 0.5, 0.5, 1.0f, 1.0f};
     blur.color = vec4(0.0f, 0.0f, 0.0f, 0.5);
@@ -3748,7 +3743,7 @@ void init_round(ROUND_TYPE type) {
     gState->rules.rainbowRunEnabled = false;
     gState->table.longestRunSize = 0;
 
-    gState->mode = GM_PLAYING;
+    gState->mode = GM_IN_GAME;
     clear_game_ui();
     add_in_game_ui();
 }
@@ -3779,7 +3774,7 @@ u8 add_set_value_total(void *ptr) {
 
 u8 add_table_value_total(void *ptr) {
     clear_round_score(&gState->roundData); //zero it out first 
-    for(i32 i = 0; i < gState->table.numberOfSets; i++) {
+    for(i32 i = 0; i < gState->table.numberOfSets; ++i) {
         Set *set = &gState->table.sets[i];
         gState->roundData.roundScore += calculate_set_bonuses(set, false); 
     }
@@ -3787,6 +3782,12 @@ u8 add_table_value_total(void *ptr) {
 }
 
 void push_set_bonus(Set *set, i32 value, CmdActionFuncPtr relicFn) {
+    ActionCommand *shake = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, sizeof(f32), execute_action);
+    if (shake) {
+        shake->action = screen_shake;
+        *COMMAND_PAYLOAD(shake, f32) = 0.6f;
+    } 
+
     if(relicFn == addition_action) {
         add_addition_animation(set, value);
     } else {
@@ -3897,6 +3898,12 @@ void count_table() {
                 *COMMAND_PAYLOAD(tileText, TextElement) = bonus;
             }
 
+            ActionCommand *shake = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, sizeof(f32), execute_action);
+            if (shake) {
+                shake->action = screen_shake;
+                *COMMAND_PAYLOAD(shake, f32) = 0.3f;
+            } 
+
             push_wait(&gState->cmdQueue, 0.05f);
             
             //adds tile number to hoveredset
@@ -3944,10 +3951,6 @@ void count_table() {
     }
 }
 
-void calculate_round_bonus(RunData *gd, PlayerData pd) {
-    count_table();
-}
-
 void complete_round() {
     clear_game_ui();
    
@@ -3968,7 +3971,7 @@ void complete_round() {
         add_round_complete_ui();
         gState->mode = GM_ROUND_COMPLETE;
 
-        calculate_round_bonus(&gState->runData, gState->player.playerData);
+        count_table(); 
 
         gState->roundData.turnLimit = 20; 
         gState->runData.rounds++;
@@ -4065,18 +4068,15 @@ u8 is_table_valid() {
         } else if(set->setType == RUN) {
             if(!is_run_valid(&gState->rules, set)) return false;
         }
-        //THIS IS FUNGIBLE
         if(set->numberOfTiles < gState->rules.minSetSize) return false;
     }
 
-    add_table_value_total(nullptr);
+    return add_table_value_total(nullptr);
 } 
 
 void end_turn() {
-    if(gState->mode == GM_PLAYING) {
-        // can still end turn when round complete...
+    if(gState->mode == GM_IN_GAME) {
         if(is_table_valid()) {
-            //gState->player.playerData.score = gState->table.value;
             if(check_min_score_endgame(gState)) {
                 complete_round();
             } else {
@@ -4179,7 +4179,7 @@ void init_relics_ui() {
 }
 
 void add_game_ui_data(UIPage *uiPage) {
-    uiPage->actions[uiPage->numberOfActions++] = &set_round_type; //NOT USED!!!!
+    uiPage->actions[uiPage->numberOfActions++] = &set_round_type;
     uiPage->actions[uiPage->numberOfActions++] = &add_options_ui;
     uiPage->actions[uiPage->numberOfActions++] = &go_back;
     uiPage->actions[uiPage->numberOfActions++] = &quit;
@@ -4207,7 +4207,8 @@ void add_game_ui_data(UIPage *uiPage) {
     uiPage->actions[uiPage->numberOfActions++] = &paint_blue; //24
     uiPage->actions[uiPage->numberOfActions++] = &paint_black; //25
     uiPage->actions[uiPage->numberOfActions++] = &add_profile_ui; //26
-    
+    uiPage->actions[uiPage->numberOfActions++] = &start_new_run; //27
+
     uiPage->values[uiPage->numberOfValues++] = &gState->roundData.roundScore;//&gState->player.playerData.score;
     uiPage->values[uiPage->numberOfValues++] = &gState->roundData.turnLimit;
     uiPage->values[uiPage->numberOfValues++] = &gState->roundData.minimumScore;
@@ -4312,7 +4313,7 @@ extern "C" GAME_DLL void game_update_and_render() {
     execute_queue(&gState->cmdQueue);
 
     switch(gState->mode) {
-        case GM_PLAYING : {
+        case GM_IN_GAME : {
             draw_table();
             draw_pool();
             draw_player_rack();
@@ -4372,20 +4373,13 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
         gState->player.numberOfActives = 0;
 
         for (i32 i = 0; i < TOTAL_ACTIVES; ++i) {
-            //gState->player.activeIds[i] = i;
-
             Active active = gState->actives[i];
-            //active->object.model = rackSpaces[i];
-            //active->originalPosition = rackSpaces[i];
             gState->player.actives[i] = active;
             gState->player.actives[i].object.model = rackSpaces[i];
             gState->player.actives[i].originalPosition = rackSpaces[i];
-
-
             gState->player.numberOfActives++;
         }
 
-        //gState->player.activeIds[8] = 3;
         gState->player.actives[8] = gState->actives[3];
         gState->player.actives[8].object.model = rackSpaces[8];
         gState->player.actives[8].originalPosition = rackSpaces[8];
@@ -4422,10 +4416,9 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
     }
 
     if (key == 294 && action == 1) {
-        ActionCommand *shake = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, mat4*, execute_action);
+        ActionCommand *shake = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, 0, execute_action);
         if (shake) {
             shake->action = screen_shake;
-            *COMMAND_PAYLOAD(shake, mat4*) = &gMemory->renderBuffer->projection;
         } 
     }
 

@@ -154,3 +154,12 @@ tac-tile?
 
 
 CROC JOCK -- split sets get reward for each of those sets..
+
+// color change joker, run continues in different color
+
+
+--run issues
+34BRJ -- somehow is not valid!
+rainbowrun -- not working
+
+
