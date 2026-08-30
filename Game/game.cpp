@@ -518,7 +518,6 @@ u8 repaint_tile(void *ptr) {
 }
 
 u8 allow_rainbow_run(void *ptr) {
-    printf("RAINBOW ENABLED!\n");
     gState->rules.rainbowRunEnabled = true;
     return true;
 }
@@ -2192,9 +2191,9 @@ void split_set(Set *set, i32 originalIndex, i32 originalCount) {
             printf("Null tile in split set.\n");
             continue;
         }        
-        remove_tile_from_set(set, t);
         add_tile_to_set(newSet, t);
     }
+    set->numberOfTiles = originalIndex + 1;
 }
 
 void shift_set_left(Set *set) {
@@ -4385,7 +4384,7 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
 //        gState->player.actives[8].originalPosition = rackSpaces[8];
 //        gState->player.numberOfActives++;
         u8 i = gState->player.numberOfActives;
-        gState->player.actives[i] = gState->actives[0];
+        gState->player.actives[i] = gState->actives[5];
         gState->player.actives[i].object.model = rackSpaces[i];
         gState->player.actives[i].originalPosition = rackSpaces[i];
         gState->player.numberOfActives++;
@@ -4466,6 +4465,7 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
                 }
             } 
 
+    //if(set->numberOfTiles == 13) return false; isComplete does this
             if(gState->uiPage->elementHovered != -1 && !gState->player.heldTile) {
                 BUTTON_RELEASE(gState->uiPage->uiElements[gState->uiPage->elementHovered]);
                 gMemory->play_audio_fn(1);
