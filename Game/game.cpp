@@ -65,6 +65,7 @@ void add_paint_window();
 void hide_paint_hovered_window();
 void add_map_ui();
 void populate_challenges(i32 *arr);
+void remove_tile_from_pool(i32 id);
 
 // validations.cpp
 i32 get_high_tile_number(Set *set);
@@ -271,7 +272,7 @@ void revert_to_round_start() {
 
     for(i32 i = 0; i < gState->playerRack.numberOfTiles; ++i) {
         Tile *tile = gState->playerRack.tiles[i];
-        if(tile->object.target != tile->object.model) {
+        if(tile->object.isAnimated) {
             ActionCommand *cmd = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, GameObject *, execute_action);
             if (cmd) {
                 cmd->action = move_tile;
@@ -462,14 +463,17 @@ u8 sell_item(void *ptr) {
 
 u8 add_new_joker(void *ptr) {
     for(i32 i = 0; i < gState->pool.numberOfTiles; ++i) {
-        Tile *t = gState->pool.tiles[i];
+        Tile *t = gState->pool.tiles[i]; 
+
         if(t->details.tileNumber == 14) {
+            remove_tile_from_pool(i);
             add_tile_to_rack(t);
             toggle_actives();
+            snapshot_round_start();
             return true;
         }
     }
-    return true;
+    return false;
 }
 
 //make this passive
@@ -712,6 +716,7 @@ u8 move_tile(void* ptr) {
     self->model[2][2] = currentScale.z;
 
     if (current == target && currentScale == targetScale) {
+        self->isAnimated = false;
         gMemory->play_audio_pitch_fn(0, (target.x * 0.08f) + 1.0f);
         return true;
     }
@@ -782,6 +787,13 @@ u8 add_set_amount(void *ptr) {
     return true;
 }
 
+void remove_tile_from_pool(i32 id) {
+    for(i32 i = id; i < gState->pool.numberOfTiles - 1; ++i) {
+        gState->pool.tiles[i] = gState->pool.tiles[i + 1];
+    }
+    gState->pool.numberOfTiles--;
+}
+
 void add_tile_to_rack(Tile *tile) {
     tile->location = TILE_LOCATION::P_RACK;
     tile->object.model = gState->pool.object.model;
@@ -789,6 +801,7 @@ void add_tile_to_rack(Tile *tile) {
     tile->locationIndex = gState->playerRack.numberOfTiles;
     tile->setId = -1;
     tile->originalPosition = tile->object.model;
+    tile->object.isAnimated = true;
 
     ActionCommand *cmd = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, GameObject *, execute_action);
     if (cmd) {
@@ -811,7 +824,8 @@ u8 draw_from_pool(Rack &rack) {
     if(activesShown) activesShown = false;
 
     Tile* tileDrawn = gState->pool.tiles[gState->pool.numberOfTiles - 1];
-    gState->pool.numberOfTiles == 0 ? 0 : gState->pool.numberOfTiles--;
+    //gState->pool.numberOfTiles == 0 ? 0 : gState->pool.numberOfTiles--;
+    remove_tile_from_pool(gState->pool.numberOfTiles - 1);
     add_tile_to_rack(tileDrawn);
     if(nextFiveShown) {
       peekTilesAmount == 0 ? 5 : peekTilesAmount--;
@@ -1330,7 +1344,7 @@ void check_tile_hovered(f64 xpos, f64 ypos) {
     for(i32 i = 0; i < gState->playerRack.numberOfTiles; i++) {
         Tile* tile = gState->playerRack.tiles[i];
 
-        if(gState->player.heldTile == tile) continue;
+        if(gState->player.heldTile == tile || tile->object.isAnimated) continue;
 
         vec3 pos = vec3(tile->object.model[3]);
         f32 half = defaultTileScale.x * 0.5f;
@@ -2253,13 +2267,12 @@ void release_tile() {
             }
         }
         gMemory->play_audio_fn(0);
+        validate_rack();
+        remove_empty_sets();
+        add_table_value_total(nullptr);
     }
-    //maybe add set value calculation with relics here?
-
-    validate_rack();
     gState->player.heldTile = nullptr;
-    remove_empty_sets();
-    add_table_value_total(nullptr);
+
 }
 
 void remove_active() {
@@ -2289,11 +2302,14 @@ void release_active() {
         Active *active = &gState->player.actives[gState->player.heldActiveId];
 
         if(is_inside_pool(active->object.model)) {
-            active->item.action(nullptr);
-            //active->object.model = gState->pool.object.model;
-            active->originalPosition = gState->pool.object.model;
-            remove_active();
-            sort_active_rack();
+            if(active->item.action(nullptr)) {
+                active->originalPosition = gState->pool.object.model;
+                remove_active();
+                sort_active_rack();
+            } else {
+                active->object.model = active->originalPosition;
+                gState->player.heldActiveId = -1;
+            }
         } else {
             active->object.model = active->originalPosition;
             gState->player.heldActiveId = -1;
@@ -2951,20 +2967,6 @@ void add_end_game_ui() {
     blur.color = vec4(0.0f, 0.0f, 0.0f, 0.5);
     blur.zIndex = 0;
     add_ui_element(gState->uiPage, blur);
-}
-
-void add_group_multiplier() {
-    if(gState->runData.dollaBills >= 1) {
-        gState->runData.dollaBills -= 1;
-        gState->player.playerData.groupMultipliers++;
-    }
-}
-
-void add_run_multiplier() {
-    if(gState->runData.dollaBills >= 1) {
-        gState->runData.dollaBills -= 1;
-        gState->player.playerData.runMultipliers++;
-    }
 }
 
 void add_relic() {
@@ -4125,8 +4127,6 @@ void init_player() {
 
 void clear_player_data() {
     gState->player.playerData.timesDrawn = 0;
-    gState->player.playerData.runMultipliers = 1;
-    gState->player.playerData.groupMultipliers = 1;
     gState->player.numberOfRelics = 0;
     gState->player.numberOfActives = 0;
 }
@@ -4187,8 +4187,8 @@ void add_game_ui_data(UIPage *uiPage) {
     uiPage->actions[uiPage->numberOfActions++] = &reset_board;
     uiPage->actions[uiPage->numberOfActions++] = &sort_rack_by_color;
     uiPage->actions[uiPage->numberOfActions++] = &sort_rack_by_number;
-    uiPage->actions[uiPage->numberOfActions++] = &add_group_multiplier;
-    uiPage->actions[uiPage->numberOfActions++] = &add_run_multiplier;
+    uiPage->actions[uiPage->numberOfActions++] = &nothing; // clear
+    uiPage->actions[uiPage->numberOfActions++] = &nothing; // clear
     uiPage->actions[uiPage->numberOfActions++] = &add_relic_purchase;
     uiPage->actions[uiPage->numberOfActions++] = &add_relic;
     uiPage->actions[uiPage->numberOfActions++] = &nothing;
@@ -4370,19 +4370,24 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
     }
 
     if (key == 298 && action == 1) {
-        gState->player.numberOfActives = 0;
-
-        for (i32 i = 0; i < TOTAL_ACTIVES; ++i) {
-            Active active = gState->actives[i];
-            gState->player.actives[i] = active;
-            gState->player.actives[i].object.model = rackSpaces[i];
-            gState->player.actives[i].originalPosition = rackSpaces[i];
-            gState->player.numberOfActives++;
-        }
-
-        gState->player.actives[8] = gState->actives[3];
-        gState->player.actives[8].object.model = rackSpaces[8];
-        gState->player.actives[8].originalPosition = rackSpaces[8];
+//        gState->player.numberOfActives = 0;
+//
+//        for (i32 i = 0; i < TOTAL_ACTIVES; ++i) {
+//            Active active = gState->actives[i];
+//            gState->player.actives[i] = active;
+//            gState->player.actives[i].object.model = rackSpaces[i];
+//            gState->player.actives[i].originalPosition = rackSpaces[i];
+//            gState->player.numberOfActives++;
+//        }
+//
+//        gState->player.actives[8] = gState->actives[3];
+//        gState->player.actives[8].object.model = rackSpaces[8];
+//        gState->player.actives[8].originalPosition = rackSpaces[8];
+//        gState->player.numberOfActives++;
+        u8 i = gState->player.numberOfActives;
+        gState->player.actives[i] = gState->actives[0];
+        gState->player.actives[i].object.model = rackSpaces[i];
+        gState->player.actives[i].originalPosition = rackSpaces[i];
         gState->player.numberOfActives++;
     }
 

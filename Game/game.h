@@ -187,8 +187,6 @@ struct Table {
 
 struct PlayerData {
     i32 timesDrawn = 0;
-    i32 runMultipliers = 1;
-    i32 groupMultipliers = 1;
 };
 
 enum Rarity {
