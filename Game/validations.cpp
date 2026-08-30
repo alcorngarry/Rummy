@@ -67,7 +67,7 @@ i32 get_normal_array_sorted(Set *set, Tile** normalArray) {
 
         if(t->details.type == NORMAL) {
             i32 j = normalCount - 1;
-
+;
             while(j >= 0 && normalArray[j]->details.tileNumber > t->details.tileNumber) {
                 normalArray[j + 1] = normalArray[j];
                 j--;
@@ -240,6 +240,11 @@ u8 is_rainbow_run(Set *set) {
     i32 normalCount = get_normal_array_sorted(set, normals);
 
     if(normalCount == 0) return false;
+
+    for(i32 i = 1; i < normalCount; ++i) {
+        if(normals[i]->details.tileNumber != normals[i - 1]->details.tileNumber + 1)
+            return false;
+    }
     
     u8 color = normals[0]->details.tileColor;
 

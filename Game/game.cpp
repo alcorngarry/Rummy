@@ -2337,7 +2337,10 @@ void remove_empty_sets() {
             Tile* t = gState->table.sets[writeIndex].tiles[j];
             t->setId = writeIndex;
         }
-        if(is_rainbow_run(&gState->table.sets[writeIndex])) gState->rules.rainbowRunSetId = gState->table.sets[writeIndex].id;
+        if(is_rainbow_run(&gState->table.sets[writeIndex])) {
+          printf("SETTING RAINBOW RUN ID\n");
+          gState->rules.rainbowRunSetId = gState->table.sets[writeIndex].id;
+        }
 
         writeIndex++;
     }
@@ -4416,7 +4419,9 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
     if (key == 77 && action == 1) { //m
         //add_map_ui();
         //add_end_game_ui();
-        add_shop_purchase_menu(false);
+        //add_shop_purchase_menu(false);
+        printf("Rainbow run enabled = %i\n", gState->rules.rainbowRunEnabled);
+        printf("Rainbow run setId = %i\n", gState->rules.rainbowRunSetId);
     }
 
     if (key == 294 && action == 1) {
