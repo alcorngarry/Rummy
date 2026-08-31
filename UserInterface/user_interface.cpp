@@ -786,14 +786,14 @@ i32 add_element_to_tab(UIPage *page, i32 windowId, i32 tabId, i32 element) {
     return element;
 }
 
-i32 add_tab(UIPage *page, i32 tabHandle, const char* text, vec4 color) {
+i32 add_tab(UIPage *page, i32 tabHandle, const char* text, vec4 color, f32 fontScale) {
     //scale defaulted
     UIElement tab = UIElement{ Anchor::CENTER, -1, tabHandle, 0.5f, 0.5f, 0.08f, 0.1f, true};
     tab.color = color;
     tab.sheetAnimation = SheetAnimation{3,3};
     tab.isPanel = true;
 
-    TextElement tText = TextElement{ Anchor::CENTER, "", 0.5f, 0.5f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+    TextElement tText = TextElement{ Anchor::CENTER, "", 0.5f, 0.5f, -1, true, DEFAULT_FONT_SCALE * fontScale, vec3(1.0f)};
     strcpy(tText.text, text);
     
     i32 tabId = add_ui_element(page, tab);
@@ -854,7 +854,7 @@ void add_tabs_to_window(UIPage *page, i32 windowId, i32 *tabIds, i32 numberOfTab
     }
 }
 
-i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 scale, vec4 color, i32 actionId, u8 zIndex) {
+i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 scale, vec4 color, i32 actionId, u8 zIndex, f32 fontScale) {
     i32 buttonId = page->numberOfImageElements;
     i32 textId = page->numberOfTextElements;
 
@@ -870,7 +870,7 @@ i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 
 
     add_ui_element(page, button, true);
   
-    TextElement bText = TextElement{ Anchor::CENTER, "", pos.x, pos.y, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+    TextElement bText = TextElement{ Anchor::CENTER, "", pos.x, pos.y, -1, true, DEFAULT_FONT_SCALE * fontScale, vec3(1.0f)};
     strcpy(bText.text, text);
     bText.zIndex = zIndex;
     bText.maxWidth = button.width * RENDERING_ASPECT;
@@ -880,6 +880,12 @@ i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 
 
     return buttonId;
 }
+
+void disable_button(UIPage *page, i32 id) {
+    UIElement *button = &page->uiElements[id];
+    button->actionId = -1;
+    button->color *= vec4(0.6f, 0.6f, 0.6f, 1.0f);;
+} 
 
 i32 add_button(UIPage *page, i32 buttonHandle, i32 buttonImageHandle, vec2 pos, vec2 scale, vec4 color, i32 actionId) {
 

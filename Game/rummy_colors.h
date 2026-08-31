@@ -20,5 +20,9 @@
 #define R_YELLOW vec4(0.925f, 0.925f, 0.360f, 1.0f)
 #define R_DARK_BLUE vec4(0.025f, 0.150f, 0.230f, 1.0f)
 #define R_SILVER vec4(0.860f, 0.860f, 1.000f, 1.0f)
-
+#define R_DARK_TEAL vec4(0.094f, 0.325f, 0.243f, 1.0f)
+#define R_DARK_GREEN_TWO vec4(1.000f, 0.753f, 0.322f, 1.0f)
+#define R_SLATE vec4(0.722f, 0.729f, 0.753f, 1.0f)
+#define R_NAVY vec4(0.039f, 0.141f, 0.259f, 1.0f)
+#define R_DARK_SLATE vec4(0.180f, 0.196f, 0.235f, 1.0f)
 #endif

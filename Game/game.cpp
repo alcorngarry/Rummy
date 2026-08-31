@@ -2499,7 +2499,7 @@ u8 load_map_ui(void *ptr) {
     i32 desc1Id = add_text_element(gState->uiPage, desc1);
     i32 challenge1 = add_ui_element(gState->uiPage, challengeImage);
     i32 nextRoundBg1 = add_ui_element(gState->uiPage, nextRoundBg);
-    i32 roundButton1 = add_button(gState->uiPage, BUTTON_T, "SELECT", vec2(nextRoundBg.posx, 0.9f), vec2(0.05f, 0.225f), R_SILVER, 0, frontIndex);
+    i32 roundButton1 = add_button(gState->uiPage, BUTTON_T, "SELECT", vec2(nextRoundBg.posx, 0.9f), vec2(0.05f, 0.225f), R_SLATE, 0, frontIndex);
 
     TextElement reward = TextElement{ CENTER, "", (f32)nextRoundBg.posx, 0.78f, -1, true, DEFAULT_FONT_SCALE * 1.5f, vec3(1.0f)};
     reward.color = R_GOLDEN;
@@ -2524,7 +2524,7 @@ u8 load_map_ui(void *ptr) {
     i32 desc2Id = add_text_element(gState->uiPage, desc1);
     i32 challenge2 = add_ui_element(gState->uiPage, challengeImage);
     i32 nextRoundBg2 = add_ui_element(gState->uiPage, nextRoundBg);
-    i32 roundButton2 = add_button(gState->uiPage, BUTTON_T, "SELECT", vec2(nextRoundBg.posx, 0.9f), vec2(0.05f, 0.225f), R_SILVER, 0, frontIndex);
+    i32 roundButton2 = add_button(gState->uiPage, BUTTON_T, "SELECT", vec2(nextRoundBg.posx, 0.9f), vec2(0.05f, 0.225f), R_SLATE, 0, frontIndex);
 
     snprintf(reward.text, sizeof(reward.text),
              "Reward: $%llu",
@@ -2542,7 +2542,7 @@ u8 load_map_ui(void *ptr) {
     i32 desc3Id = add_text_element(gState->uiPage, desc1);
     i32 challenge3 = add_ui_element(gState->uiPage, challengeImage);
     i32 nextRoundBg3 = add_ui_element(gState->uiPage, nextRoundBg);
-    i32 roundButton3 = add_button(gState->uiPage, BUTTON_T, "SELECT", vec2(nextRoundBg.posx, 0.9f), vec2(0.05f, 0.225f), R_SILVER, 0, frontIndex);
+    i32 roundButton3 = add_button(gState->uiPage, BUTTON_T, "SELECT", vec2(nextRoundBg.posx, 0.9f), vec2(0.05f, 0.225f), R_SLATE, 0, frontIndex);
     UIElement round1 = UIElement{ Anchor::CENTER, -1, BUTTON_T, 0.2575f, 0.5f, 0.8f, 0.225f};
 
     snprintf(reward.text, sizeof(reward.text),
@@ -2593,11 +2593,11 @@ u8 load_map_ui(void *ptr) {
 void add_map_ui() {
     push_wait(&gState->cmdQueue, 0.75f);
 
-    ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u64, execute_action);
-    if (total) {
-        total->action = add_cash;
-        *COMMAND_PAYLOAD(total, u64) = 1;
-    }
+//    ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u64, execute_action);
+//    if (total) {
+//        total->action = add_cash;
+//        *COMMAND_PAYLOAD(total, u64) = 1;
+//    }
 
     ActionCommand *nextRound = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, 0, execute_action);
     if (nextRound) { 
@@ -2636,7 +2636,7 @@ void add_profile_ui() {
     i32 desc6Id = add_text_element(gState->uiPage, desc1);
 
 
-    i32 back = add_button(gState->uiPage, BUTTON_T, "Back", vec2(0.5f, 0.85f), vec2(0.075f, 0.45f), R_SILVER, 2);
+    i32 back = add_button(gState->uiPage, BUTTON_T, "Back", vec2(0.5f, 0.85f), vec2(0.075f, 0.45f), R_SLATE, 2);
 
     i32 multWindowIndex = add_window(gState->uiPage, UI_BG_2_T, Anchor::CENTER, vec2(0.9f, 0.75f), vec2(0.5f, 1.2f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE); 
 
@@ -2675,7 +2675,7 @@ void set_round_complete_ui(i32 windowIndex) {
     gState->uiPage->uiElements[challengeWindow].visible = false;
     gState->uiPage->uiElements[challengeWindow].id = 97;
 
-    i32 switchButton = add_button(gState->uiPage, BUTTON_T, "X", vec2(0.69f, 0.071f), vec2(0.0675f * RENDERING_ASPECT, 0.02f), R_SILVER, 21);
+    i32 switchButton = add_button(gState->uiPage, BUTTON_T, "X", vec2(0.69f, 0.071f), vec2(0.0675f * RENDERING_ASPECT, 0.02f), R_SLATE, 21);
 
     add_switch_element(gState->uiPage, CENTER, switchButton, vec2(0.05, 0.05f), vec2(0.02f * RENDERING_ASPECT, 0.02f), RADIO_T);
 
@@ -2811,16 +2811,16 @@ void add_in_game_ui() {
     add_item_window();
     add_paint_window();
 
-    add_button(gState->uiPage, BUTTON_T, "DRAW", vec2(0.88f, 0.06f), vec2(0.1f), R_BLUE, 4);
-    add_button(gState->uiPage, BUTTON_T, "RESET", vec2(0.77f, 0.06f), vec2(0.1f), R_RED, 5);
+    add_button(gState->uiPage, BUTTON_T, "DRAW", vec2(0.88f, 0.06f), vec2(0.1f), R_BLUE, 4, 0, 1.5f);
+    add_button(gState->uiPage, BUTTON_T, "RESET", vec2(0.77f, 0.06f), vec2(0.1f), R_RED, 5, 0, 1.5f);
 
-    add_button(gState->uiPage, BUTTON_T, "Color", vec2(0.89f, 0.8f), vec2(0.0375f * RENDERING_ASPECT, 0.075f), R_SILVER, 6);
-    add_button(gState->uiPage, BUTTON_T, "Number", vec2(0.89f, 0.875f), vec2(0.0375f * RENDERING_ASPECT, 0.075f), R_SILVER, 7);
+    add_button(gState->uiPage, BUTTON_T, "Color", vec2(0.89f, 0.8f), vec2(0.0375f * RENDERING_ASPECT, 0.075f), R_SLATE, 6);
+    add_button(gState->uiPage, BUTTON_T, "Number", vec2(0.89f, 0.875f), vec2(0.0375f * RENDERING_ASPECT, 0.075f), R_SLATE, 7);
 
     //add_button(gState->uiPage, BUTTON_T, EXIT_T, vec2(0.035f, 0.05f), vec2(0.035f * RENDERING_ASPECT, 0.035f), R_DARK_GRAY, 14);
-    add_button(gState->uiPage, BUTTON_T, SETTINGS_T, vec2(0.9625f, 0.9525f), vec2(0.035f * RENDERING_ASPECT, 0.035f), R_DARK_GRAY, 1);
+    add_button(gState->uiPage, BUTTON_T, SETTINGS_T, vec2(0.9625f, 0.9525f), vec2(0.035f * RENDERING_ASPECT, 0.035f), R_DARK_SLATE, 1);
     //ACTIVES TOGGLE!!! 
-    i32 switchButton = add_button(gState->uiPage, BUTTON_T, "Rack", vec2(0.89f, 0.95f), vec2(0.0375f * RENDERING_ASPECT, 0.075f), R_SILVER, 18);
+    i32 switchButton = add_button(gState->uiPage, BUTTON_T, "Rack", vec2(0.89f, 0.95f), vec2(0.0375f * RENDERING_ASPECT, 0.075f), R_SLATE, 18);
     //make a SWITCH ui element
     add_switch_element(gState->uiPage, CENTER, switchButton, vec2(0.05, 0.86f), vec2(0.02f * RENDERING_ASPECT, 0.02f), RADIO_T);
 
@@ -3172,11 +3172,11 @@ void reroll_actives() {
 void add_active_purchase() {
     push_wait(&gState->cmdQueue, 0.75f);
 
-    ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u64, execute_action);
-    if (total) {
-        total->action = add_cash;
-        *COMMAND_PAYLOAD(total, u64) = 1;
-    }
+//    ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u64, execute_action);
+//    if (total) {
+//        total->action = add_cash;
+//        *COMMAND_PAYLOAD(total, u64) = 1;
+//    }
 
     ActionCommand *nextRound = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u8, execute_action);
     if (nextRound) { 
@@ -3266,6 +3266,8 @@ void add_shop_purchase_menu(u8 isRelic) {
     }
 
     i32 rerollId = add_button(gState->uiPage, BUTTON_T, "REROLL", vec2(0.26f, 0.9f), vec2(0.05f, 0.225f), R_RED, rerollActionId);
+
+    if(rerollActionId == 12) disable_button(gState->uiPage, rerollId);
 
     i32 windowIndex = add_window(gState->uiPage, UI_BG_2_T, CENTER, vec2(0.9f, 0.75f), vec2(0.5f, 2.0f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE); 
 
@@ -3427,10 +3429,10 @@ void add_round_complete_ui() {
 void add_main_menu_ui() {
     set_page_state(MAIN_MENU);
 
-    i32 newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.5f, 0.625f), vec2(0.08f, 0.25f), R_GREEN_TWO, 27);
-    i32 options = add_button(gState->uiPage, BUTTON_T, "Options", vec2(0.5f, 0.725f), vec2(0.08f, 0.25f), R_BLUE, 1);
-    i32 profile = add_button(gState->uiPage, BUTTON_T, "Profile", vec2(0.5f, 0.825f), vec2(0.08f, 0.25f), R_BLUE, 26);
-    i32 quit = add_button(gState->uiPage, BUTTON_T, "Quit", vec2(0.5f, 0.925f), vec2(0.08f, 0.2f), R_RED, 3);
+    i32 newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.5f, 0.625f), vec2(0.08f, 0.25f), R_DARK_GREEN_TWO, 27, 0, 2);
+    i32 options = add_button(gState->uiPage, BUTTON_T, "Options", vec2(0.5f, 0.725f), vec2(0.08f, 0.25f), R_BLUE, 1, 0, 2);
+    i32 profile = add_button(gState->uiPage, BUTTON_T, "Profile", vec2(0.5f, 0.825f), vec2(0.08f, 0.25f), R_BLUE, 26, 0, 2);
+    i32 quit = add_button(gState->uiPage, BUTTON_T, "Quit", vec2(0.5f, 0.925f), vec2(0.08f, 0.2f), R_RED, 3, 0, 2);
 
 
     i32 windowIndex = add_window(gState->uiPage, UI_BG_2_T, Anchor::CENTER, vec2(0.15f, 0.5f), vec2(0.5f, 1.15f), vec2(0.5f, 0.8f), R_SILVER, R_DARK_BLUE); 
@@ -3493,7 +3495,7 @@ void add_options_ui() {
     //should be auto added when adding tabs, but color
     add_cursor(gState->uiPage, BUTTON_SELECT_T, R_YELLOW, TAB);
 
-    i32 applyChanges = add_button(gState->uiPage, BUTTON_T, "Apply Changes", vec2(0.5f, 0.9f), vec2(0.075f, 0.45f), R_RED, 13);
+    i32 applyChanges = add_button(gState->uiPage, BUTTON_T, "Apply Changes", vec2(0.5f, 0.9f), vec2(0.075f, 0.45f), R_RED, 13, 0, 2.0f);
 
     i32 quitGame = 0;
     i32 newGame = 0;
@@ -3502,20 +3504,20 @@ void add_options_ui() {
     i32 gameStats = 0;
 
     if(gState->prevState == MAIN_MENU ) {
-        relics = add_button(gState->uiPage, BUTTON_T, "Relics", vec2(0.5f, 0.3f), vec2(0.1f, 0.4f), R_BLUE, 15);
-        gameStats = add_button(gState->uiPage, BUTTON_T, "Game Stats", vec2(0.5f, 0.45f), vec2(0.1f, 0.4f), R_BLUE, 15);
+        relics = add_button(gState->uiPage, BUTTON_T, "Relics", vec2(0.5f, 0.3f), vec2(0.1f, 0.4f), R_BLUE, 15, 0, 2);
+        gameStats = add_button(gState->uiPage, BUTTON_T, "Game Stats", vec2(0.5f, 0.45f), vec2(0.1f, 0.4f), R_BLUE, 15, 0, 2);
     } else {
-        newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.5f, 0.6f), vec2(0.1f, 0.4f), R_GREEN_TWO, 27);
-        relics = add_button(gState->uiPage, BUTTON_T, "View Relics", vec2(0.5f, 0.3f), vec2(0.1f, 0.4f), R_BLUE, 15);
-        profile = add_button(gState->uiPage, BUTTON_T, "Profile", vec2(0.5f, 0.45f), vec2(0.1f, 0.4f), R_BLUE, 26);
-        quitGame = add_button(gState->uiPage, BUTTON_T, "Main Menu", vec2(0.5f, 0.75f), vec2(0.1f, 0.4f), R_RED, 14);
+        newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.5f, 0.6f), vec2(0.1f, 0.4f), R_DARK_GREEN_TWO, 27, 0, 2);
+        relics = add_button(gState->uiPage, BUTTON_T, "View Relics", vec2(0.5f, 0.3f), vec2(0.1f, 0.4f), R_BLUE, 15, 0, 2);
+        profile = add_button(gState->uiPage, BUTTON_T, "Profile", vec2(0.5f, 0.45f), vec2(0.1f, 0.4f), R_BLUE, 26, 0, 2);
+        quitGame = add_button(gState->uiPage, BUTTON_T, "Main Menu", vec2(0.5f, 0.75f), vec2(0.1f, 0.4f), R_RED, 14, 0, 2);
     }
 
-    i32 back = add_button(gState->uiPage, BUTTON_T, "Back", vec2(0.5f, 0.9f), vec2(0.075f, 0.45f), R_SILVER, 2);
+    i32 back = add_button(gState->uiPage, BUTTON_T, "Back", vec2(0.5f, 0.9f), vec2(0.075f, 0.45f), R_SLATE, 2, 0, 2);
     
-    i32 general = add_tab(gState->uiPage, BUTTON_T, "General", R_DARK_GRAY);
-    i32 video = add_tab(gState->uiPage, BUTTON_T, "Video", R_DARK_GRAY);
-    i32 controls = add_tab(gState->uiPage, BUTTON_T, "Controls", R_DARK_GRAY);
+    i32 general = add_tab(gState->uiPage, BUTTON_T, "General", R_DARK_GRAY, 1.75f);
+    i32 video = add_tab(gState->uiPage, BUTTON_T, "Video", R_DARK_GRAY, 1.75f);
+    i32 controls = add_tab(gState->uiPage, BUTTON_T, "Controls", R_DARK_GRAY, 1.75f);
     
     gState->uiPage->uiElements[general].imageChildId = video;
     gState->uiPage->uiElements[video].imageChildId = controls;
@@ -4427,12 +4429,15 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
         add_end_game_ui();
     }
 
-    if (key == 298 && action == 1) { // f9
+    if(key == 297 && action == 1) {
         ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u64, execute_action);
         if (total) {
             total->action = add_cash;
             *COMMAND_PAYLOAD(total, u64) = 99;
         }
+    }
+
+    if (key == 298 && action == 1) { // f9
 //        gState->player.numberOfActives = 0;
 //
 //        for (i32 i = 0; i < TOTAL_ACTIVES; ++i) {

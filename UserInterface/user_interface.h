@@ -224,7 +224,7 @@ void add_pop_animation(UIElement *e, f32 duration);
 void add_text_bob(TextElement *element);
 void add_bob(UIElement *element, u8 tied = false);
 void add_cursor(UIPage *page, i32 cursorHandle, vec4 color, CursorType type);
-i32 add_tab(UIPage *page, i32 tabHandle, const char* text, vec4 color);
+i32 add_tab(UIPage *page, i32 tabHandle, const char* text, vec4 color, f32 fontScale = 1.0f);
 void add_tabs_to_window(UIPage *page, i32 windowId, i32 *tabIds, i32 numberOfTabs);
 void switch_tab(UIPage *page);
 i32 add_element_to_tab(UIPage *page, i32 windowId, i32 tabId, i32 element);
@@ -235,9 +235,10 @@ i32 add_radio_element(UIPage *page, u8 enabled, Anchor anchor, vec2 pos, vec2 si
 i32 add_switch_element(UIPage *page, Anchor anchor, i32 buttonId, vec2 pos, vec2 size, i32 radioHandle);
 void layout_grid(vec2 *slots, i32 rows, i32 cols, Anchor anchor, vec2 pos, vec2 windowSize, vec2 slotSize);
   
-i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 scale, vec4 color, i32 actionId, u8 zIndex = 0);
+i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 scale, vec4 color, i32 actionId, u8 zIndex = 0, f32 fontScale = 1.0f);
 i32 add_button(UIPage *page, i32 buttonHandle, i32 imageButtonHandle, vec2 pos, vec2 scale, vec4 color, i32 actionId);
-
+void disable_button(UIPage *page, i32 id);
+  
 void button_press(UIPage *page, void* ptr);
 void button_release(UIPage *page, void* ptr);
 i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 start, vec2 destination, vec4 color1, vec4 color2, f32 duration = 1.0f);
