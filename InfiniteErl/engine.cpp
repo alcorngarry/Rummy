@@ -474,18 +474,11 @@ void key_callback(GLFWwindow* window, i32 key, i32 scancode, i32 action, i32 mod
 void load_textures() {
     //mipmmapped, flipped, repeated
     load_texture(TILE_ATLAS_T, "./res/tile-map2.png", false, true, true);
-    load_texture(END_TURN_T, "./res/end-run.png", true, false, true);
-    load_texture(RESET_BOARD_T, "./res/reset-board.png", true, false, false);
-    load_texture(DISCARD_T, "./res/discard.png", true, false, false);
     load_texture(TILE_FACE_T, "./res/tile-face64.png", true, false, false);
     load_texture(TILE_SIDES_T, "./res/tile-bg64.png", true, false, false);
     load_texture(NUMBER_SHEET_T, "./res/number-sheet.png", true, false, true);
-    load_texture(SORT_NUMBER_T, "./res/sort-number.png", true, false, true);
-    load_texture(SORT_COLOR_T, "./res/sort-color.png", true, false, true);
     load_texture(BRIDGE_T, "./res/bridge.png", true, false, true);
     load_texture(TILE_SLOT_T, "./res/tile-slot.png", true, false, false);
-    load_texture(BG_PATTERN_T, "./res/bg-pattern.png", true, false, true);
-    load_texture(UI_BG_T, "./res/ui-bg3.png", true, false, false);
     load_texture(BUTTON_T, "./res/button.png", true, false, false);
     load_texture(POOL_T, "./res/pool.png", true, false, false);
     load_texture(CIRCLE_BUTTON_T, "./res/circle-button.png", true, false, false);
@@ -501,7 +494,6 @@ void load_textures() {
     load_texture(TITLE_T, "./res/title-sheet.png", true, false, false);
     load_texture(ACTIVES_T, "./res/actives.png", true, false, false);
     load_texture(TOOL_TIP_T, "./res/tooltip.png", true, false, false);
-    load_texture(ROUND_TYPE_T, "./res/tile-bga.png", true, false, false);
     load_texture(ROUND_CHALLENGE_T, "./res/round-challenge.png", true, false, false);
     load_texture(BUMP_BG_T, "./res/bump-bg.png", true, false, false);
     load_texture(SHEEN_T, "./res/sheen.png", true, false, false);

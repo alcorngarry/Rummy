@@ -494,6 +494,12 @@ u8 discard(void *ptr) {
     return true;
 }
 
+u8 add_cash(void *ptr) {
+    u64 cash = *(u64 *)ptr;
+    gState->runData.dollaBills += cash;
+    return true;
+}
+
 u8 show_next_five_in_pool(void *ptr) {
     mat4 start = gState->pool.object.model;
     start = glm::translate(start, vec3(-1.225f, -1.5f, 0.0f));
@@ -1097,7 +1103,7 @@ void draw_background() {
     RenderEntryEntity table = RenderEntryEntity{
       glm::scale(glm::translate(mat4(1.0f), vec3(0.5f * RENDERING_ASPECT, 0.5f, 1.0f)), vec3(1.0f * RENDERING_ASPECT, 1.0f, 1.0f)),
         gState->quadMesh,
-        BG_PATTERN_T,
+        TILE_SLOT_T,
         color,
         //vec4(0.95, 0.388, 0.388, 1.0f),
         false,
@@ -2455,7 +2461,7 @@ void show_challenge_ui() {
     }
 }
 
-void add_map_ui() {
+u8 load_map_ui(void *ptr) {
     i32 frontIndex = 3;
     clear_game_ui();
     gState->uiPage->highestZ = frontIndex;
@@ -2580,6 +2586,23 @@ void add_map_ui() {
     blur.color = vec4(0.0f, 0.0f, 0.0f, 0.5);
     blur.zIndex = frontIndex;
     add_ui_element(gState->uiPage, blur);
+
+    return true;
+}
+
+void add_map_ui() {
+    push_wait(&gState->cmdQueue, 0.75f);
+
+    ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u64, execute_action);
+    if (total) {
+        total->action = add_cash;
+        *COMMAND_PAYLOAD(total, u64) = 1;
+    }
+
+    ActionCommand *nextRound = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, 0, execute_action);
+    if (nextRound) { 
+        nextRound->action = load_map_ui;
+    }
 }
 
 void add_profile_ui() {
@@ -3114,7 +3137,6 @@ void populate_challenges(i32 *arr) {
 }
 
 //
-
 void add_relic_purchase() {
     ActionCommand *nextRound = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u8, execute_action);
     if (nextRound) { 
@@ -3123,8 +3145,38 @@ void add_relic_purchase() {
     }
 }
 
+void reroll(u8 isRelic) {
+    push_wait(&gState->cmdQueue, 0.75f);
+
+    ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u64, execute_action);
+    if (total) {
+        total->action = add_cash;
+        *COMMAND_PAYLOAD(total, u64) = -1;
+    }
+
+    ActionCommand *nextRound = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u8, execute_action);
+    if (nextRound) { 
+        nextRound->action = load_shop_purchase_menu;
+        *COMMAND_PAYLOAD(nextRound, u8) = isRelic;
+    }
+}
+
+void reroll_relics() {
+    reroll(true);
+}
+
+void reroll_actives() {
+    reroll(false);
+}
+
 void add_active_purchase() {
-    push_wait(&gState->cmdQueue, 1.0f);
+    push_wait(&gState->cmdQueue, 0.75f);
+
+    ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u64, execute_action);
+    if (total) {
+        total->action = add_cash;
+        *COMMAND_PAYLOAD(total, u64) = 1;
+    }
 
     ActionCommand *nextRound = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u8, execute_action);
     if (nextRound) { 
@@ -3206,7 +3258,14 @@ void add_shop_purchase_menu(u8 isRelic) {
     relicBg.imageChildId = relic3;
     i32 relicBg3 = add_ui_element(gState->uiPage, relicBg);
 
-    i32 nextRoundId = add_button(gState->uiPage, BUTTON_T, "SKIP", vec2(0.5f, 0.9f), vec2(0.05f, 0.705f), R_GRAY, isRelic ? 16 : 20);
+    i32 nextRoundId = add_button(gState->uiPage, BUTTON_T, "SKIP", vec2(0.74f, 0.9f), vec2(0.05f, 0.225f), R_GRAY, isRelic ? 16 : 20);
+
+    i32 rerollActionId = 12;
+    if(gState->runData.dollaBills > 0) {
+        rerollActionId = isRelic ? 28 : 29;
+    }
+
+    i32 rerollId = add_button(gState->uiPage, BUTTON_T, "REROLL", vec2(0.26f, 0.9f), vec2(0.05f, 0.225f), R_RED, rerollActionId);
 
     i32 windowIndex = add_window(gState->uiPage, UI_BG_2_T, CENTER, vec2(0.9f, 0.75f), vec2(0.5f, 2.0f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE); 
 
@@ -3317,6 +3376,7 @@ void add_shop_purchase_menu(u8 isRelic) {
     add_image_to_window(gState->uiPage, windowIndex, relicBg3);
 
     add_button_to_window(gState->uiPage, windowIndex, nextRoundId);
+    add_button_to_window(gState->uiPage, windowIndex, rerollId);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Round Score", 0.26f, 0.1f, -1, true, DEFAULT_FONT_SCALE }));
     add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.26f, 0.15f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_PURPLE) }, 
         "", 0, UINT_64));
@@ -3847,12 +3907,6 @@ u64 calculate_set_bonuses(Set *set, u8 uiAnimation) {
     return hoveredSetValue; //(get_set_value(set) + addition) * multiplier;
 }
 
-u8 add_cash(void *ptr) {
-    u64 cash = *(u64 *)ptr;
-    gState->runData.dollaBills += cash;
-    return true;
-}
-
 void calculate_round_cash(RunData *gd) {
     if(check_challenge_condition(gState)) {
         ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u64, execute_action);
@@ -4210,6 +4264,8 @@ void add_game_ui_data(UIPage *uiPage) {
     uiPage->actions[uiPage->numberOfActions++] = &paint_black; //25
     uiPage->actions[uiPage->numberOfActions++] = &add_profile_ui; //26
     uiPage->actions[uiPage->numberOfActions++] = &start_new_run; //27
+    uiPage->actions[uiPage->numberOfActions++] = &reroll_relics; //28
+    uiPage->actions[uiPage->numberOfActions++] = &reroll_actives; //29
 
     uiPage->values[uiPage->numberOfValues++] = &gState->roundData.roundScore;//&gState->player.playerData.score;
     uiPage->values[uiPage->numberOfValues++] = &gState->roundData.turnLimit;
@@ -4371,7 +4427,12 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
         add_end_game_ui();
     }
 
-    if (key == 298 && action == 1) {
+    if (key == 298 && action == 1) { // f9
+        ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u64, execute_action);
+        if (total) {
+            total->action = add_cash;
+            *COMMAND_PAYLOAD(total, u64) = 99;
+        }
 //        gState->player.numberOfActives = 0;
 //
 //        for (i32 i = 0; i < TOTAL_ACTIVES; ++i) {
@@ -4386,11 +4447,50 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
 //        gState->player.actives[8].object.model = rackSpaces[8];
 //        gState->player.actives[8].originalPosition = rackSpaces[8];
 //        gState->player.numberOfActives++;
+        add_shop_purchase_menu(true);
+    }
+
+    if (key == 320 && action == 1) {
+        u8 i = gState->player.numberOfActives;
+        gState->player.actives[i] = gState->actives[0];
+        gState->player.actives[i].object.model = rackSpaces[i];
+        gState->player.actives[i].originalPosition = rackSpaces[i];
+        gState->player.numberOfActives++;
+    }
+    if (key == 321 && action == 1) {
+        u8 i = gState->player.numberOfActives;
+        gState->player.actives[i] = gState->actives[1];
+        gState->player.actives[i].object.model = rackSpaces[i];
+        gState->player.actives[i].originalPosition = rackSpaces[i];
+        gState->player.numberOfActives++;   
+    }
+    if (key == 322 && action == 1) {
+        u8 i = gState->player.numberOfActives;
+        gState->player.actives[i] = gState->actives[2];
+        gState->player.actives[i].object.model = rackSpaces[i];
+        gState->player.actives[i].originalPosition = rackSpaces[i];
+        gState->player.numberOfActives++;  
+    }
+    if (key == 323 && action == 1) {
+        u8 i = gState->player.numberOfActives;
+        gState->player.actives[i] = gState->actives[3];
+        gState->player.actives[i].object.model = rackSpaces[i];
+        gState->player.actives[i].originalPosition = rackSpaces[i];
+        gState->player.numberOfActives++;   
+    }
+    if (key == 324 && action == 1) {
+        u8 i = gState->player.numberOfActives;
+        gState->player.actives[i] = gState->actives[4];
+        gState->player.actives[i].object.model = rackSpaces[i];
+        gState->player.actives[i].originalPosition = rackSpaces[i];
+        gState->player.numberOfActives++;   
+    }
+    if (key == 325 && action == 1) {
         u8 i = gState->player.numberOfActives;
         gState->player.actives[i] = gState->actives[5];
         gState->player.actives[i].object.model = rackSpaces[i];
         gState->player.actives[i].originalPosition = rackSpaces[i];
-        gState->player.numberOfActives++;
+        gState->player.numberOfActives++;   
     }
 
     if(key == 297 && action == 1) {
