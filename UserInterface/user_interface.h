@@ -3,7 +3,7 @@
 #include "../InfiniteErl/data_types.h"
 
 #define MAX_ELEMENTS 100
-#define DEFAULT_FONT_SCALE 0.0006f
+#define DEFAULT_FONT_SCALE 0.0009f
 #define MAX_DEP_TEXT 50
 #define MAX_ANIMATIONS 8
 

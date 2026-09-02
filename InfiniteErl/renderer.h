@@ -4,8 +4,6 @@
 #include "user_interface.h"
 #include "renderer/shader.h"
 #include "stb_image.h"
-#include <ft2build.h>
-#include FT_FREETYPE_H
 
 static Shader* textShader;
 static Shader* uiShader;

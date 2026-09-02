@@ -32,6 +32,7 @@
 #define SHEEN_T 24
 #define ROUND_SHEEN_T 25
 #define LOCKED_T 26
+#define FONT_T 27
 
 #ifdef BUILD_DLL
 #define GAME_DLL __declspec(dllexport)

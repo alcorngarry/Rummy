@@ -8,6 +8,27 @@ f32 dT = 0;
 PostProcess post;
 f32 T = 0;
 
+struct Glyph {
+    i32 x;
+    i32 y;
+    i32 width;
+    i32 height;
+    i32 advance;
+};
+
+struct Font {
+    u32 textureId;
+    i32 cellWidth;
+    i32 cellHeight;
+    i32 columns;
+    i32 rows;
+    i32 firstCharacter;
+
+    Glyph glyphs[256];
+};
+
+Font font;
+
 struct RendererMesh {
     u32 vao;
     u32 vbo;
@@ -28,85 +49,181 @@ i32 get_texture_id(i32 id) {
 }
 
 f32 get_text_length(const char* text, f32 scale) {
-    f32 length = 0.0f;
-    //TODO(garry) fix this garbage
-    f32 pixelScale = scale * 768;
+    if (!text) return 0.0f;
 
-    for (const char* c = text; *c != '\0'; c++) {
-        Character* ch = characters[*c];
-        length += (ch->Advance >> 6) * pixelScale;
-    }
-    return length;
+    i32 characterCount = 0;
+
+    for (const char* c = text; *c != '\0'; ++c) characterCount++;
+
+    return characterCount * font.cellWidth * scale;
+}
+
+vec4 get_font_uv(char character) {
+    i32 index = (i32)character - font.firstCharacter;
+
+    if (index < 0 || index >= 256) return vec4(0.0f);
+
+    Glyph* glyph = &font.glyphs[index];
+
+    f32 atlasWidth  = (f32)(font.cellWidth * font.columns);
+    f32 atlasHeight = (f32)(font.cellHeight * font.rows);
+
+    f32 u0 = (f32)glyph->x / atlasWidth;
+    f32 u1 = (f32)(glyph->x + glyph->width) / atlasWidth;
+
+    f32 v1 = 1.0f - (f32)glyph->y / atlasHeight;
+    f32 v0 = 1.0f - (f32)(glyph->y + glyph->height) / atlasHeight;
+
+    return vec4(u0, v0, u1, v1);
+}
+
+void load_glyphs() {
+    font.glyphs[' '] = {  0,   0,  0,  0, 32 };
+
+    font.glyphs['!'] = { 45,   5,  3, 18, 32 };
+    font.glyphs['"'] = { 75,   5,  8,  7, 32 };
+    font.glyphs['#'] = {105,   5, 12, 16, 32 };
+    font.glyphs['$'] = {137,   5, 12, 21, 32 };
+    font.glyphs['%'] = {169,   7, 12, 16, 32 };
+    font.glyphs['&'] = {201,   7, 12, 16, 32 };
+    font.glyphs['\''] = {237, 5,  3,  7, 32 };
+    font.glyphs['('] = {267,   5,  8, 21, 32 };
+    font.glyphs[')'] = {299,   5,  8, 21, 32 };
+    font.glyphs['*'] = {329,  10, 12, 11, 32 };
+    font.glyphs['+'] = {361,  10, 12, 11, 32 };
+    font.glyphs[','] = {395,  18,  5, 10, 32 };
+    font.glyphs['-'] = {425,  14, 12,  3, 32 };
+    font.glyphs['.'] = {459,  18,  5,  5, 32 };
+    font.glyphs['/'] = {491,   5, 10, 18, 32 };
+
+    font.glyphs['0'] = {521,   7, 12, 16, 32 };
+    font.glyphs['1'] = {553,   7,  7, 16, 32 };
+    font.glyphs['2'] = {585,   7, 12, 16, 32 };
+
+
+    font.glyphs['3'] = { 11,  39, 12, 16, 32 };
+    font.glyphs['4'] = { 45,  39,  6, 16, 32 };
+    font.glyphs['5'] = { 73,  39, 12, 16, 32 };
+    font.glyphs['6'] = {107,  39,  8, 16, 32 };
+    font.glyphs['7'] = {137,  39, 12, 16, 32 };
+    font.glyphs['8'] = {169,  39, 12, 16, 32 };
+    font.glyphs['9'] = {201,  39, 12, 16, 32 };
+    font.glyphs[':'] = {224,  39,  0,  0, 32 };
+    font.glyphs[';'] = {269,  44,  6,  6, 32 };
+    font.glyphs['<'] = {299,  39, 10, 16, 32 };
+    font.glyphs['='] = {333,  44,  3,  6, 32 };
+    font.glyphs['>'] = {363,  39,  5, 16, 32 };
+    font.glyphs['?'] = {395,  39,  8, 16, 32 };
+    font.glyphs['@'] = {427,  39,  8, 16, 32 };
+    font.glyphs['A'] = {457,  39, 12, 16, 32 };
+    font.glyphs['B'] = {489,  39, 12, 16, 32 };
+    font.glyphs['C'] = {521,  39, 12, 16, 32 };
+    font.glyphs['D'] = {553,  39, 12, 16, 32 };
+    font.glyphs['E'] = {585,  39, 12, 16, 32 };
+
+
+    font.glyphs['F'] = {  9,  69, 12, 16, 32 };
+    font.glyphs['G'] = { 41,  69, 12, 16, 32 };
+    font.glyphs['H'] = { 73,  69, 12, 16, 32 };
+    font.glyphs['I'] = {105,  69, 12, 16, 32 };
+    font.glyphs['J'] = {137,  69, 12, 16, 32 };
+    font.glyphs['K'] = {169,  69, 12, 16, 32 };
+    font.glyphs['L'] = {201,  69, 12, 16, 32 };
+    font.glyphs['M'] = {237,  73,  6, 12, 32 };
+    font.glyphs['N'] = {267,  73,  5, 17, 32 };
+    font.glyphs['O'] = {299,  69, 10, 16, 32 };
+    font.glyphs['P'] = {329,  73, 12,  8, 32 };
+    font.glyphs['Q'] = {363,  69, 10, 16, 32 };
+    font.glyphs['R'] = {393,  69, 12, 16, 32 };
+    font.glyphs['S'] = {425,  69, 12, 16, 32 };
+    font.glyphs['T'] = {457,  69, 12, 16, 32 };
+    font.glyphs['U'] = {489,  69, 12, 16, 32 };
+    font.glyphs['V'] = {521,  69, 12, 16, 32 };
+    font.glyphs['W'] = {553,  69, 12, 16, 32 };
+    font.glyphs['X'] = {585,  69, 12, 16, 32 };
+
+
+    font.glyphs['Y'] = {  9, 101, 12, 12, 32 };
+    font.glyphs['Z'] = { 41, 101, 12, 12, 32 };
+    font.glyphs['['] = { 73, 101, 12, 12, 32 };
+    font.glyphs['\\'] = {107, 101,  8, 12, 32 };
+    font.glyphs[']'] = {146, 101,  3, 12, 32 };
+    font.glyphs['^'] = {169, 101, 12,  8, 32 };
+    font.glyphs['_'] = {201, 119,  3,  3, 32 };
+    font.glyphs['`'] = {233, 101, 12,  3, 32 };
+
+    font.glyphs['a'] = {265, 101, 12, 12, 32 };
+    font.glyphs['b'] = {297, 101, 12, 12, 32 };
+    font.glyphs['c'] = {329, 101, 12, 12, 32 };
+    font.glyphs['d'] = {361, 101, 12, 12, 32 };
+    font.glyphs['e'] = {393, 101, 12, 12, 32 };
+    font.glyphs['f'] = {425, 101, 12, 12, 32 };
+    font.glyphs['g'] = {457, 101, 12, 16, 32 };
+    font.glyphs['h'] = {489, 101, 12, 12, 32 };
+    font.glyphs['i'] = {521, 101, 12, 12, 32 };
+    font.glyphs['j'] = {553, 101, 12, 16, 32 };
+    font.glyphs['k'] = {585, 101, 12, 12, 32 };
+
+
+    font.glyphs['l'] = {  9, 133,  3,  8, 32 };
+    font.glyphs['m'] = { 41, 133, 12,  8, 32 };
+    font.glyphs['n'] = { 73, 133, 12,  8, 32 };
+    font.glyphs['o'] = {107, 133,  8,  8, 32 };
+    font.glyphs['p'] = {137, 133, 12,  8, 32 };
+    font.glyphs['q'] = {169, 133, 12,  8, 32 };
+    font.glyphs['r'] = {201, 133, 12,  8, 32 };
+    font.glyphs['s'] = {233, 133, 12,  8, 32 };
+    font.glyphs['t'] = {265, 133, 12,  8, 32 };
+    font.glyphs['u'] = {297, 133, 12,  8, 32 };
+    font.glyphs['v'] = {329, 133,  3,  8, 32 };
+    font.glyphs['w'] = {361, 133, 12, 11, 32 };
+    font.glyphs['x'] = {393, 133, 12,  8, 32 };
+    font.glyphs['y'] = {425, 133, 12,  8, 32 };
+    font.glyphs['z'] = {461, 133,  3,  8, 32 };
+    font.glyphs['{'] = {489, 133, 12,  8, 32 };
+    font.glyphs['|'] = {523, 133,  8,  8, 32 };
+    font.glyphs['}'] = {553, 133, 12,  8, 32 };
+    font.glyphs['~'] = {585, 133, 12,  7, 32 };
 }
 
 void load_fonts() {
-    FT_Library ft;
-    if (FT_Init_FreeType(&ft)) {
-        printf("ERROR::FREETYPE: Could not init FreeType Library\n");
-    }
-    FT_Face face;
-    FT_Error e = FT_New_Face(ft, "./fonts/m6x11.ttf", 0, &face);
-    if (e) {
-        printf("ERROR::FREETYPE: Failed to load font (code: %d)\n", e);
-    }
-    else {
-        FT_Set_Pixel_Sizes(face, 0, 48);
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    load_texture(100, "./fonts/font.png", false, false, false);
 
-        for (unsigned char c = 0; c < 128; c++) {
-            if (FT_Load_Char(face, c, FT_LOAD_RENDER)) {
-                printf("ERROR::FREETYTPE: Failed to load Glyph\n");
-                continue;
-            }
+    font.textureId = get_texture_id(100);
 
-            if (c == 'T') {
-                maxCharacterHeight = face->glyph->metrics.vertAdvance / 64.0f;
-                fontAscent = face->size->metrics.ascender / 64.0f;
-            }
+    font.cellWidth = 32;
+    font.cellHeight = 32;
 
-            u32 texture;
-            glGenTextures(1, &texture);
-            glBindTexture(GL_TEXTURE_2D, texture);
-            glTexImage2D(
-                GL_TEXTURE_2D,
-                0,
-                GL_RED,
-                face->glyph->bitmap.width,
-                face->glyph->bitmap.rows,
-                0,
-                GL_RED,
-                GL_UNSIGNED_BYTE,
-                face->glyph->bitmap.buffer
-            );
+    font.columns = 19;
+    font.rows = 5;
 
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    font.firstCharacter = 32;
 
-            // TODO(garry) fix this stupid garbage. 
-            characters[c] = new Character{
-                texture,
-                glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows),
-                glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
-                static_cast<u32>(face->glyph->advance.x),
-                face->glyph->metrics.horiAdvance / 64,
-            };
-        }
-        glBindTexture(GL_TEXTURE_2D, 0);
-        //texture for each character is a bit much I believe...
-    }
-
-    FT_Done_Face(face);
-    FT_Done_FreeType(ft);
+    load_glyphs();
 
     glGenVertexArrays(1, &textVAO);
     glGenBuffers(1, &textVBO);
+
     glBindVertexArray(textVAO);
+
     glBindBuffer(GL_ARRAY_BUFFER, textVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(f32) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
+    glBufferData(
+        GL_ARRAY_BUFFER,
+        sizeof(f32) * 6 * 4,
+        nullptr,
+        GL_DYNAMIC_DRAW
+    );
+
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(f32), 0);
+    glVertexAttribPointer(
+        0,
+        4,
+        GL_FLOAT,
+        GL_FALSE,
+        4 * sizeof(f32),
+        0
+    );
+
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 }
@@ -610,11 +727,15 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
     glDisable(GL_DEPTH_TEST);
 
     textShader->use();
+    glBindVertexArray(textVAO);
+    glBindTexture(GL_TEXTURE_2D, font.textureId);
+
     textShader->setMat4("projection", projection);
     textShader->setBool("bounce", bounce);
     textShader->setFloat("time", T);
-    
-    f32 shadowOffset = 0.002f;
+
+    f32 shadowOffset = 0.0025f;
+
     i32 visibleCharacters = INT_MAX;
 
     if (typeWriter) {
@@ -622,45 +743,49 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
         visibleCharacters = (i32)(elapsed * 20.0f);
     }
 
+    //f32 cellWidth  = font.cellWidth * scale;
+    //f32 cellHeight = font.cellHeight * scale;
+    //f32 glyphAdvance = cellWidth * 0.4f;
+    //f32 lineHeight = cellHeight * 1.5f;
+
     for (i32 pass = hasShadow ? 0 : 1; pass < 2; ++pass) {
-        u8 shadowPass = (pass == 0);
+        u8 shadowPass = pass == 0;
         vec4 color4 = vec4(color, 1.0f);
 
         textShader->setVec4("textColor", shadowPass ? vec4(0.0f, 0.0f, 0.0f, 0.2f) : color4);
+
         f32 drawPosX = posx + (shadowPass ? shadowOffset : 0.0f);
-        f32 drawPosY = posy + (shadowPass ? shadowOffset : 0.0f); 
-
-        glActiveTexture(GL_TEXTURE0);
-        glBindVertexArray(textVAO);
-
-        f32 pixelScale = scale;
-        f32 lineHeight = characters['T']->Size.y * pixelScale * 1.25f;
+        f32 drawPosY = posy + (shadowPass ? shadowOffset : 0.0f);
 
         f32 startX = drawPosX * RENDERING_ASPECT;
-        f32 y = drawPosY + fontAscent * pixelScale;
-        
+        f32 y = drawPosY + font.glyphs[(u8)'}'].height * scale;
+
+        // Center the entire text string.
         if (anchor == Anchor::CENTER) {
             f32 lineWidth = 0.0f;
 
             const char* c = text;
+
             while (*c) {
                 const char* wordEnd = c;
-                while (*wordEnd && *wordEnd != ' ')
-                    wordEnd++;
+
+                while (*wordEnd && *wordEnd != ' ') wordEnd++;
 
                 f32 wordWidth = 0.0f;
-                for (const char* w = c; w < wordEnd; ++w) {
-                    Character* ch = characters[*w];
-                    wordWidth += (ch->Advance >> 6) * pixelScale;
-                }
 
-                if (lineWidth > 0.0f && lineWidth + wordWidth > maxWidth)
-                    break;
+                for (const char* w = c; w < wordEnd; ++w) {
+                    wordWidth += font.glyphs[(u8)*c].advance * scale; //glyphAdvance;
+                }
+                wordWidth += font.glyphs[(u8)' '].advance * scale; //glyphAdvance; // random fix
+
+                // Don't include this word if it would exceed maxWidth.
+                if (maxWidth > 0.0f && lineWidth > 0.0f && lineWidth + wordWidth > maxWidth) break;
 
                 lineWidth += wordWidth;
 
+                // Include the space only when one exists.
                 if (*wordEnd == ' ') {
-                    lineWidth += (characters[' ']->Advance >> 6) * pixelScale;
+                    lineWidth += font.glyphs[(u8)'W'].advance * scale;//glyphAdvance;
                     wordEnd++;
                 }
 
@@ -668,119 +793,115 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
             }
 
             startX -= lineWidth * 0.5f;
-            y -= (characters['T']->Size.y * pixelScale) * 0.5f;
-        }
-        else if (anchor == Anchor::TOP_RIGHT) {
+            y -= font.glyphs[(u8)'}'].height * scale * 0.5f;//cellHeight * 0.5f;
+        } else if (anchor == Anchor::TOP_RIGHT) {
             f32 lineWidth = 0.0f;
 
             const char* c = text;
+
             while (*c) {
-                const char* wordEnd = c;
-                while (*wordEnd && *wordEnd != ' ')
-                    wordEnd++;
-
-                f32 wordWidth = 0.0f;
-                for (const char* w = c; w < wordEnd; ++w) {
-                    Character* ch = characters[*w];
-                    wordWidth += (ch->Advance >> 6) * pixelScale;
-                }
-
-                if (lineWidth > 0.0f && lineWidth + wordWidth > maxWidth)
-                    break;
-
-                lineWidth += wordWidth;
-
-                if (*wordEnd == ' ') {
-                    lineWidth += (characters[' ']->Advance >> 6) * pixelScale;
-                    wordEnd++;
-                }
-
-                c = wordEnd;
+                lineWidth += font.glyphs[(u8)*c].advance * scale;//glyphAdvance;
+                c++;
             }
 
             startX -= lineWidth;
         }
 
-        f32 x = startX;    
-        const char* wordStart = text;
+        f32 x = startX;
         i32 characterIndex = 0;
-        
+        const char* wordStart = text;
+
         while (*wordStart) {
             const char* wordEnd = wordStart;
+
             while (*wordEnd && *wordEnd != ' ') wordEnd++;
 
             f32 wordWidth = 0.0f;
-            for (const char* c = wordStart; c < wordEnd; c++) {
-                Character* ch = characters[*c];
-                wordWidth += (ch->Advance >> 6) * pixelScale;
+
+            for (const char* c = wordStart; c < wordEnd; ++c) {
+                wordWidth += font.glyphs[(u8)*c].advance * scale;//glyphAdvance;
             }
 
             if (x > startX && (x - startX + wordWidth) > maxWidth) {
                 x = startX;
-                y += lineHeight;
+                y += font.cellHeight * scale;//lineHeight;
             }
 
-            for (const char* c = wordStart; c < wordEnd; c++) {
-                if (characterIndex > visibleCharacters) {
+            for (const char* c = wordStart; c < wordEnd; ++c) {
+                if (characterIndex > visibleCharacters)
                     break;
-                }
+
+                char character = *c;
+
+                vec4 uv = get_font_uv(character);
+
+                if (uv == vec4(0.0f))
+                    continue;
 
                 textShader->setFloat("charIndex", (f32)characterIndex);
-                Character* ch = characters[*c];
 
-                f32 xpos = x + ch->Bearing.x * pixelScale;
-                f32 ypos = y - ch->Bearing.y * pixelScale;
+                f32 xpos = x;
+                f32 ypos = y - font.cellHeight * scale;
 
-                f32 w = ch->Size.x * pixelScale;
-                f32 h = ch->Size.y * pixelScale;
+                f32 w = font.glyphs[(u8)*c].width * scale;//cellWidth;
+                f32 h = font.cellHeight * scale;
 
                 f32 vertices[6][4] = {
-                    { xpos,     ypos + h,   0.0f, 0.0f },
-                    { xpos,     ypos,       0.0f, 1.0f },
-                    { xpos + w, ypos,       1.0f, 1.0f },
+                    { xpos,     ypos + h, uv.x, uv.y },
+                    { xpos,     ypos,     uv.x, uv.w },
+                    { xpos + w, ypos,     uv.z, uv.w },
 
-                    { xpos,     ypos + h,   0.0f, 0.0f },
-                    { xpos + w, ypos,       1.0f, 1.0f },
-                    { xpos + w, ypos + h,   1.0f, 0.0f }
+                    { xpos,     ypos + h, uv.x, uv.y },
+                    { xpos + w, ypos,     uv.z, uv.w },
+                    { xpos + w, ypos + h, uv.z, uv.y }
                 };
 
-                glBindTexture(GL_TEXTURE_2D, ch->TextureID);
                 glBindBuffer(GL_ARRAY_BUFFER, textVBO);
-                glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+
+                glBufferSubData(
+                    GL_ARRAY_BUFFER,
+                    0,
+                    sizeof(vertices),
+                    vertices
+                );
+
                 glDrawArrays(GL_TRIANGLES, 0, 6);
 
-                x += (ch->Advance >> 6) * pixelScale;
+                x += font.glyphs[(u8)*c].advance * scale;//glyphAdvance;
                 characterIndex++;
 
                 if (characterIndex == visibleCharacters && c != wordEnd - 1) {
-                    Character* star = characters['x'];
+                    vec4 starUV = get_font_uv('x');
 
-                    f32 xpos = x + star->Bearing.x * pixelScale;
-                    f32 ypos = y - star->Bearing.y * pixelScale;
-
-                    f32 w = star->Size.x * pixelScale;
-                    f32 h = star->Size.y * pixelScale;
+                    f32 xpos = x;
+                    f32 ypos = y - font.glyphs[(u8)*c].height * scale;//cellHeight;
 
                     f32 vertices[6][4] = {
-                        { xpos,     ypos + h, 0.0f, 0.0f },
-                        { xpos,     ypos,     0.0f, 1.0f },
-                        { xpos + w, ypos,     1.0f, 1.0f },
+                        { xpos,     ypos + h, starUV.x, starUV.y },
+                        { xpos,     ypos,     starUV.x, starUV.w },
+                        { xpos + w, ypos,     starUV.z, starUV.w },
 
-                        { xpos,     ypos + h, 0.0f, 0.0f },
-                        { xpos + w, ypos,     1.0f, 1.0f },
-                        { xpos + w, ypos + h, 1.0f, 0.0f }
+                        { xpos,     ypos + h, starUV.x, starUV.y },
+                        { xpos + w, ypos,     starUV.z, starUV.w },
+                        { xpos + w, ypos + h, starUV.z, starUV.y }
                     };
 
-                    glBindTexture(GL_TEXTURE_2D, star->TextureID);
                     glBindBuffer(GL_ARRAY_BUFFER, textVBO);
-                    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+
+                    glBufferSubData(
+                        GL_ARRAY_BUFFER,
+                        0,
+                        sizeof(vertices),
+                        vertices
+                    );
+
                     glDrawArrays(GL_TRIANGLES, 0, 6);
                 }
             }
 
             if (*wordEnd == ' ') {
-                Character* space = characters[' '];
-                x += (space->Advance >> 6) * pixelScale;
+                x += font.glyphs[(u8)' '].advance * scale;//glyphAdvance;
+                characterIndex++;
                 wordEnd++;
             }
 
@@ -789,8 +910,10 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
     }
 
     glEnable(GL_DEPTH_TEST);
+
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
+
     glDisable(GL_BLEND);
 }
 

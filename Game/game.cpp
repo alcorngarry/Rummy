@@ -4433,7 +4433,7 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
         ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u64, execute_action);
         if (total) {
             total->action = add_cash;
-            *COMMAND_PAYLOAD(total, u64) = 99;
+            *COMMAND_PAYLOAD(total, u64) = 1000;
         }
     }
 
