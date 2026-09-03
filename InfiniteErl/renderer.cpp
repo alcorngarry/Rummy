@@ -1,12 +1,12 @@
 #include "renderer.h"
 
-f32 maxCharacterHeight = 0;
 u32 textVAO, textVBO;
 Texture textures[50];
 i32 textureCount = 0;
 f32 dT = 0;
 PostProcess post;
 f32 T = 0;
+Font font;
 
 struct RendererMesh {
     u32 vao;
@@ -33,14 +33,25 @@ f32 get_text_length(const char* text, f32 scale) {
     f32 pixelScale = scale * 768;
 
     for (const char* c = text; *c != '\0'; c++) {
-        Character* ch = characters[*c];
-        length += (ch->Advance >> 6) * pixelScale;
+        Character* ch = font.characters[*c];
+        length += ch->advance * pixelScale;
     }
     return length;
 }
 
+vec4 get_font_uv(Character *ch) {
+    f32 u0 = (f32)ch->atlasPos.x / (f32)font.fontAtlasWidth;
+    f32 v0 = (f32)ch->atlasPos.y / (f32)font.fontAtlasHeight;
+
+    f32 u1 = (f32)(ch->atlasPos.x + ch->size.x) / (f32)font.fontAtlasWidth;
+    f32 v1 = (f32)(ch->atlasPos.y + ch->size.y) / (f32)font.fontAtlasHeight;
+
+    return vec4(u0, v0, u1, v1);
+}
+
 void load_fonts() {
     FT_Library ft;
+
     if (FT_Init_FreeType(&ft)) {
         printf("ERROR::FREETYPE: Could not init FreeType Library\n");
     }
@@ -52,50 +63,107 @@ void load_fonts() {
     else {
         FT_Set_Pixel_Sizes(face, 0, 48);
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        font.fontAscent = face->size->metrics.ascender >> 6;
+        font.fontDescent = face->size->metrics.descender >> 6;
+        font.lineHeight = face->size->metrics.height >> 6;
 
-        for (unsigned char c = 0; c < 128; c++) {
+        i32 columns = 15;
+        i32 rows = 7;
+        i32 padding = 2;
+
+        i32 maxGlyphHeight = 0;
+        i32 maxGlyphWidth = 0;
+
+        for (unsigned char c = 32; c < 127; ++c) {
             if (FT_Load_Char(face, c, FT_LOAD_RENDER)) {
                 printf("ERROR::FREETYTPE: Failed to load Glyph\n");
                 continue;
             }
 
-            if (c == 'T') {
-                maxCharacterHeight = face->glyph->metrics.vertAdvance / 64.0f;
-                fontAscent = face->size->metrics.ascender / 64.0f;
-            }
+            FT_GlyphSlot glyph = face->glyph;
+            
+            if((i32)glyph->bitmap.rows > maxGlyphHeight) {
+                maxGlyphHeight = glyph->bitmap.rows;
+            } 
 
-            u32 texture;
-            glGenTextures(1, &texture);
-            glBindTexture(GL_TEXTURE_2D, texture);
-            glTexImage2D(
+            if((i32)glyph->bitmap.width > maxGlyphWidth) {
+                maxGlyphWidth = glyph->bitmap.width;
+            } 
+        }
+      
+        i32 cellWidth = maxGlyphWidth + padding;
+        i32 cellHeight = maxGlyphHeight + padding;
+        //using cells here means that the texture has extra space on the right side 
+
+        font.fontAtlasWidth = cellWidth * columns;
+        font.fontAtlasHeight = cellHeight * rows;
+
+        glGenTextures(1, &font.fontAtlas);
+        glBindTexture(GL_TEXTURE_2D, font.fontAtlas);
+
+        glTexImage2D(
+            GL_TEXTURE_2D,
+            0,
+            GL_RED,
+            font.fontAtlasWidth,
+            font.fontAtlasHeight,
+            0,
+            GL_RED,
+            GL_UNSIGNED_BYTE,
+            NULL
+        );
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+        i32 atlasX = 0;
+        i32 atlasY = 0;
+        i32 i = 0;
+        for (unsigned char c = 32; c < 127; c++) {
+            if (FT_Load_Char(face, c, FT_LOAD_RENDER)) {
+                printf("ERROR::FREETYTPE: Failed to load Glyph\n");
+                continue;
+            }
+            
+            FT_GlyphSlot glyph = face->glyph;
+            i32 gwidth = glyph->bitmap.width;
+            i32 gheight = glyph->bitmap.rows;
+
+            font.characters[c] = new Character{
+                ivec2(atlasX, atlasY),
+                ivec2(gwidth, gheight),
+                ivec2(glyph->bitmap_left, glyph->bitmap_top),
+                (i32)face->glyph->advance.x >> 6,
+                face->glyph->metrics.horiAdvance >> 6,
+            };
+
+            glTexSubImage2D(
                 GL_TEXTURE_2D,
                 0,
-                GL_RED,
-                face->glyph->bitmap.width,
-                face->glyph->bitmap.rows,
-                0,
+                atlasX,
+                atlasY,
+                gwidth,
+                gheight,
                 GL_RED,
                 GL_UNSIGNED_BYTE,
-                face->glyph->bitmap.buffer
+                glyph->bitmap.buffer
             );
 
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            i++;
 
-            // TODO(garry) fix this stupid garbage. 
-            characters[c] = new Character{
-                texture,
-                glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows),
-                glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
-                static_cast<u32>(face->glyph->advance.x),
-                face->glyph->metrics.horiAdvance / 64,
-            };
+            if(i == columns) {
+                atlasX = 0;
+                atlasY += cellHeight;
+                i = 0;
+            } else {
+                atlasX += gwidth + padding;
+            }
         }
-        glBindTexture(GL_TEXTURE_2D, 0);
-        //texture for each character is a bit much I believe...
     }
+
+    glBindTexture(GL_TEXTURE_2D, 0);
 
     FT_Done_Face(face);
     FT_Done_FreeType(ft);
@@ -622,6 +690,10 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
         visibleCharacters = (i32)(elapsed * 20.0f);
     }
 
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, font.fontAtlas);
+    glBindVertexArray(textVAO);
+
     for (i32 pass = hasShadow ? 0 : 1; pass < 2; ++pass) {
         u8 shadowPass = (pass == 0);
         vec4 color4 = vec4(color, 1.0f);
@@ -630,37 +702,32 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
         f32 drawPosX = posx + (shadowPass ? shadowOffset : 0.0f);
         f32 drawPosY = posy + (shadowPass ? shadowOffset : 0.0f); 
 
-        glActiveTexture(GL_TEXTURE0);
-        glBindVertexArray(textVAO);
-
         f32 pixelScale = scale;
-        f32 lineHeight = characters['T']->Size.y * pixelScale * 1.25f;
 
         f32 startX = drawPosX * RENDERING_ASPECT;
-        f32 y = drawPosY + fontAscent * pixelScale;
+        f32 y = drawPosY + (font.fontAscent - font.fontDescent) * pixelScale;
         
-        if (anchor == Anchor::CENTER) {
+        if (anchor == CENTER) {
             f32 lineWidth = 0.0f;
 
             const char* c = text;
             while (*c) {
                 const char* wordEnd = c;
-                while (*wordEnd && *wordEnd != ' ')
-                    wordEnd++;
+
+                while (*wordEnd && *wordEnd != ' ') wordEnd++;
 
                 f32 wordWidth = 0.0f;
                 for (const char* w = c; w < wordEnd; ++w) {
-                    Character* ch = characters[*w];
-                    wordWidth += (ch->Advance >> 6) * pixelScale;
+                    Character* ch = font.characters[*w];
+                    wordWidth += ch->advance * pixelScale;
                 }
 
-                if (lineWidth > 0.0f && lineWidth + wordWidth > maxWidth)
-                    break;
+                if (lineWidth > 0.0f && lineWidth + wordWidth > maxWidth) break;
 
                 lineWidth += wordWidth;
 
                 if (*wordEnd == ' ') {
-                    lineWidth += (characters[' ']->Advance >> 6) * pixelScale;
+                    lineWidth += font.characters[' ']->advance * pixelScale;
                     wordEnd++;
                 }
 
@@ -668,9 +735,8 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
             }
 
             startX -= lineWidth * 0.5f;
-            y -= (characters['T']->Size.y * pixelScale) * 0.5f;
-        }
-        else if (anchor == Anchor::TOP_RIGHT) {
+            y -= (font.fontAscent - font.fontDescent) * pixelScale * 0.5f;
+        } else if (anchor == TOP_RIGHT) {
             f32 lineWidth = 0.0f;
 
             const char* c = text;
@@ -681,8 +747,8 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
 
                 f32 wordWidth = 0.0f;
                 for (const char* w = c; w < wordEnd; ++w) {
-                    Character* ch = characters[*w];
-                    wordWidth += (ch->Advance >> 6) * pixelScale;
+                    Character* ch = font.characters[*w];
+                    wordWidth += ch->advance * pixelScale;
                 }
 
                 if (lineWidth > 0.0f && lineWidth + wordWidth > maxWidth)
@@ -691,7 +757,7 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
                 lineWidth += wordWidth;
 
                 if (*wordEnd == ' ') {
-                    lineWidth += (characters[' ']->Advance >> 6) * pixelScale;
+                    lineWidth += font.characters[' ']->advance * pixelScale;
                     wordEnd++;
                 }
 
@@ -711,13 +777,13 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
 
             f32 wordWidth = 0.0f;
             for (const char* c = wordStart; c < wordEnd; c++) {
-                Character* ch = characters[*c];
-                wordWidth += (ch->Advance >> 6) * pixelScale;
+                Character* ch = font.characters[*c];
+                wordWidth += ch->advance * pixelScale;
             }
 
             if (x > startX && (x - startX + wordWidth) > maxWidth) {
                 x = startX;
-                y += lineHeight;
+                y += font.lineHeight;
             }
 
             for (const char* c = wordStart; c < wordEnd; c++) {
@@ -726,52 +792,54 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
                 }
 
                 textShader->setFloat("charIndex", (f32)characterIndex);
-                Character* ch = characters[*c];
+                Character* ch = font.characters[*c];
 
-                f32 xpos = x + ch->Bearing.x * pixelScale;
-                f32 ypos = y - ch->Bearing.y * pixelScale;
+                f32 xpos = x + ch->bearing.x * pixelScale;
+                f32 ypos = y - ch->bearing.y * pixelScale;
 
-                f32 w = ch->Size.x * pixelScale;
-                f32 h = ch->Size.y * pixelScale;
+                f32 w = ch->size.x * pixelScale;
+                f32 h = ch->size.y * pixelScale;
+
+                vec4 uv = get_font_uv(ch);
 
                 f32 vertices[6][4] = {
-                    { xpos,     ypos + h,   0.0f, 0.0f },
-                    { xpos,     ypos,       0.0f, 1.0f },
-                    { xpos + w, ypos,       1.0f, 1.0f },
+                    { xpos,     ypos + h,   uv.x, uv.w },
+                    { xpos,     ypos,       uv.x, uv.y },
+                    { xpos + w, ypos,       uv.z, uv.y },
 
-                    { xpos,     ypos + h,   0.0f, 0.0f },
-                    { xpos + w, ypos,       1.0f, 1.0f },
-                    { xpos + w, ypos + h,   1.0f, 0.0f }
+                    { xpos,     ypos + h,   uv.x, uv.w },
+                    { xpos + w, ypos,       uv.z, uv.y },
+                    { xpos + w, ypos + h,   uv.z, uv.w }
                 };
 
-                glBindTexture(GL_TEXTURE_2D, ch->TextureID);
                 glBindBuffer(GL_ARRAY_BUFFER, textVBO);
                 glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
                 glDrawArrays(GL_TRIANGLES, 0, 6);
 
-                x += (ch->Advance >> 6) * pixelScale;
+                x += ch->advance * pixelScale;
                 characterIndex++;
 
                 if (characterIndex == visibleCharacters && c != wordEnd - 1) {
-                    Character* star = characters['x'];
+                    Character* star = font.characters['x'];
 
-                    f32 xpos = x + star->Bearing.x * pixelScale;
-                    f32 ypos = y - star->Bearing.y * pixelScale;
+                    f32 xpos = x + star->bearing.x * pixelScale;
+                    f32 ypos = y - star->bearing.y * pixelScale;
 
-                    f32 w = star->Size.x * pixelScale;
-                    f32 h = star->Size.y * pixelScale;
+                    f32 w = star->size.x * pixelScale;
+                    f32 h = star->size.y * pixelScale;
+
+                    uv = get_font_uv(star);
 
                     f32 vertices[6][4] = {
-                        { xpos,     ypos + h, 0.0f, 0.0f },
-                        { xpos,     ypos,     0.0f, 1.0f },
-                        { xpos + w, ypos,     1.0f, 1.0f },
+                        { xpos,     ypos + h,   uv.x, uv.w },
+                        { xpos,     ypos,       uv.x, uv.y },
+                        { xpos + w, ypos,       uv.z, uv.y },
 
-                        { xpos,     ypos + h, 0.0f, 0.0f },
-                        { xpos + w, ypos,     1.0f, 1.0f },
-                        { xpos + w, ypos + h, 1.0f, 0.0f }
+                        { xpos,     ypos + h,   uv.x, uv.w },
+                        { xpos + w, ypos,       uv.z, uv.y },
+                        { xpos + w, ypos + h,   uv.z, uv.w }
                     };
 
-                    glBindTexture(GL_TEXTURE_2D, star->TextureID);
                     glBindBuffer(GL_ARRAY_BUFFER, textVBO);
                     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
                     glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -779,8 +847,8 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
             }
 
             if (*wordEnd == ' ') {
-                Character* space = characters[' '];
-                x += (space->Advance >> 6) * pixelScale;
+                Character* space = font.characters[' '];
+                x += space->advance * pixelScale;
                 wordEnd++;
             }
 

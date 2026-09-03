@@ -36,14 +36,6 @@ enum EaseType {
     BOUNCE
 };
 
-struct Character {
-	u32 TextureID;
-	ivec2 Size;
-	ivec2 Bearing;
-	u32 Advance;
-	i32 pixelWidth;
-};
-
 enum Anchor {
 	TOP_LEFT,
 	TOP_RIGHT,

@@ -13,8 +13,23 @@ static Shader* itemShader;
 static Shader* bgShader;
 static Shader* ppShader;
 
-static Character* characters[128];
-static f32 fontAscent;
+struct Character {
+    ivec2 atlasPos;
+    ivec2 size;
+    ivec2 bearing;
+    i32 advance;
+    i32 pixelWidth;
+};
+
+struct Font {
+    Character* characters[128];
+    f32 fontAscent;
+    f32 fontDescent;
+    u32 fontAtlas;
+    i32 fontAtlasWidth;
+    i32 fontAtlasHeight;
+    i32 lineHeight;
+};
 
 enum RenderEntryType {
     RenderEntryType_RenderEntryEntity,

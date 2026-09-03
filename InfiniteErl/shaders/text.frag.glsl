@@ -5,13 +5,10 @@ out vec4 color;
 uniform sampler2D text;
 uniform vec4 textColor;
 
-void main()
-{
-    float flippedY = 1.0 - TexCoords.y;
-    float alpha = texture(text, vec2(TexCoords.x, flippedY)).r;
+void main() {
+    float alpha = texture(text, vec2(TexCoords.x, TexCoords.y)).r;
 
-    if (alpha < 0.1) {
-        discard;
-    }
+    if (alpha < 0.1) discard;
+
     color = textColor * alpha;
 }
