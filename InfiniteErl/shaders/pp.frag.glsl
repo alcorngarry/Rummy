@@ -48,16 +48,16 @@ vec3 ToSrgb(vec3 c) {
 vec3 Fetch(vec2 pos, vec2 off) {
     pos += shakeOffset;
     pos = pos * res + off;
-
     pos = clamp(pos, vec2(0.0), res - vec2(1.0));
-
     pos = floor(pos) / res;
 
     return ToLinear(textureLod(screenTexture, pos, 0.0).rgb);
 }
 
+vec2 crtRes = vec2(640.0, 360.0);
+
 vec2 Dist(vec2 pos) {
-    pos *= res;
+    pos *= crtRes;
     return -((pos - floor(pos)) - vec2(0.5));
 }
 
@@ -98,8 +98,12 @@ vec3 Horz5(vec2 pos, float off) {
         / (wa + wb + wc + wd + we);
 }
 
+float scanlineCount = 160.0;
+
 float Scan(vec2 pos, float off) {
-    return Gaus(Dist(pos).y + off, hardScan);
+    float y = pos.y * scanlineCount;
+    float d = -((y - floor(y)) - 0.5);
+    return Gaus(d + off, hardScan);
 }
 
 vec3 Tri(vec2 pos) {
@@ -178,8 +182,8 @@ void main() {
     vec2 uv = TexCoord;
     vec3 color = SampleChromatic(uv);
     //too costly
-    //vec3 bloom = SampleBloom(uv);
-    //color += bloom * 0.08;
+    vec3 bloom = SampleBloom(uv);
+    color += bloom * 0.08;
 
     color *= Mask(fragCoord);
 
@@ -187,16 +191,3 @@ void main() {
 
     FragColor = vec4(color, 1.0);
 }
-
-//#version 460 core
-//
-//in vec2 TexCoord;
-//out vec4 FragColor;
-//
-//uniform sampler2D screenTexture;
-//uniform vec2 shakeOffset;
-//
-//void main() {
-//    vec2 uv = TexCoord + shakeOffset;
-//    FragColor = texture(screenTexture, uv);
-//}

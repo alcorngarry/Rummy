@@ -18,8 +18,11 @@ float box(vec2 p, vec2 size){
     return uv.x * uv.y;
 }
 
+float circle(vec2 p, float radius) {
+    return step(length(p), radius);
+}
+
 void main() {
-    //diamond
     vec2 p = uv;
     p.x *= aspect;
     p = p * vec2(5.0);
@@ -36,7 +39,6 @@ void main() {
     if (mod(id.x + id.y, 2.0) < 1.0)
         gv.x = -gv.x;
 
-    //float d = diamond(gv * 2, 0.1);
     float edgeOffset = 0.5;
     float mover = sin(time) * 0.5;
 
@@ -48,10 +50,8 @@ void main() {
     float d = max(max(dTop, dBottom), max(dLeft, dRight));
     vec3 dColor = mix(medium, light, d); 
 
-    //box
     vec2 st = fract(p);
     float b = box(st, vec2(0.95));
-
     vec3 bColor = mix(dark, light, b);
 
     FragColor = vec4(mix(dColor, bColor, 0.05), color.a);

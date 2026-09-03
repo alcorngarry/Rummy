@@ -940,7 +940,7 @@ void draw_image_ui(Anchor anchor, i32 textureId, f32 posx, f32 posy, f32 width, 
 }
 
 void load_texture(i32 id, const char* filePath, bool isMipMapped, bool isFlipped, bool repeated) {
-    unsigned int textureID;
+    u32 textureID;
     glGenTextures(1, &textureID);
     glBindTexture(GL_TEXTURE_2D, textureID);
 
@@ -952,7 +952,8 @@ void load_texture(i32 id, const char* filePath, bool isMipMapped, bool isFlipped
     else {
         stbi_set_flip_vertically_on_load(1);
     }
-
+    
+    //store these chars
     unsigned char* data = stbi_load(filePath, &width, &height, &nrChannels, 0);
 
     if (data) {
