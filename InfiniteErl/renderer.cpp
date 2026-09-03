@@ -705,7 +705,7 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
         f32 pixelScale = scale;
 
         f32 startX = drawPosX * RENDERING_ASPECT;
-        f32 y = drawPosY + font.fontAscent * pixelScale;
+        f32 y = drawPosY + ((font.fontAscent) * pixelScale);
         
         if (anchor == CENTER) {
             f32 lineWidth = 0.0f;
@@ -735,7 +735,7 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
             }
 
             startX -= lineWidth * 0.5f;
-            y = drawPosY + font.fontAscent * pixelScale * 0.5f;
+            y = drawPosY + ((((font.fontAscent) * pixelScale)) * 0.5f);
         } else if (anchor == TOP_RIGHT) {
             f32 lineWidth = 0.0f;
 
@@ -783,7 +783,7 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
 
             if (x > startX && (x - startX + wordWidth) > maxWidth) {
                 x = startX;
-                y += font.lineHeight;
+                y += font.lineHeight * pixelScale;
             }
 
             for (const char* c = wordStart; c < wordEnd; c++) {
