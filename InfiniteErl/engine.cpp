@@ -203,8 +203,8 @@ i32 APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, i32 cmd
     load_fonts();
     load_shaders();
     init_audio();
-    init_post_process(1280, 720); // bad gross, ewww
-
+    init_post_process(windowResolution.width, windowResolution.height); 
+    
     load(&game, "../build/Game.dll");
     RenderBuffer* buffer = allocate_render_buffer(MB / 2);
     if (!buffer) {
