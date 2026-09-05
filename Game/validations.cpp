@@ -81,101 +81,56 @@ i32 get_normal_array_sorted(Set *set, Tile** normalArray) {
     return normalCount;
 }
 
-//helper function, get number of spans ie 1,2 (span), 8,9, and return array of numbers in the span
-//good IDEA!
-i32 get_spans(i32 size, Tile** normalArraySorted, i32* outArray, i32 jokerCount) {
-    if(size < 2) return 0;
-
-    i32 spanCount = 0;
-    i32 index = 0;
-
-    i32 jokersLeft = jokerCount;
-
-    for(i32 i = 1; i < size; ++i) {
-        if(normalArraySorted[i]->details.tileNumber != normalArraySorted[i-1]->details.tileNumber + 1) {
-            if(jokersLeft >= ((normalArraySorted[i]->details.tileNumber) - normalArraySorted[i - 1]->details.tileNumber + 1)) {
-                jokersLeft -= ((normalArraySorted[i-1]->details.tileNumber + 1) - normalArraySorted[i]->details.tileNumber); 
-                continue;
-            }
-
-            for(i32 j = normalArraySorted[i-1]->details.tileNumber + 1; j <= normalArraySorted[i-1]->details.tileNumber + 1 + jokerCount; ++j) {
-                outArray[index++] = j;
-            }
-
-            for(i32 j = normalArraySorted[i]->details.tileNumber - 1; j >= normalArraySorted[i]->details.tileNumber - 1 - jokerCount; --j) {
-                outArray[index++] = j;
-            }
-            spanCount++;
-        }
+u8 validate_rainbow_run(ValidationRules *rules, Set *set) {
+    if(rules->rainbowRunSetId == -1) {
+        rules->rainbowRunSetId = set->id;
+    } else if(rules->rainbowRunSetId != set->id) {
+        return false;
     }
-
-    return spanCount;
 }
 
 u8 tile_valid_in_run(ValidationRules *rules, Set *set, Tile *tile) {
+    Set setWithTileAdded = *set;
+    setWithTileAdded.tiles[setWithTileAdded.numberOfTiles++] = tile;
+
+    Tile* ogNormals[13];
+    if(get_normal_array_sorted(set, ogNormals) == 0) return true;
+
     Tile* jokers[4];
-    i32 jokerCount = get_joker_array(set, jokers);
+    i32 jokerCount = get_joker_array(&setWithTileAdded, jokers);
 
     Tile* normals[13];
-    i32 normalCount = get_normal_array_sorted(set, normals);
+    i32 normalCount = get_normal_array_sorted(&setWithTileAdded, normals);
 
     Tile* bridges[4];
-    i32 bridgeCount = get_bridge_array(set, bridges);
-
-    i32 spanNumbers[13] = {-1};
-    i32 numberOfSpans = get_spans(normalCount, normals, spanNumbers, jokerCount);
-
-    if(normalCount == 0) return true;
-    //if(set->numberOfTiles == 13) return false; isComplete does this
+    i32 bridgeCount = get_bridge_array(&setWithTileAdded, bridges);
 
     //rainbow run
-    if(rules->rainbowRunEnabled) {
-        printf("enabled tile valid!\n");
-        if(tile->details.tileColor != normals[0]->details.tileColor) {
-            printf("colors not equal!\n");
-            if(rules->rainbowRunSetId == -1) {
-                printf("set id -1!\n");
-                rules->rainbowRunSetId = set->id;
-                printf("set id == %i\n", rules->rainbowRunSetId);
-            } else if(rules->rainbowRunSetId != set->id) {
-                printf("set id is not set id!\n");
+    if(tile->details.tileColor != normals[0]->details.tileColor) {
+        if(rules->rainbowRunEnabled) {
+            validate_rainbow_run(rules, set);
+        } else {
+            return false;
+        }
+    }
+
+    i32 jokerIndex = 0;
+    i32 bridgeIndex = 0;
+
+    for(i32 i = 1; i < normalCount; ++i) {
+        i32 distance = normals[i]->details.tileNumber - normals[i - 1]->details.tileNumber;
+
+        if(distance > 1) {
+            if(jokerCount >= distance - 1) {
+                for(i32 j = 0; j < distance - 1; ++j) {
+                    Tile* joker = jokers[jokerIndex++];
+                }
+            } else if(bridgeIndex < bridgeCount) {
+                Tile* bridge = bridges[bridgeIndex++];
+            } else {
                 return false;
             }
         }
-    } else {
-        if(tile->details.tileColor != normals[0]->details.tileColor) return false;
-    }
-
-    i32 min = normals[0]->details.tileNumber;
-    i32 max = normals[normalCount-1]->details.tileNumber;
-
-    if(bridgeCount > 0) {
-        //allows placement for making a valid bridge
-        if(numberOfSpans == 0 || bridgeCount > numberOfSpans) return true;
-
-        for(i32 j = 0; j <= jokerCount; ++j) {
-            if(normals[normalCount - 1]->details.tileNumber + 1 + j == tile->details.tileNumber) return true;
-            if(normals[0]->details.tileNumber - 1 - j == tile->details.tileNumber) return true;
-        }
-
-        for(i32 i = 0; i < 13; ++i) {
-            if(spanNumbers[i] == tile->details.tileNumber) return true;
-        }
-
-        return false;
-    } else {
-        if(tile->details.tileNumber < min)
-            min = tile->details.tileNumber;
-
-        if(tile->details.tileNumber > max)
-            max = tile->details.tileNumber;
-
-        i32 span = (max - min) + 1;
-        i32 normalsAfterInsert = normalCount + 1;
-        i32 jokersNeeded = span - normalsAfterInsert;
-
-        if(jokersNeeded > jokerCount) return false;
-        if(span > 13) return false;
     }
 
     return true;
@@ -191,11 +146,10 @@ u8 tile_valid_in_invalid(ValidationRules *rules, Set *set, Tile *tile) {
 }
 
 u8 is_tile_playable_in_set(ValidationRules *rules, Set *set, Tile *tile) {
+    //set will never be empty
     if(tile->setId == set->id) return false;
-
     if(set->isComplete) return false;
 
-    //don't allow jokers in a group == 4
     if(tile->details.type == JOKER) return true;
 
     if(tile->details.type == BRIDGE) {
@@ -316,12 +270,11 @@ u8 is_run_valid(ValidationRules *rules, Set *set) {
     for(i32 i = 1; i < normalCount; ++i) {
         i32 gap = normals[i]->details.tileNumber - normals[i-1]->details.tileNumber - 1;
 
-        if(gap > 0)
-            gaps[gapCount++] = gap;
+        if(gap > 0) gaps[gapCount++] = gap;
     }
 
-
-    if(bridgeCount > gapCount) return false;
+    // 6 7 J B which should be 6 7 B J, either way doesn't work
+    if(bridgeCount > gapCount && jokerCount == 0) return false;
 
     for(i32 b = 0; b < bridgeCount; ++b) {
         i32 largest = -1;

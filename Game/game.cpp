@@ -1697,36 +1697,25 @@ u8 is_table_space_occupied(vec2 space) {
     return gState->table.tableSpaces[(i32)space.x][(i32)space.y].isOccupied;
 }
 
-u8 calculate_tile_tablespace(Set *set, Tile *tile) {
-    u8 isHigh = tile->details.tileNumber >= get_high_tile_number(set);
+//validity is already calculated in is_there_table_space
+//still do the check for group to determine which side to add
+void calculate_tile_tablespace(Set *set, Tile *tile) {
     vec2 targetSpace;
+    vec2 rightSpace = find_right_most_tile(set)->tableSpace + vec2(0, 1);
+    vec2 leftSpace = find_left_most_tile(set)->tableSpace + vec2(0, -1);
 
-    if (isHigh) {
-        Tile* rightTile = find_right_most_tile(set);
-        targetSpace = rightTile->tableSpace + vec2(0, 1);
-        if ((i32)targetSpace.y >= TABLE_COLUMNS || is_table_space_occupied(targetSpace)) return false;
+    if(set->setType == GROUP) {
+        if((i32)rightSpace.y >= TABLE_COLUMNS || is_table_space_occupied(rightSpace)) {
+            targetSpace = leftSpace;
+        } else if((i32)leftSpace.y < 0 || is_table_space_occupied(leftSpace)) {
+            targetSpace = rightSpace;
+        } else {
+            //this is an issue
+            printf("ERROR FINDING SPACE\n");
+        }
     } else {
-        Tile* leftTile = find_left_most_tile(set);
-        targetSpace = leftTile->tableSpace + vec2(0, -1);
-        if ((i32)targetSpace.y < 0 || is_table_space_occupied(targetSpace)) return false;
-    }
-
-    tile->object.model = glm::scale(gState->table.tableSpaces[(i32)targetSpace.x][(i32)targetSpace.y].object, vec3(1.0f / TABLE_SCALE));
-    tile->tableSpace = targetSpace;
-    gState->table.tableSpaces[(i32)targetSpace.x][(i32)targetSpace.y].isOccupied = true;
-    return true;
-}
-
-void add_table_space_to_tile(Set *set, Tile *tile) {
-    u8 isHigh = tile->details.tileNumber >= get_high_tile_number(set); 
-    vec2 targetSpace;
-
-    if (isHigh) {
-        Tile* rightTile = find_right_most_tile(set);
-        targetSpace = rightTile->tableSpace + vec2(0, 1);
-    } else {
-        Tile* leftTile = find_left_most_tile(set);
-        targetSpace = leftTile->tableSpace + vec2(0, -1);
+        u8 isHigh = tile->details.tileNumber >= get_high_tile_number(set);
+        targetSpace = isHigh ? rightSpace : leftSpace;
     }
 
     tile->object.model = glm::scale(gState->table.tableSpaces[(i32)targetSpace.x][(i32)targetSpace.y].object, vec3(1.0f / TABLE_SCALE));
@@ -1801,6 +1790,7 @@ Tile* find_left_most_tile(Set *set) {
 Tile* find_right_most_tile(Set *set) {
     i32 index = 0;
     i32 largestX = -1;
+    //y component is columns
     for(i32 i = 0; i < set->numberOfTiles; i++) {
         if(set->tiles[i]->tableSpace == vec2(-1)) continue;
         if(set->tiles[i]->tableSpace.y > largestX) {
@@ -1810,73 +1800,6 @@ Tile* find_right_most_tile(Set *set) {
     }
     
     return set->tiles[index];
-}
-
-void validate_set(Set* set) {
-    i32 writeIndex = 0;
-
-    //this removes tiles that aren't in set anymore
-    for(i32 readIndex = 0; readIndex < set->numberOfTiles; readIndex++) {
-        Tile* tile = set->tiles[readIndex];
-
-        if(tile && tile->setId == set->id && tile->location == TILE_LOCATION::TABLE) {
-            if(writeIndex != readIndex) {
-                if(writeIndex > 12) {
-                    printf("Validate set write index i is greater than 12!\n");
-                    assert(writeIndex <= 12);
-                }
-                printf("Write index = %i\n", writeIndex);
-                set->tiles[writeIndex] = tile;
-            }
-
-            writeIndex++;
-        } 
-    }
-    set->numberOfTiles = writeIndex;
-    if(set->numberOfTiles == 0) return;
-
-    //this orders the tiles
-    if (set->setType == SET_TYPE::RUN) {
-        for (i32 i = 0; i < set->numberOfTiles; i++) {
-            for (i32 j = i + 1; j < set->numberOfTiles; j++) {
-                if (set->tiles[i]->details.tileNumber > set->tiles[j]->details.tileNumber) {
-                    if(i > 12) {
-                        printf("index i is greater than 12!\n");
-                    }
-                    if(j > 12) {
-                        printf("index j is greater than 12!\n");
-                    }
-
-                    Tile* tmp = set->tiles[i];
-                    set->tiles[i] = set->tiles[j];
-                    set->tiles[j] = tmp;
-                }
-            }
-        }
-
-        for(i32 i = 1; i < set->numberOfTiles; ++i) {
-            //this is weird works only with runs?
-            if(set->tiles[i]->details.type != JOKER && set->tiles[i-1]->details.type != JOKER && set->tiles[i]->details.tileNumber - set->tiles[i-1]->details.tileNumber != 1) {
-                set->setType = INVALID;
-                printf("SET INVALIDATED!\n");
-            }
-        }
-    }
-
-    for (i32 i = 0; i < set->numberOfTiles; i++) {
-        set->tiles[i]->locationIndex = i;
-    }
-
-    create_new_set_model(set); 
-}
-
-void validate_table() {
-    for(i32 i = 0; i < gState->table.numberOfSets; i++) {
-        Set *set = &gState->table.sets[i];
-        validate_set(set);
-    }
-
-    remove_empty_sets();
 }
 
 u8 is_tile_released_inside_table(Tile* tile) {
@@ -2008,7 +1931,6 @@ void update_set_ui(Set *set) {
     bg->posx = pos.x;
     bg->posy = pos.y - 0.1f;
 
-    //hoveredSetValue = 
     calculate_set_bonuses(set, false);
 }
 
@@ -2017,14 +1939,30 @@ void add_tile_to_table_space(Tile* tile, vec2 tableSpace) {
         printf("Cannot add null tile to table space!\n");
         return;
     }
+
+    i32 row = (i32)tableSpace.x;
+    i32 col = (i32)tableSpace.y;
+
+    if(row < 0 || row >= TABLE_ROWS || col < 0 || col >= TABLE_COLUMNS) {
+        printf("Cannot add tile to invalid table space: (%d, %d)\n", row, col);
+        return;
+    }
+    
     tile->tableSpace = tableSpace;
     tile->object.model = glm::scale(gState->table.tableSpaces[(i32)tableSpace.x][(i32)tableSpace.y].object, vec3(1.0f / TABLE_SCALE));
 }
 
 void order_set_tiles(Set* set) {
+    if(set->numberOfTiles <= 0) return;
+
+    Tile* originalTiles[13];
+    i32 originalCount = set->numberOfTiles;
+
+    for(i32 i = 0; i < originalCount; ++i) originalTiles[i] = set->tiles[i];
+
     vec2 leftVec = find_left_most_tile(set)->tableSpace;
-    i32 left = leftVec.y;
-    
+    i32 left = (i32)leftVec.y;
+
     Tile* jokers[4];
     i32 jokerCount = get_joker_array(set, jokers);
 
@@ -2034,49 +1972,87 @@ void order_set_tiles(Set* set) {
     Tile* bridges[4];
     i32 bridgeCount = get_bridge_array(set, bridges);
 
-    i32 spanNumbers[13] = {-1};
-    i32 numberOfSpans = get_spans(normalCount, normals, spanNumbers, jokerCount);
+    Tile* orderedTiles[13];
+    i32 orderedCount = 0;
 
     i32 jokerIndex = 0;
     i32 bridgeIndex = 0;
 
     if(normalCount != 0) {
+        if(!normals[0]) {
+            printf("NORMAL ZERO IS NULL! normalIndex=%i normalCount=%i\n", 0, normalCount);
+            return;
+        }
+        orderedTiles[orderedCount++] = normals[0];
         add_tile_to_table_space(normals[0], vec2(leftVec.x, left));
         left++;
     }
 
-    //need to handle replacing joker... 
-    // how did this ever work????
     for(i32 i = 1; i < normalCount; ++i) {
         i32 distance = normals[i]->details.tileNumber - normals[i - 1]->details.tileNumber;
+
         if(distance > 1) {
-            if(jokerCount != 0 && jokerCount >= (distance - 1)) {
-                for(jokerIndex; jokerIndex < (distance - 1); ++jokerIndex) {
-                    add_tile_to_table_space(jokers[jokerIndex], vec2(leftVec.x, left));
+            //added - jokerIndex because used jokers are not being accounted for
+            if(jokerCount - jokerIndex >= distance - 1) {
+                //fill in jokers first
+                for(i32 j = 0; j < distance - 1; ++j) {
+                    Tile* joker = jokers[jokerIndex++];
+                    if(!joker) {
+                        printf("JOKER IS NULL! jokerIndex=%i jokerCount=%i\n", jokerIndex, jokerCount);
+                        return;
+                    }
+                    orderedTiles[orderedCount++] = joker;
+                    add_tile_to_table_space(joker, vec2(leftVec.x, left));
                     left++;
                 }
             } else if(bridgeIndex < bridgeCount) {
-                add_tile_to_table_space(bridges[bridgeIndex], vec2(leftVec.x, left));
-                bridgeIndex++;
+                //add bridge second
+                Tile* bridge = bridges[bridgeIndex++];
+                if(!bridge) {
+                    printf("BRIDGE IS NULL! bridgeIndex=%i bridgeCount=%i\n", bridgeIndex, bridgeCount);
+                    return;
+                }
+
+                orderedTiles[orderedCount++] = bridge;
+                add_tile_to_table_space(bridge, vec2(leftVec.x, left));
                 left++;
-            } 
+            }
         }
+
+        if(!normals[i]) {
+            printf("NORMAL IS NULL! normalIndex=%i normalCount=%i\n", i, normalCount);
+            return;
+        }
+        
+        orderedTiles[orderedCount++] = normals[i];
         add_tile_to_table_space(normals[i], vec2(leftVec.x, left));
         left++;
     }
-
+    
+    //place jokers to the right only uses left vec for x component
     while(jokerIndex < jokerCount) {
-        add_tile_to_table_space(jokers[jokerIndex], vec2(leftVec.x, left));
+        Tile* joker = jokers[jokerIndex++];
+        orderedTiles[orderedCount++] = joker;
+        add_tile_to_table_space(joker, vec2(leftVec.x, left));
         left++;
-        jokerIndex++;
     }
 
+    //then bridges
     while(bridgeIndex < bridgeCount) {
-        //maybe make invalid if left over bridges
-        add_tile_to_table_space(bridges[bridgeIndex], vec2(leftVec.x, left));
+        Tile* bridge = bridges[bridgeIndex++];
+        orderedTiles[orderedCount++] = bridge;
+        add_tile_to_table_space(bridge, vec2(leftVec.x, left));
         left++;
-        bridgeIndex++;
     }
+
+    for(i32 i = 0; i < orderedCount; ++i) {
+        set->tiles[i] = orderedTiles[i];
+        set->tiles[i]->locationIndex = i;
+        set->tiles[i]->setId = set->id;
+    }
+
+    for(i32 i = orderedCount; i < 13; ++i) set->tiles[i] = nullptr;
+    set->numberOfTiles = orderedCount;
 }
 
 void update_highest_run_size() {
@@ -2123,30 +2099,36 @@ u8 add_tile_to_set(Set *set, Tile *tile) {
     }
     set->tiles[set->numberOfTiles++] = tile;
 
-    create_new_set_model(set);
-
     if(is_group(set)) {
-      set->setType = GROUP;
-      if(set->numberOfTiles == 4) set->isComplete = true;
+        set->setType = GROUP;
+        if(set->numberOfTiles == 4) set->isComplete = true;
     } else if(is_run(set)) {
-      set->setType = RUN;
-      order_set_tiles(set);
-      update_highest_run_size();
+        set->setType = RUN;
+        order_set_tiles(set);
+        update_highest_run_size();
+    } else {
+        set->setType = INVALID;
     }
 
+    create_new_set_model(set);
     update_number_of_colors();
 
     return true;
 }
 
 void remove_tile_from_set(Set *set, Tile *tile) {
-    set->tiles[tile->locationIndex] = nullptr;
+    i32 index = tile->locationIndex;
+
+    if(index < 0 || index >= set->numberOfTiles) return;
+
+    set->tiles[index] = nullptr;
     set->numberOfTiles--;
 
+    tile->setId = -1;
+    tile->locationIndex = -1;
+
     if(set->setType != GROUP && gState->rules.rainbowRunEnabled && set->id == gState->rules.rainbowRunSetId) {
-        if(!is_rainbow_run(set)) {
-            gState->rules.rainbowRunSetId = -1;
-        }
+        if(!is_rainbow_run(set)) gState->rules.rainbowRunSetId = -1;
     }
 }
 
@@ -2165,12 +2147,11 @@ u8 is_there_table_space(Set *set, Tile *tile) {
     if(set->setType == GROUP) {
         vec2 rightSpace = find_right_most_tile(set)->tableSpace + vec2(0, 1);
         vec2 leftSpace = find_left_most_tile(set)->tableSpace + vec2(0, -1);
-        if ((i32)rightSpace.y >= TABLE_COLUMNS || is_table_space_occupied(rightSpace)) return false;
-        if ((i32)leftSpace.y < 0 || is_table_space_occupied(leftSpace)) return false;
+        if (((i32)rightSpace.y >= TABLE_COLUMNS || is_table_space_occupied(rightSpace)) && ((i32)leftSpace.y < 0 || is_table_space_occupied(leftSpace))) return false;
         return true;
     }
 
-    u8 isHigh = tile->details.tileNumber > get_high_tile_number(set);
+    u8 isHigh = tile->details.tileNumber >= get_high_tile_number(set);
     vec2 targetSpace;
 
     if (isHigh) {
@@ -2187,19 +2168,59 @@ u8 is_there_table_space(Set *set, Tile *tile) {
 }
 
 void split_set(Set *set, i32 originalIndex, i32 originalCount) {
-    Set* newSet = create_new_set();
+    Set *newSet = create_new_set();
 
-    if(!newSet) return;
+    if(!newSet)
+        return;
 
+    i32 newIndex = 0;
+
+    // Move everything AFTER the removed tile into the new set.
     for(i32 i = originalIndex + 1; i < originalCount; ++i) {
-        Tile* t = set->tiles[i];
-        if(!t) {
-            printf("Null tile in split set.\n");
+        Tile *t = set->tiles[i];
+
+        if(!t)
             continue;
-        }        
-        add_tile_to_set(newSet, t);
+
+        newSet->tiles[newIndex] = t;
+
+        t->setId = newSet->id;
+        t->locationIndex = newIndex;
+
+        newIndex++;
     }
-    set->numberOfTiles = originalIndex + 1;
+
+    newSet->numberOfTiles = newIndex;
+
+    // The old set ends immediately BEFORE the removed tile.
+    set->numberOfTiles = originalIndex;
+
+    // Clear the old pointers.
+    for(i32 i = originalIndex; i < originalCount; ++i) {
+        set->tiles[i] = nullptr;
+    }
+
+    // Determine new set types.
+    if(set->numberOfTiles > 0) {
+        if(is_group(set))
+            set->setType = GROUP;
+        else if(is_run(set))
+            set->setType = RUN;
+        else
+            set->setType = INVALID;
+    }
+
+    if(newSet->numberOfTiles > 0) {
+        if(is_group(newSet))
+            newSet->setType = GROUP;
+        else if(is_run(newSet))
+            newSet->setType = RUN;
+        else
+            newSet->setType = INVALID;
+    }
+
+    create_new_set_model(set);
+    create_new_set_model(newSet);
 }
 
 void shift_set_left(Set *set) {
@@ -2208,8 +2229,10 @@ void shift_set_left(Set *set) {
 
         if(set->tiles[i]) {
             set->tiles[i]->locationIndex = i;
+            set->tiles[i]->setId = set->id;
         }
     }
+
     set->tiles[set->numberOfTiles] = nullptr;
 }
 
@@ -2217,78 +2240,93 @@ void handle_tile_removal(Set *set, Tile *tile) {
     i32 index = tile->locationIndex;
     i32 count = set->numberOfTiles;
 
+    if(index < 0 || index >= count) return;
+
     if(index == 0) {
+        //beginning
         remove_tile_from_set(set, tile);
         if(set->numberOfTiles > 0) shift_set_left(set);
-
     } else if(index == count - 1) {
+        //end
         remove_tile_from_set(set, tile);
-
     } else {
+        //middle
         split_set(set, index, count);
-        remove_tile_from_set(set, tile);
+        tile->setId = -1;
+        tile->locationIndex = -1;
+    }
+}
+
+void free_table_space(vec2 tableSpace) {
+    if(tableSpace.x >= 0 && tableSpace.x < TABLE_ROWS && tableSpace.y >= 0 && tableSpace.y < TABLE_COLUMNS) {
+        gState->table.tableSpaces[(i32)tableSpace.x][(i32)tableSpace.y].isOccupied = false;
     }
 }
 
 void release_tile() {
-    if(gState->player.heldTile) {
-        Tile *tile = gState->player.heldTile;
-        Set *hoveredSet = get_hovered_set();
-        u8 wasFromTable = tile->location == TABLE && tile->setId >= 0;
+    if(!gState->player.heldTile) return;
 
-        if(hoveredSet) {
-            if(is_tile_playable_in_set(&gState->rules, hoveredSet, tile) && is_there_table_space(hoveredSet, tile)) {
-                //remove from previous set
-                if(wasFromTable) handle_tile_removal(&gState->table.sets[tile->setId], tile);
+    Tile *tile = gState->player.heldTile;
+    Set *hoveredSet = get_hovered_set();
 
-                gState->table.tableSpaces[(i32)tile->tableSpace.x][(i32)tile->tableSpace.y].isOccupied = false;
-                tile->tableSpace = vec2(-1);
+    u8 wasFromTable = tile->location == TABLE && tile->setId >= 0;
 
-                add_table_space_to_tile(hoveredSet, tile);
-                add_tile_to_set(hoveredSet, tile);
-            } else {
-                tile->object.model = tile->originalPosition;
-            }
+    i32 oldSetId = tile->setId;
+    vec2 oldTableSpace = tile->tableSpace;
+
+    if(hoveredSet) {
+        if(is_tile_playable_in_set(&gState->rules, hoveredSet, tile) && is_there_table_space(hoveredSet, tile)) {
+            if(wasFromTable) handle_tile_removal(&gState->table.sets[oldSetId], tile);
+
+            free_table_space(oldTableSpace);
+            tile->tableSpace = vec2(-1);
+
+            calculate_tile_tablespace(hoveredSet, tile);
+            add_tile_to_set(hoveredSet, tile);
         } else {
-            if(is_tile_released_inside_table(tile)) {
-                if(wasFromTable) handle_tile_removal(&gState->table.sets[tile->setId], tile);
-                gState->table.tableSpaces[(i32)tile->tableSpace.x][(i32)tile->tableSpace.y].isOccupied = false;
-
-                Set *set = create_new_set();
-                snap_tile_to_table_space(tile);
-                add_tile_to_set(set, tile);
-            } else if(is_tile_released_inside_rack(tile) && verify_tile_was_not_played(tile) && wasFromTable) {
-                handle_tile_removal(&gState->table.sets[tile->setId], tile);
-                gState->table.tableSpaces[(i32)tile->tableSpace.x][(i32)tile->tableSpace.y].isOccupied = false;
-                tile->tableSpace = vec2(-1);
-                add_tile_to_rack(tile);
-                update_set_ui(nullptr);
-            } else if(discardEnabled && is_inside_pool(tile->object.model)) { 
-                tile->location = DISCARD;
-                discardEnabled = false;
-    
-            } else {
-                tile->object.model = tile->originalPosition;
-            }
+            tile->object.model = tile->originalPosition;
         }
-        gMemory->play_audio_fn(0);
-        validate_rack();
-        remove_empty_sets();
-        add_table_value_total(nullptr);
-    }
-    gState->player.heldTile = nullptr;
+    } else {
+        if(is_tile_released_inside_table(tile)) {
+            if(wasFromTable) handle_tile_removal(&gState->table.sets[oldSetId], tile);
 
+            free_table_space(oldTableSpace);
+            tile->tableSpace = vec2(-1, -1);
+
+            Set *set = create_new_set();
+            snap_tile_to_table_space(tile);
+            add_tile_to_set(set, tile);
+        } else if(is_tile_released_inside_rack(tile) && verify_tile_was_not_played(tile) && wasFromTable) {
+            handle_tile_removal(&gState->table.sets[oldSetId], tile);
+
+            free_table_space(oldTableSpace);
+            tile->tableSpace = vec2(-1);
+
+            add_tile_to_rack(tile);
+            update_set_ui(nullptr);
+        } else if(discardEnabled && is_inside_pool(tile->object.model)) {
+            tile->location = DISCARD;
+            discardEnabled = false;
+        } else {
+            tile->object.model = tile->originalPosition;
+        }
+    }
+
+    gMemory->play_audio_fn(0);
+
+    validate_rack();
+    remove_empty_sets();
+    add_table_value_total(nullptr);
+
+    gState->player.heldTile = nullptr;
 }
 
 void remove_active() {
     i32 index = gState->player.heldActiveId;
 
     for (i32 j = index; j < gState->player.numberOfActives - 1; ++j) {
-        //gState->player.activeIds[j] = gState->player.activeIds[j + 1];
         gState->player.actives[j] = gState->player.actives[j + 1];
     }
-
-    //gState->player.activeIds[gState->player.numberOfActives - 1] = -1;
 
     gState->player.numberOfActives--;
     gState->player.heldActiveId = -1;
@@ -2300,7 +2338,6 @@ void sort_active_rack() {
         gState->player.actives[i].originalPosition = rackSpaces[i];
     }
 }
-
 void release_active() {
     //check if inside pool
     if(gState->player.heldActiveId != -1) {
@@ -2458,6 +2495,14 @@ void show_challenge_ui() {
 
     for(i32 i = 0; i < scoreWindow->numberOfDependentTextElements; ++i) {
         scoreWindow->dependentTextElements[i]->visible = !challengeShown;
+    }
+
+    for(i32 i = 0; i < challengeWindow->numberOfDependentElements; ++i) {
+        challengeWindow->dependentElements[i]->visible = challengeShown;
+    }
+
+    for(i32 i = 0; i < scoreWindow->numberOfDependentElements; ++i) {
+        scoreWindow->dependentElements[i]->visible = !challengeShown;
     }
 }
 
@@ -2670,22 +2715,30 @@ void set_round_complete_ui(i32 windowIndex) {
     scoreMinVal.color = R_RED;
     add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, scoreMinVal,"", 2, TextType::UINT_64));
 
+    UIElement challengeImage = UIElement{ CENTER, -1, ROUND_CHALLENGE_T,  0.6f, 0.07225f, 0.05f * RENDERING_ASPECT, 0.05f};
+    challengeImage.sheetAnimation = SheetAnimation{3,1};
+    challengeImage.sheetAnimation.currentFrame = 1;
+    challengeImage.visible = false;
+    challengeImage.zIndex = 3;
+
     //toggle front index
     i32 challengeWindow = add_window(gState->uiPage, UI_BG_2_T, TOP_LEFT, vec2(0.12f, 0.6f), vec2(0.0695f, -0.2f), vec2(0.0695f, 0.01f), R_SILVER, R_DARK_BLUE, 0.5f); 
     gState->uiPage->uiElements[challengeWindow].visible = false;
     gState->uiPage->uiElements[challengeWindow].id = 97;
 
     i32 switchButton = add_button(gState->uiPage, BUTTON_T, "X", vec2(0.69f, 0.071f), vec2(0.0675f * RENDERING_ASPECT, 0.02f), R_SLATE, 21);
-
     add_switch_element(gState->uiPage, CENTER, switchButton, vec2(0.05, 0.05f), vec2(0.02f * RENDERING_ASPECT, 0.02f), RADIO_T);
+
+    TextElement roundInfo = TextElement{ TOP_LEFT, "Clear Rack or Reach Round Minimum Score", 0.085f, 0.0225f, -1, true, DEFAULT_FONT_SCALE * 1.75f, vec3(1.0f)};
+    roundInfo.visible = false;
+    //roundInfo.bounce = true;
+    roundInfo.typeWriter = true;
+    roundInfo.maxWidth = 0.5f * RENDERING_ASPECT;
+    add_text_bob(&roundInfo);
 
     switch(gState->runData.currentRoundType) {
         case MIN_SCORE: {
-            TextElement score = TextElement{ CENTER, "Clear Rack or Reach Round Minimum Score", 0.375f, 0.075f, -1, true, DEFAULT_FONT_SCALE * 2.0f, vec3(1.0f)};
-            score.visible = false;
-            score.bounce = true;
-            score.typeWriter = true;
-            add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, score));
+            add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, roundInfo));
             break;
         }
         case RUN_MAX_SIZE: {
@@ -2732,62 +2785,58 @@ void set_round_complete_ui(i32 windowIndex) {
             break;
         }
         case CURSED_GREEN: {
-            TextElement score = TextElement{ CENTER, "Reach Round Minimum Score when GREEN tiles aren't counted towards total score.", 0.375f, 0.075f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
-            score.visible = false;
-            score.bounce = true;
-            add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, score));
+            char *text = "Reach Round Minimum Score when GREEN tiles aren't counted towards total score.";
+            snprintf(roundInfo.text, sizeof(roundInfo.text), "%s", text);
+            add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, roundInfo));
             break;
         }
         case CURSED_RED: {
-            TextElement score = TextElement{ CENTER, "Reach Round Minimum Score when RED tiles aren't counted towards total score.", 0.375f, 0.075f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
-            score.visible = false;
-            score.bounce = true;
-            add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, score));
+            char *text = "Reach Round Minimum Score when RED tiles aren't counted towards total score.";
+            snprintf(roundInfo.text, sizeof(roundInfo.text), "%s", text);
+            add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, roundInfo));
             break;
         }
         case CURSED_BLUE: {
-            TextElement score = TextElement{ CENTER, "Reach Round Minimum Score when BLUE tiles aren't counted towards total score.", 0.375f, 0.075f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
-            score.visible = false;
-            score.bounce = true;
-            add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, score));
+            char *text = "Reach Round Minimum Score when BLUE tiles aren't counted towards total score.";
+            snprintf(roundInfo.text, sizeof(roundInfo.text), "%s", text);
+            add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, roundInfo));
             break;
         }
         case CURSED_BLACK: {
-            TextElement score = TextElement{ CENTER, "Reach Round Minimum Score when BLACK tiles aren't counted towards total score.", 0.375f, 0.075f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
-            score.visible = false;
-            score.bounce = true;
-            add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, score));
+            char *text = "Reach Round Minimum Score when BLACK tiles aren't counted towards total score.";
+            snprintf(roundInfo.text, sizeof(roundInfo.text), "%s", text);
+            add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, roundInfo));
             break;
         }
         case RUN_TOTALS: {
-            TextElement score = TextElement{ CENTER, "Reach Round Minimum Score using RUNS only.", 0.375f, 0.075f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
-            score.visible = false;
-            score.bounce = true;
-            add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, score));
+            char *text = "Reach Round Minimum Score using RUNS only.";
+            snprintf(roundInfo.text, sizeof(roundInfo.text), "%s", text);
+            add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, roundInfo));
             break;
         }
         case GROUP_TOTALS: {
-            TextElement score = TextElement{ CENTER, "Reach Round Minimum Score using GROUPS only.", 0.375f, 0.075f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
-            score.visible = false;
-            score.bounce = true;
-            add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, score));
+            char *text = "Reach Round Minimum Score using GROUPS only.";
+            snprintf(roundInfo.text, sizeof(roundInfo.text), "%s", text);
+            add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, roundInfo));
             break;
         }
         case NO_ACTIVES: {
-            TextElement score = TextElement{ CENTER, "Reach Round Minimum Score without the use of ACTIVES.", 0.375f, 0.075f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
-            score.visible = false;
-            score.bounce = true;
-            add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, score));
+            char *text = "Reach Round Minimum Score without the use of ACTIVES.";
+            snprintf(roundInfo.text, sizeof(roundInfo.text), "%s", text);
+            add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, roundInfo));
             break;
         }
         case NO_PASSIVES: {
-            TextElement score = TextElement{ CENTER, "Reach Round Minimum Score without the use of PASSIVES.", 0.375f, 0.075f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
-            score.visible = false;
-            score.bounce = true;
-            add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, score));
+            char *text = "Reach Round Minimum Score without the use of PASSIVES.";
+            snprintf(roundInfo.text, sizeof(roundInfo.text), "%s", text);
+            add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, roundInfo));
             break;
         }
     }
+
+    challengeImage.sheetAnimation.currentFrame = gState->roundData.difficulty;
+    i32 challengeImageId = add_ui_element(gState->uiPage, challengeImage);
+    add_image_to_window(gState->uiPage, challengeWindow, challengeImageId);
 }
 
 void add_in_game_ui() {
@@ -3115,25 +3164,8 @@ void populate_actives_in_shop(i32 *arr) {
 }
 
 void populate_challenges(i32 *arr) {
-    for(i32 i = 0; i < 2; ++i) {
-        u8 unique = false;
-
-        while(!unique) {
-            i32 value = rng_range(1, 10);
-            unique = true;
-
-            for(i32 j = 0; j < i; ++j) {
-                if(arr[j] == value) {
-                    unique = false;
-                    break;
-                }
-            }
-
-            if(unique) {
-                arr[i] = value;
-            }
-        }
-    }
+    arr[0] = rng_range(1,3);
+    arr[1] = rng_range(4,10);
 }
 
 //
@@ -4507,8 +4539,7 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
         }
     }
 
-    if(key == 296 && action == 1) {//home key
-        init_round(CURSED_GREEN);
+    if(key == 296 && action == 1) {//f7
     }
 
     if (key == 78 && action == 1) {
@@ -4527,6 +4558,7 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
         //add_shop_purchase_menu(false);
         printf("Rainbow run enabled = %i\n", gState->rules.rainbowRunEnabled);
         printf("Rainbow run setId = %i\n", gState->rules.rainbowRunSetId);
+        __debugbreak();
     }
 
     if (key == 294 && action == 1) {

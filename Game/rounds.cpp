@@ -192,7 +192,7 @@ void difficulty_to_text(u8 value, char *text) {
 RoundData create_round_data(ROUND_TYPE roundType, u64 round) {
     switch(roundType) {
         case MIN_SCORE: {
-            return RoundData {20, 100 * round, 0, nullptr, check_min_score_lose, "Reach target score.", 2, 0};
+            return RoundData {20, 100 * round, 0, nullptr, check_min_score_lose, "Reach target score.", 2};
         }
         case RUN_TOTALS: {
             return RoundData {20, 100 * round, 0, nullptr, check_min_score_lose, "Reach target score using runs only.", 4, 1};
@@ -207,22 +207,22 @@ RoundData create_round_data(ROUND_TYPE roundType, u64 round) {
             return RoundData {20, 100 * round, 0, check_every_color_endgame, check_max_draws_lose, "Table has sets with one of every tile color.", 6, 2};
         } 
         case CURSED_RED: {
-            return RoundData {20, 100 * round, 0, nullptr, check_min_score_lose, "Reach target score when red tiles are not counted towards the total.", 8, 3};
+            return RoundData {20, 100 * round, 0, nullptr, check_min_score_lose, "Reach target score when red tiles are not counted towards the total.", 8, 2};
         }
         case CURSED_BLUE: {
-            return RoundData {20, 100 * round, 0, nullptr, check_min_score_lose, "Reach target score when blue tiles are not counted towards the total.", 8, 3};
+            return RoundData {20, 100 * round, 0, nullptr, check_min_score_lose, "Reach target score when blue tiles are not counted towards the total.", 8, 2};
         }
         case CURSED_GREEN: {
-            return RoundData {20, 100 * round, 0, nullptr, check_min_score_lose, "Reach target score when green tiles are not counted towards the total.", 8, 3};
+            return RoundData {20, 100 * round, 0, nullptr, check_min_score_lose, "Reach target score when green tiles are not counted towards the total.", 8, 2};
         }
         case CURSED_BLACK: {
-            return RoundData {20, 100 * round, 0, nullptr, check_min_score_lose, "Reach target score when black tiles are not counted towards the total.", 8, 3};
+            return RoundData {20, 100 * round, 0, nullptr, check_min_score_lose, "Reach target score when black tiles are not counted towards the total.", 8, 2};
         }
         case NO_ACTIVES: {
-            return RoundData {20, 100 * round, 0, nullptr, check_min_score_lose, "Reach target score when actives are ignored.", 8, 3};
+            return RoundData {20, 100 * round, 0, nullptr, check_min_score_lose, "Reach target score when actives are ignored.", 8, 2};
         }
         case NO_PASSIVES: {
-            return RoundData {20, 100 * round, 0, nullptr, check_min_score_lose, "Reach target score when passives are ignored.", 8, 3};
+            return RoundData {20, 100 * round, 0, nullptr, check_min_score_lose, "Reach target score when passives are ignored.", 8, 2};
         }
     }
     

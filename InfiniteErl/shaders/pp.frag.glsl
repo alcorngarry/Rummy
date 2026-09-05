@@ -167,7 +167,7 @@ vec3 SampleBloom(vec2 uv) {
 vec3 SampleChromatic(vec2 uv) {
     vec2 pixel = 1.0 / resolution;
 
-    vec2 offset = pixel * 1.0;
+    vec2 offset = pixel * 1.5;
 
     float r = Tri(uv + offset).r;
     float g = Tri(uv).g;
@@ -182,8 +182,8 @@ void main() {
     vec2 uv = TexCoord;
     vec3 color = SampleChromatic(uv);
     //too costly
-    vec3 bloom = SampleBloom(uv);
-    color += bloom * 0.08;
+    //vec3 bloom = SampleBloom(uv);
+    //color += bloom * 0.1;
 
     color *= Mask(fragCoord);
 
