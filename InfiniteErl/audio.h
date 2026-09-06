@@ -2,21 +2,10 @@
 #define AUDIO_H
 #include "data_types.h" 
 
-struct AudioCommand {
-    i32 soundId;
-    f32 volume;
+struct Audio {
+    i32 id;
     f32 pitch;
-};
-
-struct AudioSystem {
-    HANDLE thread;
-    HANDLE wakeEvent;
-    volatile u8 running;
-
-    
-    AudioCommand audioCommands[256];
-    i32 writeIndex;
-    i32 readIndex;
+    f32 volume = 0.0f;
 };
 
 void load_home_music(const char* filename);

@@ -50,6 +50,8 @@ void init_audio() {
 
     load_audio(0, "./audio/place_tile.wav");
     load_audio(1, "./audio/button_click.wav");
+    load_audio(2, "./audio/clink.wav");
+    load_home_music("./audio/menu.wav");
 
     printf("Audio loaded.\n");
 }
@@ -61,8 +63,7 @@ void play_audio(i32 id) {
 void play_audio_pitch(i32 id, f32 pitch) {
     for (i32 i = 0; i < MAX_INSTANCES; i++) {
 
-        if (audioInstances[i].active)
-            continue;
+        if (audioInstances[i].active) continue;
 
         ma_result result = ma_sound_init_copy(
             &engine,

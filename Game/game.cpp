@@ -729,6 +729,12 @@ u8 move_tile(void* ptr) {
     return false;
 }
 
+u8 add_audio(void *ptr) {
+    Audio audio = *(Audio *)ptr;
+    gMemory->play_audio_pitch_fn(audio.id, audio.pitch);
+    return true;
+}
+
 u8 add_tile_amount(void* ptr) {
     GameObject *self = *(GameObject **)ptr;
     Tile* tile = (Tile*)self;
@@ -756,8 +762,6 @@ u8 add_tile_amount(void* ptr) {
 
     if (t >= 1.0f) {
         self->model = self->baseModel;
-        gMemory->play_audio_fn(0);
-
         return true;
     }
     return false;
@@ -3953,6 +3957,7 @@ void calculate_round_cash(RunData *gd) {
 
 void count_table() {
     for(i32 i = 0; i < gState->table.numberOfSets; ++i) {
+        i32 tileIndex = 0;
         Set *set = &gState->table.sets[i];
         //
         vec2 pos = world_to_ui(
@@ -3963,6 +3968,7 @@ void count_table() {
 
         // add the set total to the roundScore, then add multiplier to the roundScore 
         for(i32 j = 0; j < set->numberOfTiles; ++j) {
+            tileIndex++;
             Tile *tile = set->tiles[j];
             tile->object.baseModel = tile->object.model;
 
@@ -3971,6 +3977,12 @@ void count_table() {
             if (cmd) {
                 cmd->action = add_tile_amount;
                 *COMMAND_PAYLOAD(cmd, GameObject *) = &tile->object;
+            }
+
+            ActionCommand *audio = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, Audio, execute_action);
+            if (audio) {
+                audio->action = add_audio;
+                *COMMAND_PAYLOAD(audio, Audio) = Audio{0, 1 + (tileIndex * 0.1f)};
             }
 
             vec3 tilePos = vec3(
