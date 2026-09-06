@@ -51,7 +51,7 @@ void init_audio() {
     load_audio(0, "./audio/place_tile.wav");
     load_audio(1, "./audio/button_click.wav");
     load_audio(2, "./audio/clink.wav");
-    load_home_music("./audio/menu.wav");
+    //load_home_music("./audio/menu.wav");
 
     printf("Audio loaded.\n");
 }

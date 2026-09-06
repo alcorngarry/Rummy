@@ -1709,13 +1709,14 @@ void calculate_tile_tablespace(Set *set, Tile *tile) {
     vec2 leftSpace = find_left_most_tile(set)->tableSpace + vec2(0, -1);
 
     if(set->setType == GROUP) {
-        if((i32)rightSpace.y >= TABLE_COLUMNS || is_table_space_occupied(rightSpace)) {
-            targetSpace = leftSpace;
-        } else if((i32)leftSpace.y < 0 || is_table_space_occupied(leftSpace)) {
+        if(!((i32)rightSpace.y >= TABLE_COLUMNS || is_table_space_occupied(rightSpace))) {
             targetSpace = rightSpace;
+        } else if(!((i32)leftSpace.y < 0 || is_table_space_occupied(leftSpace))) {
+            targetSpace = leftSpace;
         } else {
             //this is an issue
             printf("ERROR FINDING SPACE\n");
+            return;
         }
     } else {
         u8 isHigh = tile->details.tileNumber >= get_high_tile_number(set);
