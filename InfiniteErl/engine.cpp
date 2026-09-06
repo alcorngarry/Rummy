@@ -300,7 +300,7 @@ GLFWwindow* create_window() {
     //think about set joystick callback..
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL); //make this hidden when updating cursor
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN); //make this hidden when updating cursor
     glfwSwapInterval(videoSettings.vsync); 
     
 
@@ -499,6 +499,7 @@ void load_textures() {
     load_texture(SHEEN_T, "./res/sheen.png", true, false, false);
     load_texture(ROUND_SHEEN_T, "./res/round-sheen.png", true, false, false);
     load_texture(LOCKED_T, "./res/locked-tile.png", true, false, false);
+    load_texture(CURSOR_T, "./res/cursor-sheet.png", true, false, false);
 }
 
 VideoSettings load_video_settings() {

@@ -14,6 +14,8 @@ GameMemory* gMemory = nullptr;
 mat4 rackSpaces[RACK_SPACES];
 u8 activesShown = false;
 u8 challengeShown = false;
+//probably should have engine interaction here
+vec2 mousePos = vec2(0.0f);
 
 // fix this
 Tile *peekTiles[5];
@@ -66,6 +68,7 @@ void hide_paint_hovered_window();
 void add_map_ui();
 void populate_challenges(i32 *arr);
 void remove_tile_from_pool(i32 id);
+void init_cursor(vec2 pos);
 
 // validations.cpp
 i32 get_high_tile_number(Set *set);
@@ -3055,17 +3058,17 @@ void add_relic() {
     i32 frame = gState->uiPage->uiElements[gState->uiPage->uiElements[gState->uiPage->elementHovered].imageChildId].sheetAnimation.currentFrame;
 
     //clear here.
-    for(i32 i = 3; i < 6; ++i) {
-        if(relicHovered == i) continue;
-        gState->uiPage->uiElements[i].color = R_BLUE * 0.1f;
-        UIElement blur = gState->uiPage->uiElements[i];
-        blur.color = vec4(0.2f);
-        blur.zIndex = 3;
-        add_ui_element(gState->uiPage, blur);
-
-        gState->uiPage->uiElements[6].visible = false;
-        gState->uiPage->uiElements[6].textChild->visible = false;
-    }
+//    for(i32 i = 3; i < 6; ++i) {
+//        if(relicHovered == i) continue;
+//        gState->uiPage->uiElements[i].color = R_BLUE * 0.1f;
+//        UIElement blur = gState->uiPage->uiElements[i];
+//        blur.color = vec4(0.2f);
+//        blur.zIndex = 3;
+//        add_ui_element(gState->uiPage, blur);
+//
+//        gState->uiPage->uiElements[6].visible = false;
+//        gState->uiPage->uiElements[6].textChild->visible = false;
+//    }
 
     if(RELIC_TABLE[frame].price > gState->runData.dollaBills) return;
     if(gState->player.numberOfRelics == MAX_RELICS) {
@@ -3093,17 +3096,17 @@ void add_active() {
         return;
     } // quick fix for now, will fix in the shop ui
 
-    for(i32 i = 3; i < 6; ++i) {
-        if(activeHovered == i) continue;
-        gState->uiPage->uiElements[i].color = R_BLUE * 0.1f;
-        UIElement blur = gState->uiPage->uiElements[i];
-        blur.color = vec4(0.2f);
-        blur.zIndex = 3;
-        add_ui_element(gState->uiPage, blur);
-
-        gState->uiPage->uiElements[6].visible = false;
-        gState->uiPage->uiElements[6].textChild->visible = false;
-    }
+//    for(i32 i = 3; i < 6; ++i) {
+//        if(activeHovered == i) continue;
+//        gState->uiPage->uiElements[i].color = R_BLUE * 0.1f;
+//        UIElement blur = gState->uiPage->uiElements[i];
+//        blur.color = vec4(0.2f);
+//        blur.zIndex = 3;
+//        add_ui_element(gState->uiPage, blur);
+//
+//        gState->uiPage->uiElements[6].visible = false;
+//        gState->uiPage->uiElements[6].textChild->visible = false;
+//    }
 
     gState->player.actives[gState->player.numberOfActives] = gState->actives[frame];
     
@@ -3864,6 +3867,7 @@ void clear_game_ui() {
     gState->uiPage = create_ui_page(&gMemory->uiMem);
     gState->uiPage->aspect = RENDERING_ASPECT;
     add_game_ui_data(gState->uiPage);
+    init_cursor(mousePos);
 }
 
 u8 add_set_value_total(void *ptr) {
@@ -4446,8 +4450,60 @@ extern "C" GAME_DLL void game_update_and_render() {
     draw_ui();
 }
 
+void init_cursor(vec2 pos) {
+    UIElement cursor = UIElement{TOP_LEFT, -1, CURSOR_T, pos.x, pos.y, 0.025f * RENDERING_ASPECT, 0.025f};
+    cursor.sheetAnimation = SheetAnimation{4, 1};
+    cursor.sheetAnimation.currentFrame = 0;
+    cursor.zIndex = 10;
+    i32 id = add_ui_element(gState->uiPage, cursor);
+    gState->uiPage->uiElements[id].id = 90; // have to set after the fact
+}
+
+void update_cursor(vec2 pos) {
+    UIElement *cursor = get_element_by_id(gState->uiPage, 90);
+    if(!cursor) return;
+    i32 action = 0;
+
+    //terrible but will work for now
+    for(i32 i = 0; i < TOTAL_TILES; ++i) {
+        if(gState->tiles[i].isHovered) {
+            action = 1;
+            if(clickHeld) {
+                action = 2; 
+            }
+            if(paintEnabled) {
+                action = 3;
+            }
+            break; 
+        }
+    }
+
+    for(i32 i = 0; i < gState->player.numberOfActives; ++i) {
+        if(gState->player.actives[i].isHovered) {
+            action = 1;
+            if(clickHeld) {
+                action = 2; 
+            }
+            break;
+        }
+    }
+
+    if(gState->player.heldTile || gState->player.heldActiveId != -1) {
+        action = 2;
+    }
+
+//    if(paintEnabled && !colorTile) {
+//        action = 3;
+//    }
+
+    cursor->sheetAnimation.currentFrame = action;
+    cursor->posx = pos.x;
+    cursor->posy = pos.y;
+};
+
 extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 ypos) {
     // the projection matrix for ui is different!
+    mousePos = vec2(xpos * (1.0f / RENDERING_ASPECT), ypos);
     check_elements_hovered(gState->uiPage, xpos * (1.0f / RENDERING_ASPECT), ypos);
     check_relic_hovered(xpos, ypos);
 
@@ -4456,6 +4512,7 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
         check_table_space_hovered(xpos, ypos);
         check_pool_hovered(xpos, ypos);
     }
+
 
     if (key == 256) {
         quit();
@@ -4643,6 +4700,8 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
             }
         }
     }
+
+    update_cursor(vec2(xpos * (1.0f / RENDERING_ASPECT), ypos));
 }
 
 extern "C" GAME_DLL void game_shutdown() {
