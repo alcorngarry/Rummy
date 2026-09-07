@@ -113,6 +113,8 @@ struct UIElement {
   vec4 hoverColor = vec4(-1.0f);
   vec2 basePos = vec2(-1.0f);
   u8 pressed = false;
+  //make a hover action..
+  u8 isHoverable = true;
 };
 
 enum TextType {

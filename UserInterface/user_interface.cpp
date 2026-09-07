@@ -106,7 +106,9 @@ inline bool ui_point_inside(const UIElement& e, f64 x, f64 y) {
 void check_elements_hovered(UIPage* page, f64 xpos, f64 ypos) {
     page->elementHovered = -1;
     for (i32 i = 0; i < page->numberOfImageElements; ++i) {
-        if(page->uiElements[i].actionId == -1 || (page->highestZ != -1 && page->uiElements[i].zIndex != page->highestZ)) continue;
+        if(page->uiElements[i].actionId == -1 || 
+            (page->highestZ != -1 && page->uiElements[i].zIndex < page->highestZ) ||
+            !page->uiElements[i].isHoverable) continue;
 
         //ANCHOR EFFECTS THIS LETS ASSUME ANCHOR IS CENTER
         if (ui_point_inside(page->uiElements[i], xpos, ypos) && page->uiElements[i].visible) {
@@ -1187,6 +1189,8 @@ void add_button_to_window(UIPage *page, i32 windowId, i32 elementId) {
 
 void button_press(UIPage *page, void* ptr) {
     UIElement* el = (UIElement*)ptr;
+    //buttons always have a hover color
+    if(el->hoverColor.x == -1) return;
     
     el->basePos = vec2(el->posx, el->posy);
 
@@ -1205,6 +1209,8 @@ void button_press(UIPage *page, void* ptr) {
 
 void button_release(UIPage *page, void* ptr) {
     UIElement* el = (UIElement*)ptr;
+    //buttons always have a hover color
+    if(el->hoverColor.x == -1) return;
     el->pressed = false;
     if(el->basePos.x == -1.0f) return;
 

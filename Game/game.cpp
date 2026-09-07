@@ -392,6 +392,15 @@ u8 set_odd_condition(void *ptr) {
     return condition->set->numberOfTiles % 2;
 }
 
+u8 add_wrap_rule(void *ptr) {
+    gState->rules.wrapEnabled = true;
+    return true;
+}
+
+u8 no_condition(void *ptr) {
+    return true;
+}
+
 Item RELIC_TABLE[TOTAL_RELICS] = {
     { COMMON, "Neophyte 3", "Every set with exactly three tiles gets double the points.", 1, 3, 2, size_equals_condition, multiplier_action },
     { COMMON, "Plebian 4", "Every set with exactly four tiles gets double the points.", 1, 4, 2, size_equals_condition, multiplier_action },
@@ -403,8 +412,27 @@ Item RELIC_TABLE[TOTAL_RELICS] = {
     { COMMON, "Even Steven", "Every even set gets +20.", 1, 2, 20, set_even_condition, addition_action },
     { COMMON, "Odd Todd", "Every odd set gets +20.", 1, 2, 20, set_odd_condition, addition_action },
     //These need to be added
-    { RARE, "Wrap", "TO DO ADD HERE", 2, 1, 1, set_even_condition, addition_action }
+    //{ RARE, "Wrap", "Allows runs to wrap around from highest to lowest tile.", 2, -1, -1, no_condition, add_wrap_rule }
    // { RARE, "Crok Jock", "TO DO ADD HERE", 2, 1, 1, set_even_condition, addition_action }
+    { COMMON, "Big Saver", "Gain %1 bonus for every $10 you have.", 1, 2, 20, no_condition, addition_action },
+    { COMMON, "Head Start", "First joker drawn has double the value.", 1, 2, 20, no_condition, addition_action },
+    { COMMON, "Costly", "Jokers have triple the value but cost $1 when played.", 1, 2, 20, no_condition, addition_action },
+    { COMMON, "Se7en", "Sets with a 7 tile get a %20 set value increase.", 1, 2, 20, no_condition, addition_action },
+    { COMMON, "Interesting", "Every round gain %3 interest on total cash.", 1, 2, 20, no_condition, addition_action },
+    { COMMON, "Shift", "Jokers have the ability to shift a Run's color.", 1, 2, 20, no_condition, addition_action },
+    { COMMON, "Jokers Wild", "Every joker played gives %10 increase on set's value.", 1, 2, 20, no_condition, addition_action }
+    
+    // ---- done ---- color shift jokers, allows color shift when jokers played
+    //joker debt every joker left on rack cost $5, what..
+    // ----- done ----- wild card joker used in set increases set score
+    // ----- done ------ first joker drawm counts double
+    // ------ done ------ jokers worth more points but cost money to use
+    // ------- done ------ sets containing 7 get bonuses!
+    // ------- done ------- gain 1% bonus for every $10 you have
+    //every point above the score gets you money
+    //first set created give you money
+    // ---- done ----- interest, gain percent of money at the end of each round
+    //every third relic purchased gives you money
 };
 
 u64 get_set_value(Set *set) {
@@ -1616,6 +1644,7 @@ void check_set_hovered(f64 xpos, f64 ypos) {
 }
 
 void check_relic_hovered(f64 xpos, f64 ypos) {
+    //printf("highestZ = %i\n", gState->uiPage->highestZ);
     if(gState->player.heldTile) {
         clear_all_hover();
         return;
@@ -1631,6 +1660,7 @@ void check_relic_hovered(f64 xpos, f64 ypos) {
         printf("DEPENDENT TEXTS NOT FOUND!\n");
         return;
     }
+
 
     if(gState->uiPage->elementHovered != -1) {
         UIElement *relic = &gState->uiPage->uiElements[gState->uiPage->elementHovered];
@@ -3077,13 +3107,22 @@ void add_relic() {
 
     gState->player.relics[gState->player.numberOfRelics] = frame;
 
+    if(gState->relics[frame].conditionValue == -1) {
+        gState->relics[frame].action(nullptr); 
+    } 
+
     //charge the player
     gState->runData.dollaBills -= RELIC_TABLE[frame].price;
-
     if(gState->player.numberOfRelics <= MAX_RELICS - 2) gState->player.numberOfRelics++;
 
-    //if no money don't show.. do this later..
-    add_active_purchase();
+    if(gState->runData.dollaBills = 0) {
+          ActionCommand *loadMap = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, 0, execute_action);
+          if (loadMap) { 
+              loadMap->action = load_map;
+          }
+    } else {
+        add_active_purchase();
+    }
 }
 
 void add_active() {
@@ -3641,17 +3680,19 @@ void add_options_ui() {
 }
 
 void add_item_window() {
-    UIElement relicDesc = UIElement{ Anchor::CENTER, 98, TOOL_TIP_T, 0, 0, 0.25f, 0.15f};
+    UIElement relicDesc = UIElement{ CENTER, 98, TOOL_TIP_T, 0, 0, 0.25f, 0.15f};
     //relicDesc.color = R_DARK_GRAY;
     relicDesc.visible = false;
     relicDesc.sheetAnimation = SheetAnimation{3, 3};
     relicDesc.isPanel = true;
+    relicDesc.zIndex = 4;
 
     i32 relicDescId = add_ui_element(gState->uiPage, relicDesc);
 
     TextElement relicDetails = TextElement{ Anchor::CENTER, "", 0, 0, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
     relicDetails.haveCountAnimation = false;
     relicDetails.visible = false;
+    relicDetails.zIndex = 4;
 
     //name
     add_dependent_text_element(gState->uiPage, relicDescId, add_text_element(gState->uiPage, relicDetails)); 
@@ -3688,8 +3729,8 @@ void add_paint_window() {
 
 void add_relics_ui() {
     set_page_state(RELIC);
+    add_item_window();
     //i32 back = add_button(gState->uiPage, BUTTON_T, BACK_T, vec2(0.15f, 0.075f), vec2(0.035f, 0.035f), R_PURPLE, 2);
-
     i32 relicIds[MAX_RELICS];
     i32 slotIds[MAX_RELICS];
     i32 sheenIds[MAX_RELICS];
@@ -3703,11 +3744,17 @@ void add_relics_ui() {
     layout_grid(relicSlotPositions, MAX_RELICS / 10, MAX_RELICS / 5, CENTER, vec2(0.5f), vec2(0.75f, 0.9f), vec2(0.05f));
 
     for(i32 i = 0; i < gState->player.numberOfRelics; ++i) {
-        UIElement sheen = UIElement{ CENTER, -1, ROUND_SHEEN_T, relicSlotPositions[i].x, relicSlotPositions[i].y, 0.045f * RENDERING_ASPECT, 0.045f};
+        i32 sheenTexture = ROUND_SHEEN_T;
+        if(gState->player.relics[i] > 6) {
+            sheenTexture = SHEEN_T; 
+        }
+
+        UIElement sheen = UIElement{ CENTER, -1, sheenTexture, relicSlotPositions[i].x, relicSlotPositions[i].y, 0.045f * RENDERING_ASPECT, 0.045f};
         sheen.sheetAnimation = SheetAnimation{6, 1};
 
         sheen.sheetAnimation.currentFrame = 4;
         sheen.sheetAnimation.fps = 6;
+        sheen.isHoverable = false;
         sheenIds[i] = add_ui_element(gState->uiPage, sheen);
 
         UIElement relic = {
@@ -3738,6 +3785,7 @@ void add_relics_ui() {
             0.05f * RENDERING_ASPECT,
             0.05f
         };
+        slot.isHoverable = false;
 
         slotIds[i] = add_ui_element(gState->uiPage, slot, false);
     }
@@ -3785,49 +3833,11 @@ u8 start_round(void *ptr) {
 }
 
 void start_transition() {
-//    UIElement e = UIElement{CENTER, -1, -1, 0.5, 0.5f, 1, 1};
-//    e.color = R_BLACK;
-//    e.onCompleteActionId = 5;
-//    e.zIndex = 3;
-//
-//    Animation a = Animation{};
-//    a.animationType = SCALE;
-//    a.destination = vec2(1.5f);
-//    a.start = vec2(0.0f);
-//    a.autoAnimate = true;
-//    a.loopAnimation = false;
-//    
-//    e.animations[e.numberOfAnimations++] = a; 
-//
-//    ActionCommand *tileText = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, UIElement, execute_action);
-//    if (tileText) {
-//        tileText->action = add_image_to_page;
-//        *COMMAND_PAYLOAD(tileText, UIElement) = e;
-//    }
-//
-//    push_wait(&gState->cmdQueue, 0.6f);
-//
-//    Animation b = Animation{};
-//    b.animationType = SCALE;
-//    b.start = vec2(1.5f);
-//    b.destination = vec2(0.0f);
-//    b.autoAnimate = true;
-//    b.loopAnimation = false;
-//    e.animations[0] = b;
-
     ActionCommand *nextRound = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, ROUND_TYPE, execute_action);
     if (nextRound) { 
         nextRound->action = start_round;
         *COMMAND_PAYLOAD(nextRound, ROUND_TYPE) = gState->runData.currentRoundType;
     }
-    
-//    ActionCommand *tileText2 = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, UIElement, execute_action);
-//    if (tileText2) {
-//        tileText2->action = add_image_to_page;
-//        *COMMAND_PAYLOAD(tileText2, UIElement) = e;
-//    }
-//
-//    push_wait(&gState->cmdQueue, 1.0f);
 }
 
 void init_round(ROUND_TYPE type) {
@@ -3848,6 +3858,9 @@ void init_round(ROUND_TYPE type) {
     gState->rules.rainbowRunSetId = -1;
     gState->rules.rainbowRunEnabled = false;
     gState->table.longestRunSize = 0;
+    if(gState->runData.rounds == 1) {
+        gState->rules.wrapEnabled = false;
+    }
 
     gState->mode = GM_IN_GAME;
     clear_game_ui();
@@ -4193,12 +4206,12 @@ void end_turn() {
                     gState->player.playerData.timesDrawn++;
                     gState->roundData.turnLimit--;
 
-                    if(gState->roundData.turnLimit == 0 && 
-                        gState->uiPage->numberOfImageElements > 18 && 
-                        gState->uiPage->numberOfTextElements > 13) {
-                        gState->uiPage->uiElements[18].color = R_RED;
-                        gState->uiPage->textElements[13].color = R_RED;
-                    }
+//                    if(gState->roundData.turnLimit == 0 && 
+//                        gState->uiPage->numberOfImageElements > 18 && 
+//                        gState->uiPage->numberOfTextElements > 13) {
+//                        gState->uiPage->uiElements[18].color = R_RED;
+//                        gState->uiPage->textElements[13].color = R_RED;
+//                    }
                 } 
             }
             snapshot_round_start();
@@ -4540,21 +4553,12 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
     }
 
     if (key == 298 && action == 1) { // f9
-//        gState->player.numberOfActives = 0;
-//
-//        for (i32 i = 0; i < TOTAL_ACTIVES; ++i) {
-//            Active active = gState->actives[i];
-//            gState->player.actives[i] = active;
-//            gState->player.actives[i].object.model = rackSpaces[i];
-//            gState->player.actives[i].originalPosition = rackSpaces[i];
-//            gState->player.numberOfActives++;
-//        }
-//
-//        gState->player.actives[8] = gState->actives[3];
-//        gState->player.actives[8].object.model = rackSpaces[8];
-//        gState->player.actives[8].originalPosition = rackSpaces[8];
-//        gState->player.numberOfActives++;
-        add_shop_purchase_menu(true);
+        gState->player.numberOfRelics = 0;
+
+        for (i32 i = 0; i < TOTAL_RELICS; ++i) {
+            gState->player.relics[i] = i;
+            gState->player.numberOfRelics++;
+        }
     }
 
     if (key == 320 && action == 1) {

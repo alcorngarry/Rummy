@@ -8,9 +8,9 @@
 #include "erl_math.h"
 
 #define TOTAL_TILES 60
-#define TOTAL_RELICS 9
+#define TOTAL_RELICS 15
 #define MAX_RELICS 50
-#define RELIC_ROWS 3
+#define RELIC_ROWS 5
 #define RELIC_COLUMNS 3
 
 #define TOTAL_ACTIVES 6
@@ -274,7 +274,9 @@ struct RunData {
 struct ValidationRules {
     u8 minSetSize = 3;
     u8 rainbowRunEnabled = false;
+    u8 wrapEnabled = false;
     i32 rainbowRunSetId = -1;
+
 };
 
 struct GameState {

@@ -58,7 +58,7 @@ i32 get_normal_array_sorted(Set *set, Tile** normalArray) {
     i32 normalCount = 0;
 
     if(set->numberOfTiles > 13) {
-        assert(set->numberOfTiles <= 13);
+        printf("too many tiles\n");
     }
 
     for(i32 i = 0; i < set->numberOfTiles; ++i) {
@@ -67,7 +67,7 @@ i32 get_normal_array_sorted(Set *set, Tile** normalArray) {
 
         if(t->details.type == NORMAL) {
             i32 j = normalCount - 1;
-;
+
             while(j >= 0 && normalArray[j]->details.tileNumber > t->details.tileNumber) {
                 normalArray[j + 1] = normalArray[j];
                 j--;
@@ -111,6 +111,23 @@ u8 tile_valid_in_run(ValidationRules *rules, Set *set, Tile *tile) {
             validate_rainbow_run(rules, set);
         } else {
             return false;
+        }
+    }
+
+    if(rules->wrapEnabled) {
+        printf("wrap enabled\n");
+        if(tile->details.tileNumber == 1) {
+            for(i32 i = 0; i < set->numberOfTiles; ++i) {
+                if(set->tiles[i]->details.tileNumber == 13) {
+                    return true;
+                }
+            }
+        } else if(tile->details.tileNumber == 13) {
+             for(i32 i = 0; i < set->numberOfTiles; ++i) {
+                if(set->tiles[i]->details.tileNumber == 1) {
+                    return true;
+                }
+            }           
         }
     }
 
