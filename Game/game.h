@@ -195,7 +195,7 @@ enum Rarity {
     EXCEEDINGLY_RARE
 };
 
-struct Condition {
+struct ItemData {
     Set *set;
     i32 value;
 };

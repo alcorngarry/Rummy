@@ -365,30 +365,64 @@ void add_addition_animation(Set *set, i32 value) {
 }
 
 u8 multiplier_action(void *ptr) {
-    i32 multiplier = *(i32 *)ptr;
-    hoveredSetValue *= multiplier;
+    ItemData *actionData = (ItemData *)ptr;
+    if(!actionData) return true;
+    //i32 multiplier = *(i32 *)ptr;
+    hoveredSetValue *= actionData->value;
     return true;
 }
 
 u8 addition_action(void *ptr) {
-    i32 addition = *(i32 *)ptr;
-    hoveredSetValue += addition;
+    ItemData *actionData = (ItemData *)ptr;
+    if(!actionData) return true;
+    //i32 addition = *(i32 *)ptr;
+    f32 value = (f32)actionData->value;
+
+    //This means adding a percent, don't forget this.
+    //maybe make percent it's own
+    if(value < 0) {
+        value = hoveredSetValue * ((value * -1) / 100.0f);
+    }
+
+    hoveredSetValue += (u64)value;
+    return true;
+}
+
+u8 wild_factor(void *ptr) {
+    ItemData *actionData = (ItemData *)ptr;
+    if(!actionData) return true;
+    //i32 addition = *(i32 *)ptr;
+    f32 value = (f32)actionData->value;
+
+    i32 numberOfJokers = 0;
+    for(i32 i = 0; i < actionData->set->numberOfTiles; ++i) {
+        if(actionData->set->tiles[i]->details.tileNumber == 14) {
+            numberOfJokers++;
+        }
+    }
+
+    value = hoveredSetValue * ((value * -1 * numberOfJokers) / 100.0f);
+
+    hoveredSetValue += (u64)value;
     return true;
 }
 
 u8 size_equals_condition(void *ptr) {
     //assumes not passed through buffer
-    Condition *condition = (Condition *)ptr;
+    ItemData *condition = (ItemData *)ptr;
+    if(!condition) return true;
     return condition->set->numberOfTiles == condition->value;
 }
 
 u8 set_even_condition(void *ptr) {
-    Condition *condition = (Condition *)ptr;
+    ItemData *condition = (ItemData *)ptr;
+    if(!condition) return true;
     return !(condition->set->numberOfTiles % 2);
 }
 
 u8 set_odd_condition(void *ptr) {
-    Condition *condition = (Condition *)ptr;
+    ItemData *condition = (ItemData *)ptr;
+    if(!condition) return true;
     return condition->set->numberOfTiles % 2;
 }
 
@@ -400,6 +434,86 @@ u8 add_wrap_rule(void *ptr) {
 u8 no_condition(void *ptr) {
     return true;
 }
+
+u8 contains_joker(void *ptr) {
+    ItemData *condition = (ItemData *)ptr;
+    if(!condition) return true;
+    for(i32 i = 0; i < condition->set->numberOfTiles; ++i) {
+        if(condition->set->tiles[i]->details.tileNumber == 14) {
+            return true;
+        }
+    }
+    return false;
+}
+
+u8 contains_seven(void *ptr) {
+    ItemData *condition = (ItemData *)ptr;
+    if(!condition) return true;
+    for(i32 i = 0; i < condition->set->numberOfTiles; ++i) {
+        if(condition->set->tiles[i]->details.tileNumber == 7) {
+            return true;
+        }
+    }
+    return false;
+}
+
+u8 player_has_at_least_ten_dollars(void *ptr) {
+    return gState->runData.dollaBills >= 10;
+}
+
+u8 head_start(void *ptr) {
+    ItemData *actionData = (ItemData *)ptr;
+    if(!actionData) return true;
+
+    i32 tileColor = -1;
+    for(i32 i = 0; i < TOTAL_TILES; ++i) {
+        if(gState->tiles[i].details.tileNumber == 14) {
+            tileColor = gState->tiles[i].details.tileColor;
+            break;
+        }
+    }
+    
+    for(i32 i = 0; i < actionData->set->numberOfTiles; ++i) {
+        //repaint might break this.. but who cares rn
+        if(actionData->set->tiles[i]->details.tileColor == tileColor && actionData->set->tiles[i]->details.tileNumber == 14) {
+            hoveredSetValue += 14;
+            return true;
+        }
+    }
+    return true;
+}
+
+u8 costly(void *ptr) {
+    ItemData *actionData = (ItemData *)ptr;
+    if(!actionData) return true;
+
+    for(i32 i = 0; i < actionData->set->numberOfTiles; ++i) {
+        if(actionData->set->tiles[i]->details.tileNumber == 14) {
+            hoveredSetValue += (14 * 2);
+            gState->runData.dollaBills = gState->runData.dollaBills == 0 ? 0 : gState->runData.dollaBills--;
+        }
+    }
+    return true;
+}
+
+u8 big_saver(void *ptr) {
+    ItemData *actionData = (ItemData *)ptr;
+    if(!actionData) return true;
+
+    i32 value = gState->runData.dollaBills % 10;
+    gState->runData.dollaBills += value;
+    return true;
+}
+
+u8 interesting(void *ptr) {
+    ItemData *actionData = (ItemData *)ptr;
+    if(!actionData) return true;
+
+    f32 value = gState->runData.dollaBills * 0.03;
+    gState->runData.dollaBills += value;
+    return true;
+}
+
 
 Item RELIC_TABLE[TOTAL_RELICS] = {
     { COMMON, "Neophyte 3", "Every set with exactly three tiles gets double the points.", 1, 3, 2, size_equals_condition, multiplier_action },
@@ -414,13 +528,13 @@ Item RELIC_TABLE[TOTAL_RELICS] = {
     //These need to be added
     //{ RARE, "Wrap", "Allows runs to wrap around from highest to lowest tile.", 2, -1, -1, no_condition, add_wrap_rule }
    // { RARE, "Crok Jock", "TO DO ADD HERE", 2, 1, 1, set_even_condition, addition_action }
-    { COMMON, "Big Saver", "Gain %1 bonus for every $10 you have.", 1, 2, 20, no_condition, addition_action },
-    { COMMON, "Head Start", "First joker drawn has double the value.", 1, 2, 20, no_condition, addition_action },
-    { COMMON, "Costly", "Jokers have triple the value but cost $1 when played.", 1, 2, 20, no_condition, addition_action },
-    { COMMON, "Se7en", "Sets with a 7 tile get a %20 set value increase.", 1, 2, 20, no_condition, addition_action },
-    { COMMON, "Interesting", "Every round gain %3 interest on total cash.", 1, 2, 20, no_condition, addition_action },
-    { COMMON, "Shift", "Jokers have the ability to shift a Run's color.", 1, 2, 20, no_condition, addition_action },
-    { COMMON, "Jokers Wild", "Every joker played gives %10 increase on set's value.", 1, 2, 20, no_condition, addition_action }
+    { COMMON, "Big Saver", "Gain %1 bonus for every $10 you have.", 1, 2, 20, player_has_at_least_ten_dollars, big_saver },
+    { COMMON, "Head Start", "First wild tile drawn has double the value.", 1, 2, 20, no_condition, head_start },
+    { COMMON, "Costly", "Wild tiles have triple the value but cost $1 when played.", 1, 2, 20, contains_joker, costly },
+    { COMMON, "Se7en", "Sets with a 7 tile get a %20 set value increase.", 1, 2, -20, contains_seven, addition_action },
+    { COMMON, "INTERESTing", "Every round gain %3 interest on total cash.", 1, 2, 20, no_condition, interesting },
+    { COMMON, "Shift", "Wild tiles have the ability to shift a Run's color.", 1, 2, 20, no_condition, no_condition },
+    { COMMON, "Wild Factor", "Every wild tile played gives %10 increase on set's value.", 1, 2, -10, contains_joker, wild_factor }
     
     // ---- done ---- color shift jokers, allows color shift when jokers played
     //joker debt every joker left on rack cost $5, what..
@@ -561,7 +675,7 @@ u8 allow_rainbow_run(void *ptr) {
 
 Item ACTIVE_TABLE[TOTAL_ACTIVES] = {
     //{ COMMON, "Pawn Shop", "Sell any relic or active for $$$.", 1, 1, 1, nullptr, sell_item},
-    { RARE, "Wild Joker", "One 'FREE' joker added to the rack.", 2, 1, 1, nullptr, add_new_joker},
+    { RARE, "Wild Tile +1", "Adds a wild tile to your rack.", 2, 1, 1, nullptr, add_new_joker},
     //{ EXCEEDINGLY_RARE, "Wrap", "Allows '12' Tiles to connect to '1' tiles", 3, 1, 1, nullptr, nullptr},
     { EXCEEDINGLY_RARE, "Twins Basil", "Sets of two are allowed for the current round.", 3, 1, 1, nullptr, allow_twins_for_round},
     { COMMON, "Discard", "Discard one tile from the rack.", 1, 1, 1, nullptr, discard},
@@ -3901,7 +4015,7 @@ u8 add_table_value_total(void *ptr) {
     return true;
 }
 
-void push_set_bonus(Set *set, i32 value, CmdActionFuncPtr relicFn) {
+void push_set_bonus(ItemData *actionData, CmdActionFuncPtr relicFn) {
     ActionCommand *shake = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, sizeof(f32), execute_action);
     if (shake) {
         shake->action = screen_shake;
@@ -3909,14 +4023,14 @@ void push_set_bonus(Set *set, i32 value, CmdActionFuncPtr relicFn) {
     } 
 
     if(relicFn == addition_action) {
-        add_addition_animation(set, value);
+        add_addition_animation(actionData->set, actionData->value);
     } else {
-        add_multiplier_animation(set, value);
+        add_multiplier_animation(actionData->set, actionData->value);
     }
 
-    ActionCommand *setVal = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, i32, execute_action);
+    ActionCommand *setVal = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, ItemData *, execute_action);
     if (setVal) { 
-        *COMMAND_PAYLOAD(setVal, i32) = value;
+        *COMMAND_PAYLOAD(setVal, ItemData *) = actionData;
         setVal->action = relicFn;
     } 
 }
@@ -3924,6 +4038,7 @@ void push_set_bonus(Set *set, i32 value, CmdActionFuncPtr relicFn) {
 u64 calculate_set_bonuses(Set *set, u8 uiAnimation) {
     if(!uiAnimation) {
         hoveredSetValue = get_set_value(set);
+        // deals only wil round challenges 
         check_set_value_rules(set, &hoveredSetValue, gState->runData.currentRoundType);
     }
 
@@ -3931,14 +4046,15 @@ u64 calculate_set_bonuses(Set *set, u8 uiAnimation) {
     for(i32 i = 0; i < gState->player.numberOfRelics; ++i) {
         Item item = gState->relics[gState->player.relics[i]];
 
-        if(item.action == addition_action) {
-            Condition condition = Condition {set, item.conditionValue};
-            if(item.condition(&condition)) {
+        if(item.action == addition_action || item.action == wild_factor || item.action == head_start || item.action == costly) {
+            ItemData conditionData = ItemData {set, item.conditionValue};
+            if(item.condition(&conditionData)) {
+                ItemData actionData = ItemData {set, item.modifierValue};
                 if(uiAnimation) {
-                    push_set_bonus(set, item.modifierValue, item.action);
+                    push_set_bonus(&actionData, item.action);
                 } else {
                     //this is expecting the multiplier/additive, broken until hoveredSetValue is .. Removed?
-                    item.action(&item.modifierValue);
+                    item.action(&actionData);
                 }
             }
         }
@@ -3948,13 +4064,14 @@ u64 calculate_set_bonuses(Set *set, u8 uiAnimation) {
         Item item = gState->relics[gState->player.relics[i]];
 
         if(item.action == multiplier_action) {
-            Condition condition = Condition {set, item.conditionValue};
+            ItemData condition = ItemData {set, item.conditionValue};
             if(item.condition(&condition)) {
+                ItemData actionData = ItemData {set, item.modifierValue};
                 if(uiAnimation) {
-                    push_set_bonus(set, item.modifierValue, item.action);
+                    push_set_bonus(&actionData, item.action);
                 } else {
                     //this is expecting the multiplier/additive, broken until hoveredSetValue is .. Removed?
-                    item.action(&item.modifierValue);
+                    item.action(&actionData);
                 }
             }
         }
@@ -3964,6 +4081,19 @@ u64 calculate_set_bonuses(Set *set, u8 uiAnimation) {
 }
 
 void calculate_round_cash(RunData *gd) {
+    for(i32 i = 0; i < gState->player.numberOfRelics; ++i) {
+        Item item = gState->relics[gState->player.relics[i]];
+        
+        if(item.action == big_saver || item.action == interesting) {
+            ItemData conditionData = ItemData {nullptr, item.conditionValue};
+            if(item.condition(&conditionData)) {
+                ItemData actionData = ItemData {nullptr, item.modifierValue};
+                //push_set_bonus(actionData, item.action);
+                item.action(&actionData);
+            }
+        }
+    }
+
     if(check_challenge_condition(gState)) {
         ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u64, execute_action);
         if (total) {
