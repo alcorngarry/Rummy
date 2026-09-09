@@ -465,18 +465,15 @@ u8 head_start(void *ptr) {
     ItemData *actionData = (ItemData *)ptr;
     if(!actionData) return true;
 
-    i32 tileColor = -1;
-    for(i32 i = 0; i < TOTAL_TILES; ++i) {
-        if(gState->tiles[i].details.tileNumber == 14) {
-            tileColor = gState->tiles[i].details.tileColor;
-            break;
-        }
-    }
+    //does not work, shuffled in pool
+    printf("tile color %i\n", actionData->value);
     
     for(i32 i = 0; i < actionData->set->numberOfTiles; ++i) {
         //repaint might break this.. but who cares rn
-        if(actionData->set->tiles[i]->details.tileColor == tileColor && actionData->set->tiles[i]->details.tileNumber == 14) {
+        if(actionData->set->tiles[i]->details.tileColor == actionData->value && 
+            actionData->set->tiles[i]->details.tileNumber == 14) {
             hoveredSetValue += 14;
+            printf("ADDED HERE\n");
             return true;
         }
     }
@@ -490,30 +487,46 @@ u8 costly(void *ptr) {
     for(i32 i = 0; i < actionData->set->numberOfTiles; ++i) {
         if(actionData->set->tiles[i]->details.tileNumber == 14) {
             hoveredSetValue += (14 * 2);
-            gState->runData.dollaBills = gState->runData.dollaBills == 0 ? 0 : gState->runData.dollaBills--;
         }
     }
     return true;
 }
 
-u8 big_saver(void *ptr) {
+u8 costly_post_round(void *ptr) {
     ItemData *actionData = (ItemData *)ptr;
     if(!actionData) return true;
 
+    i32 jokersPlayed = 0;
+    for(i32 i = 0; i < gState->table.numberOfSets; ++i) {
+        for(i32 j = 0; j < gState->table.sets[i].numberOfTiles; ++j) {
+            if(gState->table.sets[i].tiles[j]->details.tileNumber == 14) {
+                jokersPlayed++;
+            }
+        }
+    }
+
+    gState->runData.dollaBills = gState->runData.dollaBills == 0 ? 0 : gState->runData.dollaBills - jokersPlayed;
+    return true;
+}
+
+u8 big_saver(void *ptr) {
     i32 value = gState->runData.dollaBills % 10;
     gState->runData.dollaBills += value;
     return true;
 }
 
 u8 interesting(void *ptr) {
-    ItemData *actionData = (ItemData *)ptr;
-    if(!actionData) return true;
-
     f32 value = gState->runData.dollaBills * 0.03;
     gState->runData.dollaBills += value;
     return true;
 }
 
+u8 rack_cleared_bonus(void *ptr) {
+    if(gState->playerRack.numberOfTiles == 0) {
+      gState->runData.dollaBills += 2;
+    }
+    return true;
+}
 
 Item RELIC_TABLE[TOTAL_RELICS] = {
     { COMMON, "Neophyte 3", "Every set with exactly three tiles gets double the points.", 1, 3, 2, size_equals_condition, multiplier_action },
@@ -528,11 +541,11 @@ Item RELIC_TABLE[TOTAL_RELICS] = {
     //These need to be added
     //{ RARE, "Wrap", "Allows runs to wrap around from highest to lowest tile.", 2, -1, -1, no_condition, add_wrap_rule }
    // { RARE, "Crok Jock", "TO DO ADD HERE", 2, 1, 1, set_even_condition, addition_action }
-    { COMMON, "Big Saver", "Gain %1 bonus for every $10 you have.", 1, 2, 20, player_has_at_least_ten_dollars, big_saver },
-    { COMMON, "Head Start", "First wild tile drawn has double the value.", 1, 2, 20, no_condition, head_start },
-    { COMMON, "Costly", "Wild tiles have triple the value but cost $1 when played.", 1, 2, 20, contains_joker, costly },
+    { COMMON, "Big Saver", "Gain %1 bonus for every $10 you have.", 1, 2, 20, player_has_at_least_ten_dollars, no_condition, big_saver },
+    { COMMON, "Head Start", "First wild tile drawn has double the value.", 1, -1, 20, no_condition, head_start },
+    { COMMON, "Costly", "Wild tiles have triple the value but cost $1 when played.", 1, 2, 20, no_condition, costly, costly_post_round },
     { COMMON, "Se7en", "Sets with a 7 tile get a %20 set value increase.", 1, 2, -20, contains_seven, addition_action },
-    { COMMON, "INTERESTing", "Every round gain %3 interest on total cash.", 1, 2, 20, no_condition, interesting },
+    { COMMON, "INTERESTing", "Every round gain %3 interest on total cash.", 1, 2, 20, no_condition, no_condition, interesting },
     { COMMON, "Shift", "Wild tiles have the ability to shift a Run's color.", 1, 2, 20, no_condition, no_condition },
     { COMMON, "Wild Factor", "Every wild tile played gives %10 increase on set's value.", 1, 2, -10, contains_joker, wild_factor }
     
@@ -978,6 +991,15 @@ u8 draw_from_pool(Rack &rack) {
     if(activesShown) activesShown = false;
 
     Tile* tileDrawn = gState->pool.tiles[gState->pool.numberOfTiles - 1];
+    //if headStart add value//
+    if(tileDrawn->details.tileNumber == 14) {
+        for(i32 i = 0; i < gState->player.numberOfRelics; ++i) {
+            if(gState->player.relics[i] == 9) {
+                gState->relics[9].modifierValue = tileDrawn->details.tileColor;
+            }
+        }
+    }
+
     //gState->pool.numberOfTiles == 0 ? 0 : gState->pool.numberOfTiles--;
     remove_tile_from_pool(gState->pool.numberOfTiles - 1);
     add_tile_to_rack(tileDrawn);
@@ -3857,6 +3879,9 @@ void add_relics_ui() {
     vec2 relicSlotPositions[MAX_RELICS] = {}; 
     layout_grid(relicSlotPositions, MAX_RELICS / 10, MAX_RELICS / 5, CENTER, vec2(0.5f), vec2(0.75f, 0.9f), vec2(0.05f));
 
+
+    //add xWhatever to relics rather than having multiple of the same images
+
     for(i32 i = 0; i < gState->player.numberOfRelics; ++i) {
         i32 sheenTexture = ROUND_SHEEN_T;
         if(gState->player.relics[i] > 6) {
@@ -4084,15 +4109,17 @@ void calculate_round_cash(RunData *gd) {
     for(i32 i = 0; i < gState->player.numberOfRelics; ++i) {
         Item item = gState->relics[gState->player.relics[i]];
         
-        if(item.action == big_saver || item.action == interesting) {
+        if(item.postRunAction) {
             ItemData conditionData = ItemData {nullptr, item.conditionValue};
             if(item.condition(&conditionData)) {
                 ItemData actionData = ItemData {nullptr, item.modifierValue};
                 //push_set_bonus(actionData, item.action);
-                item.action(&actionData);
+                item.postRunAction(&actionData);
             }
-        }
+        } 
     }
+    
+    rack_cleared_bonus(nullptr);
 
     if(check_challenge_condition(gState)) {
         ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u64, execute_action);
@@ -4735,15 +4762,37 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
     }
 
     if(key == 297 && action == 1) {
-        gState->player.numberOfRelics = 0;
+        //gState->player.numberOfRelics = 0;
 
-        for (i32 i = 0; i < TOTAL_RELICS; ++i) {
-            gState->player.relics[i] = i;
-            gState->player.numberOfRelics++;
-        }
+        //for (i32 i = 0; i < TOTAL_RELICS; ++i) {
+        //    gState->player.relics[i] = i;
+        //    gState->player.numberOfRelics++;
+        //}
     }
 
-    if(key == 296 && action == 1) {//f7
+    if(key == 296 && action == 1) {//0
+    }
+
+    if(key == 48 && action == 1) {
+        gState->player.relics[gState->player.numberOfRelics++] = 8;
+    }
+    if(key == 49 && action == 1) {
+        gState->player.relics[gState->player.numberOfRelics++] = 9;
+    }
+    if(key == 50 && action == 1) {
+        gState->player.relics[gState->player.numberOfRelics++] = 10;
+    }
+    if(key == 51 && action == 1) {
+        gState->player.relics[gState->player.numberOfRelics++] = 11;
+    }
+    if(key == 52 && action == 1) {
+        gState->player.relics[gState->player.numberOfRelics++] = 12;
+    }
+    if(key == 53 && action == 1) {
+        gState->player.relics[gState->player.numberOfRelics++] = 13;
+    }
+    if(key == 54 && action == 1) {
+        gState->player.relics[gState->player.numberOfRelics++] = 14;
     }
 
     if (key == 78 && action == 1) {

@@ -640,6 +640,7 @@ i32 add_options_element(UIPage *page, i32 optionId, i32 optionActionId, i32 opti
     rightArrow.textChild = option;
     rightArrow.sheetAnimation = SheetAnimation{3,3};
     rightArrow.isPanel = true;
+    rightArrow.hoverColor = color * vec4(0.8f, 0.8f, 0.8f, 1.0f);
 
     //
     UIElement leftArrowIcon = rightArrowIcon; 

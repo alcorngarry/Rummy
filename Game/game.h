@@ -209,6 +209,7 @@ struct Item {
     i32 modifierValue;
     CmdActionFuncPtr condition;
     CmdActionFuncPtr action;
+    CmdActionFuncPtr postRunAction;
 };
 
 struct Active { 

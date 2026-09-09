@@ -162,4 +162,12 @@ CROC JOCK -- split sets get reward for each of those sets..
 34BRJ -- somehow is not valid!
 rainbowrun -- not working
 
-
+-----
+for map ui !add score to beat
+update active not to say jokers
+add wild bridge active
+add background items to end run ui elements
+fix options, option buttons.
+verify all passives work -- done, except shift
+verify all actives work
+verify all rounds work
