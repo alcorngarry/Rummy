@@ -631,6 +631,7 @@ i32 add_options_element(UIPage *page, i32 optionId, i32 optionActionId, i32 opti
     rightArrowIcon.onCompleteActionId = 1;
     rightArrowIcon.textChild = option;
     rightArrowIcon.visible = false;
+    rightArrowIcon.isHoverable = false;
     //
 
     UIElement rightArrow = UIElement{ option->anchor, -1, optionsHandle, option->posx + 0.2f, option->posy, 0.05f, 0.05f, false, 12};
@@ -641,6 +642,8 @@ i32 add_options_element(UIPage *page, i32 optionId, i32 optionActionId, i32 opti
     rightArrow.sheetAnimation = SheetAnimation{3,3};
     rightArrow.isPanel = true;
     rightArrow.hoverColor = color * vec4(0.8f, 0.8f, 0.8f, 1.0f);
+    rightArrow.type = OPTION;
+    rightArrow.isHoverable = true;
 
     //
     UIElement leftArrowIcon = rightArrowIcon; 
@@ -868,6 +871,7 @@ i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 
     button.isPanel = true;
     button.zIndex = zIndex;
     button.hoverColor = color * vec4(0.8f, 0.8f, 0.8f, 1.0f);
+    button.type = BUTTON;
 
     //Animation buttonClick = Animation{vec2(button.posx, button.posy + 0.01f), pos};
     //button.animations[button.numberOfAnimations++] = buttonClick;
@@ -900,7 +904,7 @@ i32 add_button(UIPage *page, i32 buttonHandle, i32 buttonImageHandle, vec2 pos, 
     button.color = color;
     button.imageChildId = buttonImageId;
     button.hasShadow = true;
-
+    button.type = BUTTON;
 
     button.hoverColor = color * vec4(0.8f, 0.8f, 0.8f, 1.0f);
 
@@ -1191,7 +1195,7 @@ void add_button_to_window(UIPage *page, i32 windowId, i32 elementId) {
 void button_press(UIPage *page, void* ptr) {
     UIElement* el = (UIElement*)ptr;
     //buttons always have a hover color
-    if(el->hoverColor.x == -1) return;
+    if(el->type == DEFAULT) return;
     
     el->basePos = vec2(el->posx, el->posy);
 
@@ -1211,7 +1215,8 @@ void button_press(UIPage *page, void* ptr) {
 void button_release(UIPage *page, void* ptr) {
     UIElement* el = (UIElement*)ptr;
     //buttons always have a hover color
-    if(el->hoverColor.x == -1) return;
+    if(el->type == DEFAULT) return;
+
     el->pressed = false;
     if(el->basePos.x == -1.0f) return;
 

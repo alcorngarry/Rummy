@@ -465,15 +465,11 @@ u8 head_start(void *ptr) {
     ItemData *actionData = (ItemData *)ptr;
     if(!actionData) return true;
 
-    //does not work, shuffled in pool
-    printf("tile color %i\n", actionData->value);
-    
     for(i32 i = 0; i < actionData->set->numberOfTiles; ++i) {
         //repaint might break this.. but who cares rn
         if(actionData->set->tiles[i]->details.tileColor == actionData->value && 
             actionData->set->tiles[i]->details.tileNumber == 14) {
             hoveredSetValue += 14;
-            printf("ADDED HERE\n");
             return true;
         }
     }
@@ -1189,10 +1185,10 @@ void create_tile_render_entry(Tile* tile, vec4 color, u8 isShadow = false) {
 
 void draw_pool() {
     RenderEntryEntity sides = RenderEntryEntity {
-      glm::scale(gState->pool.object.model, vec3(2.0f, 2.0f, 1.0f)),
+      glm::scale(gState->pool.object.model, gState->player.heldActiveId != -1 ? vec3(2.3f, 2.3f, 1.0f) : vec3(2.0f, 2.0f, 1.0f)),
         gState->quadMesh,
         POOL_T,
-        vec4(1.0f)
+        gState->player.heldActiveId != -1 ? R_BLUE : R_WHITE
     };
 
     gMemory->push_entity_fn(gMemory->renderBuffer, &sides);
@@ -1202,15 +1198,6 @@ void draw_pool() {
             create_tile_render_entry(peekTiles[i], vec4(1.0f));
         }
     }
-
- //   RenderEntryEntity face = RenderEntryEntity {
- //       gState->pool.object.model,
- //       gState->quadMesh,
- //       TILE_FACE_T,
- //       vec4(1.0f)
- //   };
-
- //   gMemory->push_entity_fn(gMemory->renderBuffer, &face);
 }
 
 void draw_player_rack() {
@@ -1224,15 +1211,6 @@ void draw_player_rack() {
 
         gMemory->push_entity_fn(gMemory->renderBuffer, &X);
     }
-
-//    RenderEntryEntity sides = RenderEntryEntity {
-//        gState->playerRack.object.model,
-//        gState->quadMesh,
-//        TILE_SLOT_T,
-//        vec4(1.0f)
-//    };
-//
-//    gMemory->push_entity_fn(gMemory->renderBuffer, &sides);
 
     if(activesShown) {
         for(i32 i = 0; i < gState->player.numberOfActives; ++i) {
@@ -2699,6 +2677,9 @@ u8 load_map_ui(void *ptr) {
     nextRoundBg.zIndex = frontIndex;
     nextRoundBg.sheetAnimation = SheetAnimation{3,3};
 
+    nextRoundBg.hoverColor = R_BLUE * vec4(0.8, 0.8, 0.8, 1.0f);
+    nextRoundBg.isHoverable = true;
+
     nextRoundBg.isPanel = true;
     nextRoundBg.color = R_BLUE;
 
@@ -2810,7 +2791,7 @@ u8 load_map_ui(void *ptr) {
 }
 
 void add_map_ui() {
-    push_wait(&gState->cmdQueue, 0.75f);
+    push_wait(&gState->cmdQueue, 0.5f);
 
 //    ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u64, execute_action);
 //    if (total) {
@@ -3217,30 +3198,32 @@ void add_end_game_ui() {
     add_ui_element(gState->uiPage, blur);
 }
 
+void clear_shop_options() {
+    //clear here.
+    for(i32 i = 4; i < 7; ++i) {
+        if(gState->uiPage->elementHovered == i) continue;
+        gState->uiPage->uiElements[i].color = R_BLUE * 0.1f;
+        UIElement blur = gState->uiPage->uiElements[i];
+        blur.color = vec4(0.2f);
+        blur.zIndex = 3;
+        add_ui_element(gState->uiPage, blur);
+
+        gState->uiPage->uiElements[7].visible = false;
+        gState->uiPage->uiElements[7].textChild->visible = false;
+    }
+}
+
 void add_relic() {
     // gross, there has to be a way to make is better for yourself to transfer info between
-    i32 relicHovered = gState->uiPage->elementHovered;
-
     i32 frame = gState->uiPage->uiElements[gState->uiPage->uiElements[gState->uiPage->elementHovered].imageChildId].sheetAnimation.currentFrame;
 
-    //clear here.
-//    for(i32 i = 3; i < 6; ++i) {
-//        if(relicHovered == i) continue;
-//        gState->uiPage->uiElements[i].color = R_BLUE * 0.1f;
-//        UIElement blur = gState->uiPage->uiElements[i];
-//        blur.color = vec4(0.2f);
-//        blur.zIndex = 3;
-//        add_ui_element(gState->uiPage, blur);
-//
-//        gState->uiPage->uiElements[6].visible = false;
-//        gState->uiPage->uiElements[6].textChild->visible = false;
-//    }
 
     if(RELIC_TABLE[frame].price > gState->runData.dollaBills) return;
     if(gState->player.numberOfRelics == MAX_RELICS) {
         return;
     } // quick fix for now, will fix in the shop ui
 
+    clear_shop_options();
     gState->player.relics[gState->player.numberOfRelics] = frame;
 
     if(gState->relics[frame].conditionValue == -1) {
@@ -3251,38 +3234,25 @@ void add_relic() {
     gState->runData.dollaBills -= RELIC_TABLE[frame].price;
     if(gState->player.numberOfRelics <= MAX_RELICS - 2) gState->player.numberOfRelics++;
 
-    if(gState->runData.dollaBills = 0) {
+    if(gState->runData.dollaBills == 0) {
           ActionCommand *loadMap = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, 0, execute_action);
           if (loadMap) { 
               loadMap->action = load_map;
           }
     } else {
-        add_active_purchase();
+        add_relic_purchase();
     }
 }
 
 void add_active() {
-    i32 activeHovered = gState->uiPage->elementHovered;
-    // gross, there has to be a way to make is better for yourself to transfer info between
-    i32 frame = gState->uiPage->uiElements[gState->uiPage->uiElements[activeHovered].imageChildId].sheetAnimation.currentFrame;
+    i32 frame = gState->uiPage->uiElements[gState->uiPage->uiElements[gState->uiPage->elementHovered].imageChildId].sheetAnimation.currentFrame;
 
     if(ACTIVE_TABLE[frame].price > gState->runData.dollaBills) return;
     if(gState->player.numberOfActives == MAX_ACTIVES) {
         return;
     } // quick fix for now, will fix in the shop ui
 
-//    for(i32 i = 3; i < 6; ++i) {
-//        if(activeHovered == i) continue;
-//        gState->uiPage->uiElements[i].color = R_BLUE * 0.1f;
-//        UIElement blur = gState->uiPage->uiElements[i];
-//        blur.color = vec4(0.2f);
-//        blur.zIndex = 3;
-//        add_ui_element(gState->uiPage, blur);
-//
-//        gState->uiPage->uiElements[6].visible = false;
-//        gState->uiPage->uiElements[6].textChild->visible = false;
-//    }
-
+    clear_shop_options();
     gState->player.actives[gState->player.numberOfActives] = gState->actives[frame];
     
     //charge the player
@@ -3292,12 +3262,16 @@ void add_active() {
         gState->player.numberOfActives++;
     }
 
-    push_wait(&gState->cmdQueue, 1.0f);
+    //push_wait(&gState->cmdQueue, 1.0f);
 
-    ActionCommand *loadMap = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, 0, execute_action);
-    if (loadMap) { 
-        loadMap->action = load_map;
-    } 
+    if(gState->runData.dollaBills == 0) {
+        ActionCommand *loadMap = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, 0, execute_action);
+        if (loadMap) { 
+            loadMap->action = load_map;
+        } 
+    } else {
+        add_active_purchase();
+    }
 }
 
 //  THESE CAN BE COMBINED
@@ -3353,6 +3327,8 @@ void populate_challenges(i32 *arr) {
 
 //
 void add_relic_purchase() {
+    push_wait(&gState->cmdQueue, 0.5f);
+
     ActionCommand *nextRound = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u8, execute_action);
     if (nextRound) { 
         nextRound->action = load_shop_purchase_menu;
@@ -3361,7 +3337,7 @@ void add_relic_purchase() {
 }
 
 void reroll(u8 isRelic) {
-    push_wait(&gState->cmdQueue, 0.75f);
+    push_wait(&gState->cmdQueue, 0.5f);
 
     ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u64, execute_action);
     if (total) {
@@ -3385,7 +3361,7 @@ void reroll_actives() {
 }
 
 void add_active_purchase() {
-    push_wait(&gState->cmdQueue, 0.75f);
+    push_wait(&gState->cmdQueue, 0.5f);
 
 //    ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u64, execute_action);
 //    if (total) {
@@ -3462,8 +3438,10 @@ void add_shop_purchase_menu(u8 isRelic) {
 
     relicBg.isPanel = true;
     relicBg.color = R_BLUE;
-    relicBg.hovered = true;
     relicBg.imageChildId = relic1;
+
+    relicBg.hoverColor = R_BLUE * vec4(0.8, 0.8, 0.8, 1.0f);
+    relicBg.isHoverable = true;
 
     i32 relicBg1 = add_ui_element(gState->uiPage, relicBg);
     relicBg.posx += 0.24f;
@@ -3473,7 +3451,7 @@ void add_shop_purchase_menu(u8 isRelic) {
     relicBg.imageChildId = relic3;
     i32 relicBg3 = add_ui_element(gState->uiPage, relicBg);
 
-    i32 nextRoundId = add_button(gState->uiPage, BUTTON_T, "SKIP", vec2(0.74f, 0.9f), vec2(0.05f, 0.225f), R_GRAY, isRelic ? 16 : 20);
+    i32 nextRoundId = add_button(gState->uiPage, BUTTON_T, isRelic ? "Active Shop" : "Round Challenge", vec2(0.74f, 0.9f), vec2(0.05f, 0.225f), R_GRAY, isRelic ? 16 : 20);
 
     i32 rerollActionId = 12;
     if(gState->runData.dollaBills > 0) {
@@ -4808,10 +4786,10 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
     if (key == 77 && action == 1) { //m
         //add_map_ui();
         //add_end_game_ui();
-        //add_shop_purchase_menu(false);
-        printf("Rainbow run enabled = %i\n", gState->rules.rainbowRunEnabled);
-        printf("Rainbow run setId = %i\n", gState->rules.rainbowRunSetId);
-        __debugbreak();
+        add_shop_purchase_menu(true);
+        //printf("Rainbow run enabled = %i\n", gState->rules.rainbowRunEnabled);
+        //printf("Rainbow run setId = %i\n", gState->rules.rainbowRunSetId);
+        //__debugbreak();
     }
 
     if (key == 294 && action == 1) {

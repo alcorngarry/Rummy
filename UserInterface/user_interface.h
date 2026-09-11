@@ -83,6 +83,12 @@ struct SheetAnimation {
 
 struct TextElement;
 
+enum ElementType {
+    DEFAULT,
+    BUTTON,
+    OPTION
+};
+
 struct UIElement {
 	Anchor anchor = TOP_LEFT;
 	i32 imageChildId = -1;
@@ -115,6 +121,7 @@ struct UIElement {
   u8 pressed = false;
   //make a hover action..
   u8 isHoverable = true;
+  ElementType type = DEFAULT;
 };
 
 enum TextType {
