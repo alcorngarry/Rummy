@@ -26,6 +26,7 @@ u8 discardEnabled = false;
 // terrible but for the ui endgame
 u64 numTableTiles = 0; //move this to table value
 u64 hoveredSetValue = 0;
+u64 countedSetScore = 0;
 Tile* colorTile;
 char *videoModes[2] = {"Window", "Fullscreen"};
 
@@ -365,65 +366,65 @@ void add_addition_animation(Set *set, i32 value) {
 }
 
 u8 multiplier_action(void *ptr) {
-    ItemData *actionData = (ItemData *)ptr;
-    if(!actionData) return true;
+    ItemData actionData = * (ItemData *)ptr;
+    if(!actionData.set) return true;
     //i32 multiplier = *(i32 *)ptr;
-    hoveredSetValue *= actionData->value;
+    actionData.set->score *= actionData.value;
     return true;
 }
 
 u8 addition_action(void *ptr) {
-    ItemData *actionData = (ItemData *)ptr;
-    if(!actionData) return true;
+    ItemData actionData = * (ItemData *)ptr;
+    if(!actionData.set) return true;
     //i32 addition = *(i32 *)ptr;
-    f32 value = (f32)actionData->value;
+    f32 value = (f32)actionData.value;
 
     //This means adding a percent, don't forget this.
     //maybe make percent it's own
     if(value < 0) {
-        value = hoveredSetValue * ((value * -1) / 100.0f);
+        value = actionData.set->score * ((value * -1) / 100.0f);
     }
 
-    hoveredSetValue += (u64)value;
+    actionData.set->score += (u64)value;
     return true;
 }
 
 u8 wild_factor(void *ptr) {
-    ItemData *actionData = (ItemData *)ptr;
-    if(!actionData) return true;
+    ItemData actionData = * (ItemData *)ptr;
+    if(!actionData.set) return true;
     //i32 addition = *(i32 *)ptr;
-    f32 value = (f32)actionData->value;
+    f32 value = (f32)actionData.value;
 
     i32 numberOfJokers = 0;
-    for(i32 i = 0; i < actionData->set->numberOfTiles; ++i) {
-        if(actionData->set->tiles[i]->details.tileNumber == 14) {
+    for(i32 i = 0; i < actionData.set->numberOfTiles; ++i) {
+        if(actionData.set->tiles[i]->details.tileNumber == 14) {
             numberOfJokers++;
         }
     }
 
-    value = hoveredSetValue * ((value * -1 * numberOfJokers) / 100.0f);
+    value = actionData.set->score * ((value * -1 * numberOfJokers) / 100.0f);
 
-    hoveredSetValue += (u64)value;
+    actionData.set->score += (u64)value;
     return true;
 }
 
 u8 size_equals_condition(void *ptr) {
     //assumes not passed through buffer
-    ItemData *condition = (ItemData *)ptr;
-    if(!condition) return true;
-    return condition->set->numberOfTiles == condition->value;
+    ItemData condition = * (ItemData *)ptr;
+    if(!condition.set) return true;
+    return condition.set->numberOfTiles == condition.value;
 }
 
 u8 set_even_condition(void *ptr) {
-    ItemData *condition = (ItemData *)ptr;
-    if(!condition) return true;
-    return !(condition->set->numberOfTiles % 2);
+    ItemData condition = * (ItemData *)ptr;
+    if(!condition.set) return true;
+    return !(condition.set->numberOfTiles % 2);
 }
 
 u8 set_odd_condition(void *ptr) {
-    ItemData *condition = (ItemData *)ptr;
-    if(!condition) return true;
-    return condition->set->numberOfTiles % 2;
+    ItemData condition = * (ItemData *)ptr;
+    if(!condition.set) return true;
+    return condition.set->numberOfTiles % 2;
 }
 
 u8 add_wrap_rule(void *ptr) {
@@ -436,10 +437,10 @@ u8 no_condition(void *ptr) {
 }
 
 u8 contains_joker(void *ptr) {
-    ItemData *condition = (ItemData *)ptr;
-    if(!condition) return true;
-    for(i32 i = 0; i < condition->set->numberOfTiles; ++i) {
-        if(condition->set->tiles[i]->details.tileNumber == 14) {
+    ItemData condition = * (ItemData *)ptr;
+    if(!condition.set) return true;
+    for(i32 i = 0; i < condition.set->numberOfTiles; ++i) {
+        if(condition.set->tiles[i]->details.tileNumber == 14) {
             return true;
         }
     }
@@ -447,10 +448,10 @@ u8 contains_joker(void *ptr) {
 }
 
 u8 contains_seven(void *ptr) {
-    ItemData *condition = (ItemData *)ptr;
-    if(!condition) return true;
-    for(i32 i = 0; i < condition->set->numberOfTiles; ++i) {
-        if(condition->set->tiles[i]->details.tileNumber == 7) {
+    ItemData condition = * (ItemData *)ptr;
+    if(!condition.set) return true;
+    for(i32 i = 0; i < condition.set->numberOfTiles; ++i) {
+        if(condition.set->tiles[i]->details.tileNumber == 7) {
             return true;
         }
     }
@@ -462,14 +463,14 @@ u8 player_has_at_least_ten_dollars(void *ptr) {
 }
 
 u8 head_start(void *ptr) {
-    ItemData *actionData = (ItemData *)ptr;
-    if(!actionData) return true;
+    ItemData actionData = * (ItemData *)ptr;
+    if(!actionData.set) return true;
 
-    for(i32 i = 0; i < actionData->set->numberOfTiles; ++i) {
+    for(i32 i = 0; i < actionData.set->numberOfTiles; ++i) {
         //repaint might break this.. but who cares rn
-        if(actionData->set->tiles[i]->details.tileColor == actionData->value && 
-            actionData->set->tiles[i]->details.tileNumber == 14) {
-            hoveredSetValue += 14;
+        if(actionData.set->tiles[i]->details.tileColor == actionData.value && 
+            actionData.set->tiles[i]->details.tileNumber == 14) {
+            actionData.set->score += 14;
             return true;
         }
     }
@@ -477,21 +478,18 @@ u8 head_start(void *ptr) {
 }
 
 u8 costly(void *ptr) {
-    ItemData *actionData = (ItemData *)ptr;
-    if(!actionData) return true;
+    ItemData actionData = * (ItemData *)ptr;
+    if(!actionData.set) return true;
 
-    for(i32 i = 0; i < actionData->set->numberOfTiles; ++i) {
-        if(actionData->set->tiles[i]->details.tileNumber == 14) {
-            hoveredSetValue += (14 * 2);
+    for(i32 i = 0; i < actionData.set->numberOfTiles; ++i) {
+        if(actionData.set->tiles[i]->details.tileNumber == 14) {
+            actionData.set->score += (14 * 2);
         }
     }
     return true;
 }
 
 u8 costly_post_round(void *ptr) {
-    ItemData *actionData = (ItemData *)ptr;
-    if(!actionData) return true;
-
     i32 jokersPlayed = 0;
     for(i32 i = 0; i < gState->table.numberOfSets; ++i) {
         for(i32 j = 0; j < gState->table.sets[i].numberOfTiles; ++j) {
@@ -943,11 +941,19 @@ void add_multiplier_text(Set *set, i32 value) {
 }
 
 u8 add_set_amount(void *ptr) {
-    GameObject *self = *(GameObject **)ptr;
-    Tile* tile = (Tile*)self;
-    //Set *set = &gState->table.sets[tile->setId];
-    hoveredSetValue += check_cursed_value(tile, gState->runData.currentRoundType);
+    ItemData actionData = * (ItemData *)ptr;
+    //if(!actionData.set) return true;
+    hoveredSetValue += actionData.value;
     return true;
+}
+
+void add_set_value_to_hovered_set(u64 value) {
+    ActionCommand *setVal = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, ItemData, execute_action);
+    if (setVal) {
+        ItemData data = ItemData {nullptr, (i32)value};
+        setVal->action = add_set_amount;
+        *COMMAND_PAYLOAD(setVal, ItemData) = data;
+    }
 }
 
 void remove_tile_from_pool(i32 id) {
@@ -2075,6 +2081,8 @@ void update_set_ui(Set *set) {
     TextElement* text = get_text_element_by_parent_id(gState->uiPage, 99);
     if(!text) return;
 
+    snprintf(text->text, sizeof(text->text), "+%d", calculate_set_bonuses(set, false));
+
     text->posx = pos.x;
     text->posy = pos.y - 0.1f;
 
@@ -2082,8 +2090,6 @@ void update_set_ui(Set *set) {
     if(!bg) return;
     bg->posx = pos.x;
     bg->posy = pos.y - 0.1f;
-
-    calculate_set_bonuses(set, false);
 }
 
 void add_tile_to_table_space(Tile* tile, vec2 tableSpace) {
@@ -3008,9 +3014,10 @@ void add_in_game_ui() {
     add_ui_element(gState->uiPage, a);
 
     TextElement text = TextElement{ Anchor::CENTER, "", 0, 0, 99, true, DEFAULT_FONT_SCALE * 2.0f, vec3(1.0f)};
-    text.haveCountAnimation = false;
+    //text.haveCountAnimation = false;
     text.visible = false;
-    add_dynamic_text_element(gState->uiPage, text, "+", 8, TextType::UINT_64); 
+    add_text_element(gState->uiPage, text);
+    //add_dynamic_text_element(gState->uiPage, text, "+", 8, TextType::UINT_64); 
 
     add_item_window();
     add_paint_window();
@@ -4001,10 +4008,10 @@ void clear_game_ui() {
 }
 
 u8 add_set_value_total(void *ptr) {
-    Set *set = *(Set **)ptr;
-    check_set_value_rules(set, &hoveredSetValue, gState->runData.currentRoundType);
+    ItemData actionData = * (ItemData *)ptr;
+    if(!actionData.set) return true;
 
-    gState->roundData.roundScore += hoveredSetValue;
+    gState->roundData.roundScore += actionData.set->score;
     hoveredSetValue = 0;
     return true;
 }
@@ -4031,19 +4038,21 @@ void push_set_bonus(ItemData *actionData, CmdActionFuncPtr relicFn) {
         add_multiplier_animation(actionData->set, actionData->value);
     }
 
-    ActionCommand *setVal = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, ItemData *, execute_action);
+    ActionCommand *setVal = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, ItemData, execute_action);
     if (setVal) { 
-        *COMMAND_PAYLOAD(setVal, ItemData *) = actionData;
+        *COMMAND_PAYLOAD(setVal, ItemData) = *actionData;
         setVal->action = relicFn;
     } 
 }
 
 u64 calculate_set_bonuses(Set *set, u8 uiAnimation) {
-    if(!uiAnimation) {
-        hoveredSetValue = get_set_value(set);
+    //if(!uiAnimation) {
+    
+    set->score = get_set_value(set);
         // deals only wil round challenges 
-        check_set_value_rules(set, &hoveredSetValue, gState->runData.currentRoundType);
-    }
+    //set->score = check_set_value_rules(set, &setValue, gState->runData.currentRoundType);
+
+   // }
 
     //sort by addition first
     for(i32 i = 0; i < gState->player.numberOfRelics; ++i) {
@@ -4080,7 +4089,7 @@ u64 calculate_set_bonuses(Set *set, u8 uiAnimation) {
         }
     }
 
-    return hoveredSetValue; //(get_set_value(set) + addition) * multiplier;
+    return set->score; //(get_set_value(set) + addition) * multiplier;
 }
 
 void calculate_round_cash(RunData *gd) {
@@ -4112,6 +4121,8 @@ void count_table() {
     for(i32 i = 0; i < gState->table.numberOfSets; ++i) {
         i32 tileIndex = 0;
         Set *set = &gState->table.sets[i];
+        set->score = 0;
+        hoveredSetValue = 0;
         //
         vec2 pos = world_to_ui(
             set->object.model,
@@ -4164,43 +4175,38 @@ void count_table() {
             push_wait(&gState->cmdQueue, 0.05f);
             
             //adds tile number to hoveredset
-            ActionCommand *setVal = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, GameObject *, execute_action);
-            if (setVal) {
-                setVal->action = add_set_amount;
-                *COMMAND_PAYLOAD(setVal, GameObject *) = &tile->object;
-            }
+            add_set_value_to_hovered_set(check_cursed_value(tile, gState->runData.currentRoundType));
 
             push_wait(&gState->cmdQueue, 0.1f);
         }
         
         push_wait(&gState->cmdQueue, 0.5f);
-
         calculate_set_bonuses(set, true);
 
-        //if(set->setType == RUN && gState->player.playerData.runMultipliers > 1) {
-        //    add_multiplier_text(set, gState->player.playerData.runMultipliers);
-        //} else if (set->setType == GROUP && gState->player.playerData.groupMultipliers > 1) {
-        //    add_multiplier_text(set, gState->player.playerData.groupMultipliers);
-        //}
+        ActionCommand *setVal = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, ItemData, execute_action);
+        if (setVal) {
+            ItemData data = ItemData {nullptr, (i32)set->score};
+            setVal->action = add_set_amount;
+            *COMMAND_PAYLOAD(setVal, ItemData) = data;
+        }
+
         push_wait(&gState->cmdQueue, 0.5f);
 
         //adds hovered set to total, clears hovered set
-        ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, Set *, execute_action);
+        //wth
+        ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, ItemData, execute_action);
         if (total) {
+            ItemData data = ItemData{set, 0};
             total->action = add_set_value_total;
-            *COMMAND_PAYLOAD(total, Set *) = set;
+            *COMMAND_PAYLOAD(total, ItemData) = data;
         }
         push_wait(&gState->cmdQueue, 0.5f);
     }
 
     push_wait(&gState->cmdQueue, 0.5f);
-
     calculate_round_cash(&gState->runData);
-
     push_wait(&gState->cmdQueue, 0.5f);
 
-    //  ActionCommand *cmd = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, 0, execute_action);
-    //  if (cmd) cmd->action = load_shop_purchase_menu;
     ActionCommand *nextRound = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u8, execute_action);
     if (nextRound) { 
         nextRound->action = load_shop_purchase_menu;
@@ -4771,6 +4777,9 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
     }
     if(key == 54 && action == 1) {
         gState->player.relics[gState->player.numberOfRelics++] = 14;
+    }
+    if(key == 55 && action == 1) {
+        gState->player.relics[gState->player.numberOfRelics++] = 0;
     }
 
     if (key == 78 && action == 1) {

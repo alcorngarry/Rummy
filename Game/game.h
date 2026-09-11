@@ -154,6 +154,7 @@ struct Set {
 
     u8 isComplete = false;
     u8 isHovered = false;
+    u64 score = 0;
 };
 
 struct Pool {
