@@ -58,7 +58,6 @@ extern "C" {
     UIMemory uiMem; 
 
 		void (*push_entity_fn)(RenderBuffer*, RenderEntryEntity*);
-		void (*push_platform_fn)(RenderBuffer*, RenderEntryPlatform*);
 		void (*push_ui_text_fn)(RenderBuffer*, RenderEntryUIText*);
 		void (*push_ui_image_fn)(RenderBuffer*, RenderEntryUIImage*);
 		void (*push_ui_page_fn)(RenderBuffer*, UIPage*);
@@ -74,8 +73,6 @@ extern "C" {
     u8 (*is_vsync_on_fn)();
 
 		u32(*load_quad_buffer_fn)(f32* vertices, i32 vertexCount, u32* indices, i32 indexCount);
-		u32(*load_walls_buffer_fn)(f32* vertices, i32 vertexCount);
-		u32(*load_platform_buffer_fn)(f32* vertices, i32 vertexCount, u32* indices, i32 indexCount);
 	};
 
 	typedef void (*game_init_fn)(GameMemory* memory, i32 preserveState);

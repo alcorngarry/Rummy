@@ -153,6 +153,75 @@ u8 screen_shake(void *ptr) {
     return true;
 }
 
+u8 shake_pop(void *ptr) {
+    GameObject *object = *(GameObject **)ptr;
+    if (!object) return true;
+
+    ObjAnimation *a = &object->animation;
+
+    a->timer += gState->deltaTime;
+
+    f32 t = a->timer / a->duration;
+
+    if (t >= 1.0f) {
+        object->model = object->baseModel;
+
+        if (!a->active)
+            return true;
+
+        a->timer = 0.0f;
+
+        push_wait(&gState->cmdQueue, 1.0f);
+
+        ActionCommand *cmd = PUSH_COMMAND(
+            &gState->cmdQueue,
+            ActionCommand,
+            GameObject *,
+            execute_action
+        );
+
+        if (cmd) {
+            cmd->action = shake_pop;
+            *COMMAND_PAYLOAD(cmd, GameObject *) = object;
+        }
+
+        return true;
+    }
+
+    f32 pop = sinf(t * PI32);
+    f32 shake = sinf(t * 12.0f * PI32) * (1.0f - t);
+
+    vec3 offset = {};
+    offset.y = pop * a->popAmount;
+    offset.x = shake * a->shakeAmount;
+
+    object->model = glm::translate(object->baseModel, offset);
+
+    return false;
+}
+
+void add_shake_pop(GameObject *object) {
+    if (!object) return;
+
+    ObjAnimation *a = &object->animation;
+
+    a->active = true;
+    a->timer = 0.0f;
+    a->basePos = object->pos;
+
+    ActionCommand *cmd = PUSH_COMMAND(
+        &gState->cmdQueue,
+        ActionCommand,
+        GameObject *,
+        execute_action
+    );
+
+    if (cmd) {
+        cmd->action = shake_pop;
+        *COMMAND_PAYLOAD(cmd, GameObject *) = object;
+    }
+}
+
 void shuffle_tiles(Tile** tiles, i32 count) {
     for (i32 i = count - 1; i > 0; i--) {
         i32 j = rng_range(0, i);
@@ -751,6 +820,7 @@ void init_pool() {
     mat4 startPos = glm::scale(mat4(1.0f), defaultTileScale);
     startPos = glm::translate(startPos, vec3((9.8f * RENDERING_ASPECT), 11.0f, 1.0f));
     poolObject.model = startPos;
+    poolObject.baseModel = startPos;
     pool.object = poolObject;
 
     shuffle_tiles(pool.tiles, pool.numberOfTiles);
@@ -1144,7 +1214,7 @@ void create_tile_render_entry(Tile* tile, vec4 color, u8 isShadow = false) {
             gMemory->push_entity_fn(gMemory->renderBuffer, &locked);
         }
 
-        ObjSheetAnimation* a = &tile->object.animation;
+        ObjSheetAnimation* a = &tile->object.sheetAnimation;
 
         if(!a->triggered) {
             if(rng_range(0, 9999) < 5) {
@@ -1191,10 +1261,10 @@ void create_tile_render_entry(Tile* tile, vec4 color, u8 isShadow = false) {
 
 void draw_pool() {
     RenderEntryEntity sides = RenderEntryEntity {
-      glm::scale(gState->pool.object.model, gState->player.heldActiveId != -1 ? vec3(2.3f, 2.3f, 1.0f) : vec3(2.0f, 2.0f, 1.0f)),
+      glm::scale(gState->pool.object.model, gState->player.heldActiveId != -1 ? vec3(2.2f, 2.2f, 1.0f) : vec3(2.0f, 2.0f, 1.0f)),
         gState->quadMesh,
         POOL_T,
-        gState->player.heldActiveId != -1 ? R_BLUE : R_WHITE
+        R_WHITE
     };
 
     gMemory->push_entity_fn(gMemory->renderBuffer, &sides);

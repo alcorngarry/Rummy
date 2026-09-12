@@ -33,7 +33,6 @@ struct Font {
 
 enum RenderEntryType {
     RenderEntryType_RenderEntryEntity,
-    RenderEntryType_RenderEntryPlatform,
     RenderEntryType_RenderEntryUIText,
     RenderEntryType_RenderEntryUIImage,
     RenderEntryType_RenderEntryPostProcess
@@ -55,21 +54,7 @@ struct RenderEntryEntity {
     vec2 tileCount;
     i32 cols;
     i32 rows;
-};
-
-struct RenderEntryPlatform {
-    mat4 model;
-    i32 currentSides;
-    bool flippedNormal; 
-    u32 meshHandle;
-    u32 meshHandle2;
-    bool scroll;
-    i32 textureName;
-    vec3 color;
-    bool isPlatform;
-    vec2 platformScroll;
-    f32 wallSpeed;
-    i32 currentFrame;
+    u8 glow;
 };
 
 struct RenderEntryUIText {
@@ -120,6 +105,15 @@ struct PostProcess {
     f32 shake = 0.0f;
 };
 
+struct RenderContext {
+    mat4 view;
+    mat4 projection;
+    f32 deltaTime;
+    f32 aspect;
+    vec2 windowSize;
+    f64 totalTime = 0.0f; 
+};
+
 struct RenderBuffer {
     u32 maxBufferSize;
     u32 bufferSize;
@@ -140,7 +134,6 @@ struct Texture {
 
 RenderBuffer* allocate_render_buffer(u32 maxBufferSize);
 void push_entity(RenderBuffer* buffer, RenderEntryEntity* entity);
-void push_platform(RenderBuffer* buffer, RenderEntryPlatform* platform);
 void push_ui_text(RenderBuffer* buffer, RenderEntryUIText* text);
 void push_ui_image(RenderBuffer* buffer, RenderEntryUIImage* image);
 void push_ui_page(RenderBuffer* buffer, UIPage* uiPage);
@@ -151,14 +144,11 @@ f32 get_text_length(const char* text, f32 scale);
 void load_fonts();
 void load_shaders();
 
-void draw_platform(mat4 model, mat4 view, mat4 projection, i32 currentSides, bool flippedNormal, u32 vao, u32 vao2, bool scroll, i32 textureId, vec3 color, bool isPlatform, vec2 platformScroll, f32 wallSpeed, vec3 cameraPos, f32 deltaTime);
-void draw_entity(mat4 model, mat4 view, mat4 projection, u32 vao, i32 textureId, vec4 color, i8 useSpriteSheet, i32 frameIndex, u8 tiled, vec2 tileCount, f32 aspect, i32 cols, i32 rows);
+void draw_entity(RenderEntryEntity *entity);
 void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 maxWidth, vec3 color, mat4 projection, u8 hasShadow, u8 bounce, u8 typeWriter, f32 typeWriterStart);
-void draw_image_ui(Anchor anchor, i32 textureId, f32 posx, f32 posy, f32 width, f32 height, i32 cols, i32 rows, i32 currentFrame, bool isAnimated, u32 vao, u8 isPanel, vec4 color, u8 isHovered, vec2 windowSize, u8 hasShadow);
+void draw_image_ui(Anchor anchor, i32 textureId, f32 posx, f32 posy, f32 width, f32 height, i32 cols, i32 rows, i32 currentFrame, u8 isAnimated, u32 vao, u8 isPanel, vec4 color, u8 isHovered, vec2 windowSize, u8 hasShadow);
 
-void load_texture(i32 id, const char* filePath, bool isMipMapped, bool isFlipped, bool repeated);
-u32 load_platform_buffers(f32* vertices, i32 vertexCount, u32* indices, i32 indexCount);
-u32 load_walls_buffer(f32* vertices, i32 vertexCount);
+void load_texture(i32 id, const char* filePath, u8 isMipMapped, u8 isFlipped, u8 repeated);
 u32 load_quad_buffer(f32* vertices, i32 vertexCount, u32* indices, i32 indexCount);
 u32 load_ui_quad_buffer(f32* vertices, i32 vertexCount, u32* indices, i32 indexCount);
 void unload_renderer();

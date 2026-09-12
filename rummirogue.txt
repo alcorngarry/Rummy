@@ -171,3 +171,7 @@ fix options, option buttons.
 verify all passives work -- done, except shift
 verify all actives work
 verify all rounds work
+
+
+----- issues playing
+seven gives the score for cursed tiles

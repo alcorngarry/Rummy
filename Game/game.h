@@ -34,6 +34,19 @@ struct ObjSheetAnimation {
     u8 triggered = false;
 };
 
+struct ObjAnimation {
+    u8 active = false;
+
+    f32 timer = 0.0f;
+    f32 interval = 2.0f;
+    f32 duration = 0.35f; 
+
+    f32 popAmount = 0.06f;
+    f32 shakeAmount = 0.01f;
+
+    vec3 basePos;
+};
+
 struct GameObject {
     vec3 pos;
     mat4 model;
@@ -46,7 +59,9 @@ struct GameObject {
     i32 currentFrame = 0;
     mat4 target;
     mat4 baseModel;
-    ObjSheetAnimation animation;
+
+    ObjSheetAnimation sheetAnimation;
+    ObjAnimation animation;
 };
 
 #define PUSH_COMMAND(queue, cmdType, payloadType, execFn) \

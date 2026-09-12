@@ -1,12 +1,14 @@
 #include "renderer.h"
 
+static void draw_entity(RenderEntryEntity *entity);
+static void draw_text(RenderEntryUIText *text);
+static void draw_image_ui(RenderEntryUIImage *image);
+
 u32 textVAO, textVBO;
 Texture textures[50];
 i32 textureCount = 0;
-f32 dT = 0;
-PostProcess post;
-f32 T = 0;
-Font font;
+static PostProcess post;
+static Font font;
 
 struct RendererMesh {
     u32 vao;
@@ -14,6 +16,8 @@ struct RendererMesh {
     u32 ebo;
     u32 vertexCount;
 };
+
+static RenderContext context;
 
 RendererMesh gMeshes[100];
 u32 gMeshCount = 1;
@@ -270,7 +274,7 @@ void push_ui_page(RenderBuffer* buffer, UIPage* uiPage) {
                 if(element->visible && 
                     element->typeWriter && 
                     element->typeWriterStart < 0.0f) {
-                    element->typeWriterStart = T;
+                    element->typeWriterStart = context.totalTime;
                 }
 
                 if(element->typeWriter && !element->visible) {
@@ -329,11 +333,6 @@ void* _push_render_element(RenderBuffer* buffer, u32 size, RenderEntryType type)
 void push_entity(RenderBuffer* buffer, RenderEntryEntity* entity) {
     RenderEntryEntity* entry = push_render_element(buffer, RenderEntryEntity);
     *entry = *entity;
-}
-
-void push_platform(RenderBuffer* buffer, RenderEntryPlatform* platform) {
-    RenderEntryPlatform* entry = push_render_element(buffer, RenderEntryPlatform);
-    *entry = *platform;
 }
 
 void push_ui_text(RenderBuffer* buffer, RenderEntryUIText* text) {
@@ -407,7 +406,7 @@ void init_post_process(i32 width, i32 height) {
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-
+    // this is duplicate logic
     f32 quadVertices[] = {
         -1.0f, -1.0f, 0.0f, 0.0f,
          1.0f, -1.0f, 1.0f, 0.0f,
@@ -486,17 +485,17 @@ void resize_post_process(i32 width, i32 height) {
     glViewport(0, 0, width, height);
 }
 
-void begin_post_process(i32 width, i32 height) {
+static void begin_post_process() {
     glBindFramebuffer(GL_FRAMEBUFFER, post.framebuffer);
-    glViewport(0,0,width,height);
+    glViewport(0,0,context.windowSize.x,context.windowSize.y);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
-void end_post_process() {
+static void end_post_process() {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void draw_post_process(vec2 res) {
+static void draw_post_process() {
     glDisable(GL_DEPTH_TEST);
 
     ppShader->use();
@@ -504,14 +503,13 @@ void draw_post_process(vec2 res) {
     glBindTexture(GL_TEXTURE_2D, post.colorTexture);
 
     ppShader->setInt("screenTexture", 0);
-    ppShader->setVec2("resolution", res);
+    ppShader->setVec2("resolution", context.windowSize);
 
-    post.shake -= dT * 2.0f;
-    if(post.shake < 0.0f)
-        post.shake = 0.0f;
+    post.shake -= context.deltaTime * 2.0f;
+    if(post.shake < 0.0f) post.shake = 0.0f;
 
     f32 shakeAmount = post.shake * post.shake;
-    vec2 shakeOffset = vec2(sin(T * 47.0f) * shakeAmount, cos(T * 61.0f) * shakeAmount);
+    vec2 shakeOffset = vec2(sin(context.totalTime * 47.0f) * shakeAmount, cos(context.totalTime * 61.0f) * shakeAmount);
 
     shakeOffset *= 0.015f;
     ppShader->setVec2("shakeOffset", shakeOffset);
@@ -520,157 +518,120 @@ void draw_post_process(vec2 res) {
     glEnable(GL_DEPTH_TEST);
 }
 
+static void update_render_context(RenderBuffer *buffer) {
+    context.view = buffer->view;
+    context.projection = buffer->projection;
+    context.deltaTime = buffer->deltaTime;
+    context.aspect = buffer->aspect;
+    context.view = buffer->view;
+    context.windowSize = buffer->windowSize;
+    context.totalTime += context.deltaTime;
+}
+
 void render_buffer(RenderBuffer* buffer) {
     //default clearing leaving here at the moment.
     //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    begin_post_process(buffer->windowSize.x, buffer->windowSize.y);
+    update_render_context(buffer);
+    begin_post_process();
     glLineWidth(2.0f);
     u8* at = buffer->bufferBase;
     u8* end = buffer->bufferBase + buffer->bufferSize;
 
-    dT = buffer->deltaTime;
-
     //printf("Render Buffer: %.2f%% (%u / %u bytes)\n", get_render_buffer_usage_percent(buffer), buffer->bufferSize, buffer->maxBufferSize);
-
     while (at < end) {
         RenderEntryHeader* header = (RenderEntryHeader*)at;
         at += sizeof(RenderEntryHeader);
         if (header->magic != 0xDEADBEEF) {
             printf("CORRUPT HEADER: at %p, type=%d\n", header, header->type);
-            __debugbreak();
         }
 
         if (header->type < RenderEntryType_RenderEntryEntity ||
             header->type > RenderEntryType_RenderEntryPostProcess) {
             printf("BAD HEADER TYPE: %d\n", header->type);
-            __debugbreak();
         }
         switch (header->type) {
           case RenderEntryType_RenderEntryEntity: {
               RenderEntryEntity* entry = (RenderEntryEntity*)at;
               at += sizeof(RenderEntryEntity);
-
-              draw_entity(
-                  entry->model,
-                  buffer->view,
-                  buffer->projection,
-                  gMeshes[entry->meshHandle].vao,
-                  get_texture_id(entry->textureName),
-                  entry->color,
-                  entry->useSpriteSheet,
-                  entry->frameIndex,
-                  entry->tiled,
-                  entry->tileCount,
-                  buffer->aspect,
-                  entry->cols,
-                  entry->rows
-              );
+              draw_entity(entry);
               break;
           }
           case RenderEntryType_RenderEntryUIText: {
               RenderEntryUIText* entry = (RenderEntryUIText*)at;
               at += sizeof(RenderEntryUIText);
 
-              draw_text(
-                entry->anchor,
-                entry->text,
-                entry->posx,
-                entry->posy,
-                entry->scale,
-                entry->maxWidth,
-                entry->color,
-                buffer->projection,
-                entry->hasShadow,
-                entry->bounce,
-                entry->typeWriter,
-                entry->typeWriterStart
-              );
+              draw_text(entry);
               break;
           }
           case RenderEntryType_RenderEntryUIImage: {
               RenderEntryUIImage* entry = (RenderEntryUIImage*)at;
               at += sizeof(RenderEntryUIImage);
 
-              draw_image_ui(
-                entry->anchor,
-                get_texture_id(entry->textureName),
-                entry->posx,
-                entry->posy,
-                entry->width,
-                entry->height,
-                entry->cols,
-                entry->rows,
-                entry->currentFrame,
-                entry->isAnimated,
-                gMeshes[entry->meshHandle].vao,
-                entry->isPanel,
-                entry->color,
-                entry->isHovered,
-                buffer->windowSize,
-                entry->hasShadow
-              );
+              draw_image_ui(entry);
               break;
           }
           case RenderEntryType_RenderEntryPostProcess: {
+
               RenderEntryPostProcess* entry = (RenderEntryPostProcess*)at;
-
               post.shake = entry->shake;
-
               at += sizeof(RenderEntryPostProcess);
+
               break;
           }
         }
     }
     end_post_process();
-    draw_post_process(buffer->windowSize);
+    draw_post_process();
     buffer->bufferSize = 0;
 }
 
-void draw_entity(mat4 model, mat4 view, mat4 projection, u32 vao, i32 textureId, vec4 color, i8 useSpriteSheet, i32 frameIndex, u8 tiled, vec2 tileCount, f32 aspect, i32 cols, i32 rows) {
+static void draw_entity(RenderEntryEntity *entity) {
+    if(!entity) return;
     glDepthMask(GL_FALSE);
     glEnable(GL_BLEND);
+    u32 textureId = get_texture_id(entity->textureName);
 
     // fix this using for testing bg purposes
-    if(tiled) {
+    if(entity->tiled) {
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        T += dT;
         bgShader->use();
-        bgShader->setMat4("view", view);
-        bgShader->setMat4("projection", projection);
-        bgShader->setMat4("model", model);
-        bgShader->setFloat("time", T);
-        bgShader->setVec4("color", color);
-        bgShader->setFloat("aspect", aspect);
+        bgShader->setMat4("view", context.view);
+        bgShader->setMat4("projection", context.projection);
+        bgShader->setMat4("model", entity->model);
+        bgShader->setFloat("time", context.totalTime);
+        bgShader->setVec4("color", entity->color);
+        bgShader->setFloat("aspect", context.aspect);
     } else {
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
         itemShader->use();
-        itemShader->setMat4("view", view);
-        itemShader->setMat4("projection", projection);
-        itemShader->setMat4("model", model);
-        itemShader->setVec4("color", color);
+        itemShader->setMat4("view", context.view);
+        itemShader->setMat4("projection", context.projection);
+        itemShader->setMat4("model", entity->model);
+        itemShader->setVec4("color", entity->color);
         itemShader->setBool("useColorOnly", textureId == -1);
-        itemShader->setBool("useSpriteSheet", useSpriteSheet);
-        itemShader->setInt("frameIndex", frameIndex);
+        itemShader->setBool("useSpriteSheet", entity->useSpriteSheet);
+        itemShader->setInt("frameIndex", entity->frameIndex);
 
-        itemShader->setInt("cols", (i32)cols);
-        itemShader->setInt("rows", (i32)rows);
+        itemShader->setInt("cols", (i32)entity->cols);
+        itemShader->setInt("rows", (i32)entity->rows);
 
-        itemShader->setBool("tiled", tiled);
-        itemShader->setVec2("tileCount", tileCount);
+        itemShader->setBool("tiled", entity->tiled);
+        itemShader->setVec2("tileCount", entity->tileCount);
 
+        //is this needed?
         itemShader->setVec2("scrollOffset", vec2(0.0f));
     }
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, textureId);
 
-    glBindVertexArray(vao);
+    glBindVertexArray(gMeshes[entity->meshHandle].vao);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
     glDisable(GL_BLEND);
     glDepthMask(GL_TRUE);
 }
 
-void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 maxWidth, vec3 color, mat4 projection, u8 hasShadow, u8 bounce, u8 typeWriter, f32 typeWriterStart) {
+static void draw_text(RenderEntryUIText *text) {
     if (!text) return;
 
     glEnable(GL_BLEND);
@@ -678,15 +639,15 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
     glDisable(GL_DEPTH_TEST);
 
     textShader->use();
-    textShader->setMat4("projection", projection);
-    textShader->setBool("bounce", bounce);
-    textShader->setFloat("time", T);
+    textShader->setMat4("projection", context.projection);
+    textShader->setBool("bounce", text->bounce);
+    textShader->setFloat("time", context.totalTime);
     
     f32 shadowOffset = 0.002f;
     i32 visibleCharacters = INT_MAX;
 
-    if (typeWriter) {
-        f32 elapsed = T - typeWriterStart;
+    if (text->typeWriter) {
+        f32 elapsed = context.totalTime - text->typeWriterStart;
         visibleCharacters = (i32)(elapsed * 20.0f);
     }
 
@@ -694,23 +655,24 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
     glBindTexture(GL_TEXTURE_2D, font.fontAtlas);
     glBindVertexArray(textVAO);
 
-    for (i32 pass = hasShadow ? 0 : 1; pass < 2; ++pass) {
+    for (i32 pass = text->hasShadow ? 0 : 1; pass < 2; ++pass) {
         u8 shadowPass = (pass == 0);
-        vec4 color4 = vec4(color, 1.0f);
+        vec4 color4 = vec4(text->color, 1.0f);
 
         textShader->setVec4("textColor", shadowPass ? vec4(0.0f, 0.0f, 0.0f, 0.2f) : color4);
-        f32 drawPosX = posx + (shadowPass ? shadowOffset : 0.0f);
-        f32 drawPosY = posy + (shadowPass ? shadowOffset : 0.0f); 
+        f32 drawPosX = text->posx + (shadowPass ? shadowOffset : 0.0f);
+        f32 drawPosY = text->posy + (shadowPass ? shadowOffset : 0.0f); 
 
-        f32 pixelScale = scale;
+        f32 pixelScale = text->scale;
 
+        //don't know where this rendering aspect is coming from
         f32 startX = drawPosX * RENDERING_ASPECT;
         f32 y = drawPosY + ((font.fontAscent) * pixelScale);
         
-        if (anchor == CENTER) {
+        if (text->anchor == CENTER) {
             f32 lineWidth = 0.0f;
 
-            const char* c = text;
+            const char* c = text->text;
             while (*c) {
                 const char* wordEnd = c;
 
@@ -722,7 +684,7 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
                     wordWidth += ch->advance * pixelScale;
                 }
 
-                if (lineWidth > 0.0f && lineWidth + wordWidth > maxWidth) break;
+                if (lineWidth > 0.0f && lineWidth + wordWidth > text->maxWidth) break;
 
                 lineWidth += wordWidth;
 
@@ -736,10 +698,10 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
 
             startX -= lineWidth * 0.5f;
             y = drawPosY + ((((font.fontAscent) * pixelScale)) * 0.5f);
-        } else if (anchor == TOP_RIGHT) {
+        } else if (text->anchor == TOP_RIGHT) {
             f32 lineWidth = 0.0f;
 
-            const char* c = text;
+            const char* c = text->text;
             while (*c) {
                 const char* wordEnd = c;
                 while (*wordEnd && *wordEnd != ' ')
@@ -751,7 +713,7 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
                     wordWidth += ch->advance * pixelScale;
                 }
 
-                if (lineWidth > 0.0f && lineWidth + wordWidth > maxWidth)
+                if (lineWidth > 0.0f && lineWidth + wordWidth > text->maxWidth)
                     break;
 
                 lineWidth += wordWidth;
@@ -768,7 +730,7 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
         }
 
         f32 x = startX;    
-        const char* wordStart = text;
+        const char* wordStart = text->text;
         i32 characterIndex = 0;
         
         while (*wordStart) {
@@ -781,7 +743,7 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
                 wordWidth += ch->advance * pixelScale;
             }
 
-            if (x > startX && (x - startX + wordWidth) > maxWidth) {
+            if (x > startX && (x - startX + wordWidth) > text->maxWidth) {
                 x = startX;
                 y += font.lineHeight * pixelScale;
             }
@@ -862,73 +824,58 @@ void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 max
     glDisable(GL_BLEND);
 }
 
-void draw_ui_shadow(f32 px, f32 py, f32 w, f32 h, i32 textureId, u32 vao, bool isAnimated, i32 cols, i32 rows, i32 currentFrame, u8 isPanel, vec2 windowSize) {
-    constexpr f32 shadowOffset = 0.004f; // ~4px in normalized coords at 1080p
+static void draw_ui_shadow(u32 vao, u32 textureId, f32 px, f32 py) {
+    f32 shadowOffset = 0.004f;
 
     uiShader->setBool("hasShadow", true);
     uiShader->setVec2("pos", vec2(px + shadowOffset, py + shadowOffset));
-    uiShader->setVec2("size", vec2(w, h));
     uiShader->setVec4("color", vec4(0.0f, 0.0f, 0.0f, 0.45f));
 
-    uiShader->setBool("useSpriteSheet", isAnimated);
-    uiShader->setInt("frameIndex", currentFrame);
-    uiShader->setInt("cols", cols);
-    uiShader->setInt("rows", rows);
-    uiShader->setBool("isPanel", isPanel);
-    uiShader->setBool("useColorOnly", textureId == -1);
-    uiShader->setVec2("resolution", windowSize);
-
     glBindVertexArray(vao);
-
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, textureId);
-
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
 
-void draw_image_ui(Anchor anchor, i32 textureId, f32 posx, f32 posy, f32 width, f32 height, i32 cols, i32 rows, i32 currentFrame, bool isAnimated, u32 vao, u8 isPanel, vec4 color, u8 isHovered, vec2 windowSize, u8 hasShadow) {
+static void draw_image_ui(RenderEntryUIImage *image) {
+    if(!image) return;
     glDepthMask(GL_FALSE);
     glEnable(GL_BLEND);
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-   
+    u32 textureId = get_texture_id(image->textureName);
+    u32 vao = gMeshes[image->meshHandle].vao;
+
     uiShader->use();
     // TODO(garry) fix this garbage.
     uiShader->setMat4("projection", glm::ortho(0.0f, 1.0f, 1.0f, 0.0f, -1.0f, 1.0f));
 
-    uiShader->setBool("useSpriteSheet", isAnimated);
-    uiShader->setInt("frameIndex", currentFrame);
-    uiShader->setInt("cols", cols);
-    uiShader->setInt("rows", rows);
-    uiShader->setBool("isPanel", isPanel);
-    uiShader->setVec4("color", color);
+    uiShader->setBool("useSpriteSheet", image->isAnimated);
+    uiShader->setInt("frameIndex", image->currentFrame);
+    uiShader->setInt("cols", image->cols);
+    uiShader->setInt("rows", image->rows);
+    uiShader->setBool("isPanel", image->isPanel);
+    uiShader->setVec4("color", image->color);
     //now this is actual garbage
-    uiShader->setBool("flipped", isHovered);
-    uiShader->setBool("useColorOnly", textureId == -1 ? true : false);
-    uiShader->setVec2("resolution", windowSize);
+    uiShader->setBool("flipped", image->isHovered);
+    uiShader->setBool("useColorOnly", textureId == -1);
+    uiShader->setVec2("resolution", context.windowSize);
+    uiShader->setVec2("size", vec2(image->width, image->height));
 
-    //TODO(garry) fix this garbage
-    f32 w = width;
-    f32 h = height;
-    f32 px = posx;
-    f32 py = posy;
+    f32 px = image->posx;
+    f32 py = image->posy;
 
-    if (anchor == Anchor::CENTER) {
-        px -= w * 0.5f;
-        py -= h * 0.5f;
+    if (image->anchor == CENTER) {
+        px -= image->width * 0.5f;
+        py -= image->height * 0.5f;
     }
-    else if (anchor == Anchor::TOP_RIGHT) {
-        px -= w;
+    else if (image->anchor == TOP_RIGHT) {
+        px -= image->width;
     }
 
-    uiShader->setVec2("size", vec2(w, h));
-    if (hasShadow) {
-        draw_ui_shadow(px, py, w, h, textureId, vao, isAnimated, cols, rows, currentFrame, isPanel, windowSize);
-    }
-
+    if (image->hasShadow) draw_ui_shadow(vao, textureId, px, py);
     uiShader->setBool("hasShadow", false);
     uiShader->setVec2("pos", vec2(px, py));
-    uiShader->setVec4("color", color); 
-
+    uiShader->setVec4("color", image->color); 
 
     glBindVertexArray(vao);
     glActiveTexture(GL_TEXTURE0);
@@ -939,17 +886,15 @@ void draw_image_ui(Anchor anchor, i32 textureId, f32 posx, f32 posy, f32 width, 
     glDepthMask(GL_TRUE);
 }
 
-void load_texture(i32 id, const char* filePath, bool isMipMapped, bool isFlipped, bool repeated) {
+void load_texture(i32 id, const char* filePath, u8 isMipMapped, u8 isFlipped, u8 repeated) {
     u32 textureID;
     glGenTextures(1, &textureID);
     glBindTexture(GL_TEXTURE_2D, textureID);
 
     i32 width, height, nrChannels;
-    if (isFlipped)
-    {
+    if (isFlipped) {
         stbi_set_flip_vertically_on_load(0);
-    }
-    else {
+    } else {
         stbi_set_flip_vertically_on_load(1);
     }
     
@@ -1001,59 +946,6 @@ void load_texture(i32 id, const char* filePath, bool isMipMapped, bool isFlipped
 
     textures[textureCount] = Texture{ id, textureID };
     textureCount++;
-}
-
-u32 load_platform_buffers(f32* vertices, i32 vertexCount, u32* indices, i32 indexCount) {
-    u32 meshHandle = gMeshCount++;
-    RendererMesh* mesh = &gMeshes[meshHandle];
-
-    glGenVertexArrays(1, &mesh->vao);
-    glGenBuffers(1, &mesh->vbo);
-    glGenBuffers(1, &mesh->ebo);
-
-    glBindVertexArray(mesh->vao);
-
-    glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
-    glBufferData(GL_ARRAY_BUFFER, vertexCount * 8 * sizeof(float), vertices, GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexCount * sizeof(unsigned int), indices, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-    glEnableVertexAttribArray(2);
-
-    mesh->vertexCount = vertexCount;
-    return meshHandle;
-}
-
-u32 load_walls_buffer(f32* vertices, i32 vertexCount) {
-    u32 meshHandle = gMeshCount++;
-    RendererMesh* mesh = &gMeshes[meshHandle];
-
-    glGenVertexArrays(1, &mesh->vao);
-    glGenBuffers(1, &mesh->vbo);
-
-    glBindVertexArray(mesh->vao);
-    glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
-    glBufferData(GL_ARRAY_BUFFER, vertexCount * 8 * sizeof(float), vertices, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-    glEnableVertexAttribArray(2);
-
-    mesh->vertexCount = vertexCount;
-    return meshHandle;
 }
 
 u32 load_quad_buffer(f32* vertices, i32 vertexCount, u32* indices, i32 indexCount) {

@@ -143,15 +143,12 @@ GameMemory allocate_game_memory(RenderBuffer* buffer) {
     memset(memory.stateMemory, 0, memory.stateMemorySize);
     memory.renderBuffer = buffer;
     memory.push_entity_fn = push_entity;
-    memory.push_platform_fn = push_platform;
     memory.push_ui_text_fn = push_ui_text;
     memory.push_ui_image_fn = push_ui_image;
     memory.push_ui_page_fn = push_ui_page;
     memory.push_post_process_fn = push_post_process;
       
     memory.load_quad_buffer_fn = load_quad_buffer;
-    memory.load_walls_buffer_fn = load_walls_buffer;
-    memory.load_platform_buffer_fn = load_platform_buffers;
     
     memory.uiMem.size = MB;
     memory.uiMem.base = (u8*)memory.stateMemory + (memory.stateMemorySize - memory.uiMem.size);
