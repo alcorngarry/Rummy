@@ -144,6 +144,7 @@ void check_elements_hovered(UIPage* page, f64 xpos, f64 ypos) {
 void move_element(UIPage *page, UIElement* element, f32 deltaTime) {
     for(i32 i = 0; i < element->numberOfAnimations; ++i) {
         Animation* a = &element->animations[i];
+        if(!a->autoAnimate) continue;
 
           if (a->animationType == BOB) {
               a->elapsed += deltaTime;
@@ -245,6 +246,31 @@ void move_element(UIPage *page, UIElement* element, f32 deltaTime) {
             f32 eased = ease(t, a->ease);
 
             element->rotation = glm::mix(a->start.x, a->destination.x, eased);
+        } else if(a->animationType == FADE) {
+            if(a->complete) continue;
+
+            a->elapsed += deltaTime;
+
+            f32 t = a->elapsed / a->duration;
+
+            if(t >= 1.0f) {
+                t = 1.0f;
+
+                if(a->playOnce) {
+                    a->complete = true;
+                    element->visible = false;
+                } else {
+                    a->elapsed = 0.0f;
+                }
+            }
+
+            f32 eased = ease(t, a->ease);
+
+            element->color.a = glm::mix(
+                a->start.x,
+                a->destination.x,
+                eased
+            );
         }
 
         if(a->blocking) break;
@@ -330,10 +356,8 @@ void move_text_element(UIPage *page, TextElement* element, f32 deltaTime) {
 
     for (i32 i = 0; i < element->numberOfAnimations; ++i) {
         Animation *a = &element->animations[i];
-        if (a->complete) continue;
-
-        if (blocking && a->animationType != BOB)
-            continue;
+        if (a->complete || !a->autoAnimate) continue;
+        if (blocking && a->animationType != BOB) continue;
 
         switch (a->animationType) {
             case MOVE: {
@@ -379,8 +403,36 @@ void move_text_element(UIPage *page, TextElement* element, f32 deltaTime) {
                     a->complete = true;
                 }
                 break;
+            } 
+            case FADE: {
+                if(a->complete) continue;
+
+                a->elapsed += deltaTime;
+
+                f32 t = a->elapsed / a->duration;
+
+                if(t >= 1.0f) {
+                    t = 1.0f;
+
+                    if(a->playOnce) {
+                        a->complete = true;
+                        element->visible = false;
+                    } else {
+                        a->elapsed = 0.0f;
+                    }
+                }
+
+                f32 eased = ease(t, a->ease);
+
+                element->color.a = glm::mix(
+                    a->start.x,
+                    a->destination.x,
+                    eased
+                );
+                break;
             }
         }
+
         if (a->complete && element->onCompleteActionId != -1) {
             RUN_ON_COMPLETE_ACTION(page, element);
         } 
@@ -388,45 +440,7 @@ void move_text_element(UIPage *page, TextElement* element, f32 deltaTime) {
 }
 
 void update_animation(UIPage *page, UIElement* element, f32 deltaTime) {
-    //sheet animation
-    //if (element->numberOfAnimations > 0) {
-    //    if (!element->loopAnimation && element->sheetAnimation.currentFrame == (element->fps - 1)) {
-    //        for (i32 i = 0; i < 3; i++) {
-    //            if (element->dependentElements[i] && !element->dependentElements[i]->visible) {
-    //                element->dependentElements[i]->sheetAnimation.currentFrame = 0;
-    //                element->dependentElements[i]->visible = true;
-    //                element->dependentElements[i] = nullptr;
-    //            }
-    //        }
-    //        if (element->playOnce) element->visible = false;
-    //        return;
-    //    }
-
-    //    f32 frameTime = 1.0f / f32(element->fps);
-    //    element->animTimer += deltaTime;
-    //    while (element->animTimer >= frameTime) {
-    //        element->animTimer -= frameTime;
-    //        element->sheetAnimation.currentFrame = (element->currentFrame + 1) % element->fps;
-    //    }
-    //}
-
-    //default animations
-//    if(element->animations[0].autoAnimate) {
-//        move_element(element, deltaTime);
-//        for(i32 i = 0; i < element->numberOfDependentTextElements; ++i) {
-//            if(element->dependentTextElements[i]) {
-//                move_text_element(element->dependentTextElements[i], deltaTime);
-//            }
-//        }
-//        for(i32 i = 0; i < element->numberOfDependentElements; ++i) {
-//            if(element->dependentElements[i]) {
-//                move_element(element->dependentElements[i], deltaTime);
-//            }
-//        }
-//    }
-    for(i32 i = 0; i < (i32)element->numberOfAnimations; ++i) {
-        if(element->animations[i].autoAnimate) move_element(page, element, deltaTime);
-    }
+    move_element(page, element, deltaTime);
 
     if (element->sheetAnimation.fps != 0) {
         SheetAnimation* anim = &element->sheetAnimation;
@@ -492,11 +506,7 @@ f64 get_converted_text_type(TextType type, void *ptr) {
 }
 
 void update(UIPage *page, TextElement* text, f32 deltaTime) {
-    for(i32 i = 0; i < (i32)text->numberOfAnimations; ++i) {
-        if(text->animations[i].autoAnimate) {
-            move_text_element(page, text, deltaTime);
-        }
-    }
+    move_text_element(page, text, deltaTime);
 
     if (!page->values[text->valueId] || text->type == TextType::NONE) return;
 
@@ -777,6 +787,42 @@ void add_bob(UIElement *element, u8 tied) {
     a->complete = false;
 }
 
+void add_fade(UIElement *element) {
+    Animation *a = add_animation(
+        element->animations,
+        &element->numberOfAnimations
+    );
+
+    a->animationType = FADE;
+    a->start = vec2(element->color.a, 0.0f);
+    a->destination = vec2(0.0f, 0.0f);
+    a->duration = 1.0f;
+
+    a->elapsed = 0.0f;
+    a->autoAnimate = true;
+    a->loopAnimation = false;
+    a->playOnce = true;
+    a->complete = false;
+}
+
+void add_fade(TextElement *element) {
+    Animation *a = add_animation(
+        element->animations,
+        &element->numberOfAnimations
+    );
+
+    a->animationType = FADE;
+    a->start = vec2(element->color.a, 0.0f);
+    a->destination = vec2(0.0f, 0.0f);
+    a->duration = 1.0f;
+
+    a->elapsed = 0.0f;
+    a->autoAnimate = true;
+    a->loopAnimation = false;
+    a->playOnce = true;
+    a->complete = false;
+}
+
 void add_rotate(UIElement *element, f32 amount, f32 duration) {
     Animation *a = add_animation(element->animations, &element->numberOfAnimations);
 
@@ -836,7 +882,7 @@ i32 add_tab(UIPage *page, i32 tabHandle, const char* text, vec4 color, f32 fontS
     tab.sheetAnimation = SheetAnimation{3,3};
     tab.isPanel = true;
 
-    TextElement tText = TextElement{ Anchor::CENTER, "", 0.5f, 0.5f, -1, true, DEFAULT_FONT_SCALE * fontScale, vec3(1.0f)};
+    TextElement tText = TextElement{ Anchor::CENTER, "", 0.5f, 0.5f, -1, true, DEFAULT_FONT_SCALE * fontScale};
     strcpy(tText.text, text);
     
     i32 tabId = add_ui_element(page, tab);
@@ -914,7 +960,7 @@ i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 
 
     add_ui_element(page, button, true);
   
-    TextElement bText = TextElement{ Anchor::CENTER, "", pos.x, pos.y, -1, true, DEFAULT_FONT_SCALE * fontScale, vec3(1.0f)};
+    TextElement bText = TextElement{ Anchor::CENTER, "", pos.x, pos.y, -1, true, DEFAULT_FONT_SCALE * fontScale};
     strcpy(bText.text, text);
     bText.zIndex = zIndex;
     bText.maxWidth = button.width * RENDERING_ASPECT;
@@ -978,7 +1024,6 @@ void next_switch(UIPage *page, void *ptr) {
 void add_move_animation(UIPage *page, i32 elementId, vec2 destination) {
     UIElement *e = &page->uiElements[elementId];
     Animation a = Animation{destination, vec2(e->posx, e->posy)};
-    //e->animations[e->numberOfAnimations++] = a;
     *add_animation(e->animations, &e->numberOfAnimations) = a;
 }
 
@@ -987,15 +1032,18 @@ void add_move_text_animation(UIPage *page, i32 elementId, vec2 destination, f32 
     Animation a = Animation{destination, vec2(e->posx, e->posy), true};
     a.duration = speed;
     e->animations[e->numberOfAnimations++] = a;
-    e->onCompleteActionId = 0;
 }
 
-void add_move_animation(TextElement *e, vec2 destination, f32 speed) {
+void add_move_text_animation(TextElement *e, vec2 destination, f32 speed) {
     Animation a = Animation{destination, vec2(e->posx, e->posy), true};
     a.duration = speed;
-    //e->animations[e->numberOfAnimations++] = a;
     *add_animation(e->animations, &e->numberOfAnimations) = a;
-    e->onCompleteActionId = 0;
+}
+
+void add_move_animation(UIElement *e, vec2 destination, f32 speed) {
+    Animation a = Animation{destination, vec2(e->posx, e->posy), true};
+    a.duration = speed;
+    *add_animation(e->animations, &e->numberOfAnimations) = a;
 }
 
 void add_pop_animation(TextElement *e, f32 duration) {
@@ -1004,9 +1052,7 @@ void add_pop_animation(TextElement *e, f32 duration) {
     a.animationType = POP;
     a.start = vec2(e->scale);
     a.autoAnimate = true;
-    //e->animations[e->numberOfAnimations++] = a;
     *add_animation(e->animations, &e->numberOfAnimations) = a;
-    e->onCompleteActionId = 0;
 }
 
 vec2 get_center(Anchor anchor, vec2 size, vec2 pos) {

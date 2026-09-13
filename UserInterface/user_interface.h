@@ -49,7 +49,8 @@ enum AnimationType {
   POP,
   SCALE,
   COLOR_SHIFT,
-  ROTATE
+  ROTATE,
+  FADE
 };
 
 enum CursorType {
@@ -136,16 +137,16 @@ enum TextType {
 };
 
 struct TextElement {
-	Anchor anchor = Anchor::TOP_LEFT;
+	Anchor anchor = TOP_LEFT;
 	char text[1024];
 	f32 posx = 0;
 	f32 posy = 0;
 	i16 parentId = -1;
 	u8 visible = true;
 	f32 scale = 0.001;
-	vec3 color = vec3(1.0f);
+	vec4 color = vec4(1.0f);
   i32 valueId = -1;
-	TextType type = TextType::NONE;
+	TextType type = NONE;
 	const char* prefix = "";
 	i32 numberOfValues = 0;
   i32 activeValueId = 0;
@@ -219,14 +220,19 @@ void add_value_to_text(UIPage* page, TextElement *text, const char* label, i32 v
 i32 add_text_to_window(UIPage *page, i32 windowId, i32 elementId);
 void add_button_to_window(UIPage *page, i32 windowId, i32 elementId);
 void add_image_to_window(UIPage *page, i32 windowId, i32 elementId);
+
 void add_move_animation(UIPage *page, i32 elementId, vec2 destination);
-void add_move_animation(TextElement *e, vec2 destination, f32 speed);
+void add_move_text_animation(TextElement *e, vec2 destination, f32 speed);
 void add_move_text_animation(UIPage *page, i32 elementId, vec2 destination, f32 speed = 10.0f);
+void add_move_animation(UIElement *e, vec2 destination, f32 speed);
 void add_pop_animation(TextElement *e, f32 duration);
 void add_pop_animation(UIElement *e, f32 duration);
 void add_text_bob(TextElement *element);
 void add_bob(UIElement *element, u8 tied = false);
 void add_rotate(UIElement *element, f32 amount = 0.05f, f32 duration = 2.0f);
+void add_fade(UIElement *element);
+void add_fade(TextElement *element);
+
 void add_cursor(UIPage *page, i32 cursorHandle, vec4 color, CursorType type);
 i32 add_tab(UIPage *page, i32 tabHandle, const char* text, vec4 color, f32 fontScale = 1.0f);
 void add_tabs_to_window(UIPage *page, i32 windowId, i32 *tabIds, i32 numberOfTabs);

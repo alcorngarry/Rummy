@@ -64,7 +64,7 @@ struct RenderEntryUIText {
     f32 posy;
     f32 scale;
     f32 maxWidth;
-    vec3 color;
+    vec4 color;
     u8 hasShadow;
     u8 bounce;
     u8 typeWriter;

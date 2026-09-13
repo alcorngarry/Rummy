@@ -111,11 +111,27 @@ u8 add_text_to_page(void *ptr) {
     return true;
 }
 
+void push_text_element(TextElement element) {
+    ActionCommand *cmd = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, TextElement, execute_action);
+    if (cmd) {
+        cmd->action = add_text_to_page;
+        *COMMAND_PAYLOAD(cmd, TextElement) = element;
+    }
+}
+
 u8 add_image_to_page(void *ptr) {
     UIElement element = *(UIElement *)ptr;
 
     add_ui_element(gState->uiPage, element);
     return true;
+}
+
+void push_ui_element(UIElement element) {
+    ActionCommand *cmd = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, UIElement, execute_action);
+    if (cmd) {
+        cmd->action = add_image_to_page;
+        *COMMAND_PAYLOAD(cmd, UIElement) = element;
+    }
 }
 
 u8 load_map(void *ptr) {
@@ -1017,7 +1033,7 @@ void add_multiplier_text(Set *set, i32 value) {
     TextElement multiplier = TextElement{ Anchor::CENTER, "", setPos.x + 0.4f, setPos.y - 0.2f, -1, true, DEFAULT_FONT_SCALE * 3.0 };
     multiplier.color = R_RED;
     snprintf(multiplier.text, sizeof(multiplier.text), "x%d", value);
-    add_move_animation(&multiplier, vec2(setPos.x, setPos.y - 0.2f), 0.75f);
+    add_move_text_animation(&multiplier, vec2(setPos.x, setPos.y - 0.2f), 0.75f);
 
     ActionCommand *cmd = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, TextElement, execute_action);
     if (cmd) {
@@ -2756,7 +2772,7 @@ u8 load_map_ui(void *ptr) {
     clear_game_ui();
     gState->uiPage->highestZ = frontIndex;
 
-    TextElement selectMessage = TextElement{ CENTER, "Select Next Round Challenge", 0.5, 0.1f, -1, true, DEFAULT_FONT_SCALE * 2.0f, vec3(1.0f)};
+    TextElement selectMessage = TextElement{ CENTER, "Select Next Round Challenge", 0.5, 0.1f, -1, true, DEFAULT_FONT_SCALE * 2.0f};
     selectMessage.bounce = true;
     selectMessage.typeWriter = true;
     selectMessage.zIndex = frontIndex;  
@@ -2784,7 +2800,7 @@ u8 load_map_ui(void *ptr) {
     RoundData option2 = create_round_data((ROUND_TYPE)challengeIds[0], gState->runData.rounds);
     RoundData option3 = create_round_data((ROUND_TYPE)challengeIds[1], gState->runData.rounds);
 
-    TextElement desc1 = TextElement{ CENTER, "", (f32)nextRoundBg.posx, 0.5f, -1, true, DEFAULT_FONT_SCALE * 1.5f, vec3(1.0f)};
+    TextElement desc1 = TextElement{ CENTER, "", (f32)nextRoundBg.posx, 0.5f, -1, true, DEFAULT_FONT_SCALE * 1.5f};
     desc1.zIndex = frontIndex;  
     desc1.maxWidth = RENDERING_ASPECT * 0.2f;
     strcpy(desc1.text, option1.desc);
@@ -2794,10 +2810,10 @@ u8 load_map_ui(void *ptr) {
     i32 nextRoundBg1 = add_ui_element(gState->uiPage, nextRoundBg);
     i32 roundButton1 = add_button(gState->uiPage, BUTTON_T, "SELECT", vec2(nextRoundBg.posx, 0.9f), vec2(0.05f, 0.225f), R_SLATE, 0, frontIndex);
 
-    TextElement reward = TextElement{ CENTER, "", (f32)nextRoundBg.posx, 0.78f, -1, true, DEFAULT_FONT_SCALE * 1.5f, vec3(1.0f)};
+    TextElement reward = TextElement{ CENTER, "", (f32)nextRoundBg.posx, 0.78f, -1, true, DEFAULT_FONT_SCALE * 1.5f};
     reward.color = R_GOLDEN;
 
-    TextElement type = TextElement{ CENTER, "", (f32)nextRoundBg.posx, 0.4f, -1, true, DEFAULT_FONT_SCALE * 1.5f, vec3(1.0f)};
+    TextElement type = TextElement{ CENTER, "", (f32)nextRoundBg.posx, 0.4f, -1, true, DEFAULT_FONT_SCALE * 1.5f};
 
     reward.zIndex = frontIndex;
     snprintf(reward.text, sizeof(reward.text),
@@ -2902,7 +2918,7 @@ void add_profile_ui() {
     set_page_state(PROFILE);
     clear_game_ui();
 
-    TextElement desc1 = TextElement{ CENTER, "", 0.5f, 0.2f, -1, true, DEFAULT_FONT_SCALE * 1.5f, vec3(1.0f)};
+    TextElement desc1 = TextElement{ CENTER, "", 0.5f, 0.2f, -1, true, DEFAULT_FONT_SCALE * 1.5f};
     desc1.maxWidth = RENDERING_ASPECT * 0.2f;
     snprintf(desc1.text, sizeof(desc1.text), "Runs Started: %llu", profile.runStarted);
     
@@ -2948,20 +2964,20 @@ void add_profile_ui() {
 }
 
 void set_round_complete_ui(i32 windowIndex) {
-    TextElement score = TextElement{ Anchor::CENTER, "Score", 0.2f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+    TextElement score = TextElement{ Anchor::CENTER, "Score", 0.2f, 0.035f, -1, true, DEFAULT_FONT_SCALE};
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, score));
 
-    TextElement scoreVal = TextElement{ Anchor::CENTER, "", 0.2f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f)};
+    TextElement scoreVal = TextElement{ Anchor::CENTER, "", 0.2f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f};
     add_text_bob(&scoreVal);
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, scoreVal,"", 0, TextType::UINT_64));
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, scoreVal,"", 0, UINT_64));
 
-    TextElement scoreMin = TextElement{ Anchor::CENTER, "Score Minimum", 0.35f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+    TextElement scoreMin = TextElement{ Anchor::CENTER, "Score Minimum", 0.35f, 0.035f, -1, true, DEFAULT_FONT_SCALE};
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, scoreMin));
 
-    TextElement scoreMinVal = TextElement{ Anchor::CENTER, "", 0.35f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f)};
+    TextElement scoreMinVal = TextElement{ Anchor::CENTER, "", 0.35f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f};
     add_text_bob(&scoreMinVal);
     scoreMinVal.color = R_RED;
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, scoreMinVal,"", 2, TextType::UINT_64));
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, scoreMinVal,"", 2, UINT_64));
 
     UIElement challengeImage = UIElement{ CENTER, -1, ROUND_CHALLENGE_T,  0.6f, 0.07225f, 0.05f * RENDERING_ASPECT, 0.05f};
     challengeImage.sheetAnimation = SheetAnimation{3,1};
@@ -2977,7 +2993,7 @@ void set_round_complete_ui(i32 windowIndex) {
     i32 switchButton = add_button(gState->uiPage, BUTTON_T, "X", vec2(0.69f, 0.071f), vec2(0.0675f * RENDERING_ASPECT, 0.02f), R_SLATE, 21);
     add_switch_element(gState->uiPage, CENTER, switchButton, vec2(0.05, 0.05f), vec2(0.02f * RENDERING_ASPECT, 0.02f), RADIO_T);
 
-    TextElement roundInfo = TextElement{ TOP_LEFT, "Clear Rack or Reach Round Minimum Score", 0.085f, 0.0225f, -1, true, DEFAULT_FONT_SCALE * 1.75f, vec3(1.0f)};
+    TextElement roundInfo = TextElement{ TOP_LEFT, "Clear Rack or Reach Round Minimum Score", 0.085f, 0.0225f, -1, true, DEFAULT_FONT_SCALE * 1.75f};
     roundInfo.visible = false;
     //roundInfo.bounce = true;
     roundInfo.typeWriter = true;
@@ -2990,20 +3006,20 @@ void set_round_complete_ui(i32 windowIndex) {
             break;
         }
         case RUN_MAX_SIZE: {
-            TextElement score = TextElement{ Anchor::CENTER, "Longest Run", 0.2f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+            TextElement score = TextElement{ Anchor::CENTER, "Longest Run", 0.2f, 0.035f, -1, true, DEFAULT_FONT_SCALE};
             score.visible = false;
               //add_text_bob(&score);
             add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, score));
 
-            TextElement scoreVal = TextElement{ Anchor::CENTER, "", 0.2f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f)};
+            TextElement scoreVal = TextElement{ Anchor::CENTER, "", 0.2f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f};
             scoreVal.visible = false;
             add_text_bob(&scoreVal);
             add_text_to_window(gState->uiPage, challengeWindow, add_dynamic_text_element(gState->uiPage, scoreVal,"", 11, INT_32));
 
-            TextElement scoreMin = TextElement{ Anchor::CENTER, "Reach Run Size", 0.35f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+            TextElement scoreMin = TextElement{ Anchor::CENTER, "Reach Run Size", 0.35f, 0.035f, -1, true, DEFAULT_FONT_SCALE};
             scoreMin.visible = false;
             add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, scoreMin));
-            TextElement scoreMinVal = TextElement{ Anchor::CENTER, "", 0.35f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f)};
+            TextElement scoreMinVal = TextElement{ Anchor::CENTER, "", 0.35f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f};
             scoreMinVal.visible = false;
             add_text_bob(&scoreMinVal);
             scoreMinVal.color = R_RED;
@@ -3011,20 +3027,20 @@ void set_round_complete_ui(i32 windowIndex) {
             break;
         }
         case EVERY_COLOR_ON_BOARD: {
-            TextElement score = TextElement{ Anchor::CENTER, "Number of Colors", 0.2f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+            TextElement score = TextElement{ Anchor::CENTER, "Number of Colors", 0.2f, 0.035f, -1, true, DEFAULT_FONT_SCALE};
             score.visible = false;
               //add_text_bob(&score);
             add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, score));
 
-            TextElement scoreVal = TextElement{ Anchor::CENTER, "", 0.2f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f)};
+            TextElement scoreVal = TextElement{ Anchor::CENTER, "", 0.2f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f};
             scoreVal.visible = false;
             add_text_bob(&scoreVal);
             add_text_to_window(gState->uiPage, challengeWindow, add_dynamic_text_element(gState->uiPage, scoreVal,"", 12, INT_32));
 
-            TextElement scoreMin = TextElement{ Anchor::CENTER, "Reach Total Colors", 0.35f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+            TextElement scoreMin = TextElement{ Anchor::CENTER, "Reach Total Colors", 0.35f, 0.035f, -1, true, DEFAULT_FONT_SCALE};
             scoreMin.visible = false;
             add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, scoreMin));
-            TextElement scoreMinVal = TextElement{ Anchor::CENTER, "4", 0.35f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(1.0f)};
+            TextElement scoreMinVal = TextElement{ Anchor::CENTER, "4", 0.35f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f};
 
             scoreMinVal.visible = false;
             add_text_bob(&scoreMinVal);
@@ -3100,7 +3116,7 @@ void add_in_game_ui() {
     a.visible = false;
     add_ui_element(gState->uiPage, a);
 
-    TextElement text = TextElement{ Anchor::CENTER, "", 0, 0, 99, true, DEFAULT_FONT_SCALE * 2.0f, vec3(1.0f)};
+    TextElement text = TextElement{ Anchor::CENTER, "", 0, 0, 99, true, DEFAULT_FONT_SCALE * 2.0f};
     //text.haveCountAnimation = false;
     text.visible = false;
     add_text_element(gState->uiPage, text);
@@ -3126,7 +3142,7 @@ void add_in_game_ui() {
 
     gState->uiPage->uiElements[windowIndex].id = 96;
     
-    TextElement drawsRemaining = TextElement{ Anchor::CENTER, "", 0.88f, 0.135f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+    TextElement drawsRemaining = TextElement{ Anchor::CENTER, "", 0.88f, 0.135f, -1, true, DEFAULT_FONT_SCALE};
     drawsRemaining.haveCountAnimation = false;
     add_text_bob(&drawsRemaining);
     drawsRemaining.animations[drawsRemaining.numberOfAnimations - 1].autoAnimate = true;
@@ -3139,11 +3155,11 @@ void add_in_game_ui() {
 
     set_round_complete_ui(windowIndex);
 
-    TextElement cash = TextElement{ Anchor::CENTER, "Cash", 0.5f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(R_WHITE)};
+    TextElement cash = TextElement{ Anchor::CENTER, "Cash", 0.5f, 0.035f, -1, true, DEFAULT_FONT_SCALE};
     //add_text_bob(&cash);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, cash));
 
-    TextElement cashVal = TextElement{ Anchor::CENTER, "", 0.5f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_GOLDEN)};
+    TextElement cashVal = TextElement{ Anchor::CENTER, "", 0.5f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_GOLDEN};
     add_text_bob(&cashVal);
     add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, cashVal, "$", 3, TextType::UINT_64));
 
@@ -3151,13 +3167,13 @@ void add_in_game_ui() {
     //add_text_bob(&round);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, round));
 
-    TextElement roundVal = TextElement{ Anchor::CENTER, "", 0.6f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_PURPLE)};
+    TextElement roundVal = TextElement{ Anchor::CENTER, "", 0.6f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_PURPLE};
     add_text_bob(&roundVal);
     add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, roundVal,"", 6, TextType::UINT_64));
 
     //add_actives_ui(true);
 
-    TextElement poolTiles = TextElement{ Anchor::CENTER, "", 0.785f, 0.98f, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+    TextElement poolTiles = TextElement{ Anchor::CENTER, "", 0.785f, 0.98f, -1, true, DEFAULT_FONT_SCALE};
     poolTiles.haveCountAnimation = false;
     add_text_bob(&poolTiles);
     poolTiles.animations[poolTiles.numberOfAnimations - 1].autoAnimate = true;
@@ -3195,7 +3211,7 @@ void add_in_game_ui() {
 void add_end_game_ui() {
     set_page_state(END_GAME);
     clear_game_ui();
-    TextElement gameOver = TextElement{ Anchor::CENTER, "Game Over", 0.35f, 0.15f, -1, true, DEFAULT_FONT_SCALE * 5.0, vec3(R_RED)};
+    TextElement gameOver = TextElement{ Anchor::CENTER, "Game Over", 0.35f, 0.15f, -1, true, DEFAULT_FONT_SCALE * 5.0, R_RED};
     gameOver.color = R_DARK_RED;
 
     i32 gameOverText = add_text_element(gState->uiPage, gameOver);
@@ -3608,7 +3624,7 @@ void add_shop_purchase_menu(u8 isRelic) {
         price3 = (i32)gState->actives[relicIds[2]].item.price;
     }
 
-    TextElement relicName = TextElement{ Anchor::CENTER, "", 0.26f, 0.25f, -1, true, DEFAULT_FONT_SCALE * 2.5f, vec3(R_WHITE)}; 
+    TextElement relicName = TextElement{ Anchor::CENTER, "", 0.26f, 0.25f, -1, true, DEFAULT_FONT_SCALE * 2.5f}; 
     relicName.bounce = true;
     snprintf(relicName.text, sizeof(relicName.text), "%s", name1);
     add_dependent_text_element(gState->uiPage, relicBg1, add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicName)));
@@ -3619,7 +3635,7 @@ void add_shop_purchase_menu(u8 isRelic) {
     snprintf(relicName.text, sizeof(relicName.text), "%s", name3);
     add_dependent_text_element(gState->uiPage, relicBg3, add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicName)));
 
-    TextElement relicRarity = TextElement{ Anchor::CENTER, "", 0.26f, 0.525f, -1, true, DEFAULT_FONT_SCALE * 1.75f, vec3(R_WHITE)}; 
+    TextElement relicRarity = TextElement{ Anchor::CENTER, "", 0.26f, 0.525f, -1, true, DEFAULT_FONT_SCALE * 1.75f}; 
     snprintf(relicRarity.text, sizeof(relicRarity.text), "%s", rarity1);
     add_dependent_text_element(gState->uiPage, relicBg1, add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicRarity)));
     relicRarity.posx += 0.24f;
@@ -3629,7 +3645,7 @@ void add_shop_purchase_menu(u8 isRelic) {
     snprintf(relicRarity.text, sizeof(relicRarity.text), "%s", rarity3);
     add_dependent_text_element(gState->uiPage, relicBg3,  add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicRarity)));
 
-    TextElement relicDesc = TextElement{ Anchor::CENTER, "", 0.26f, 0.575f, -1, true, DEFAULT_FONT_SCALE, vec3(R_WHITE)}; 
+    TextElement relicDesc = TextElement{ Anchor::CENTER, "", 0.26f, 0.575f, -1, true, DEFAULT_FONT_SCALE}; 
     relicDesc.maxWidth = 0.3f;
     snprintf(relicDesc.text, sizeof(relicDesc.text), "%s", desc1);
     add_dependent_text_element(gState->uiPage, relicBg1, add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicDesc)));
@@ -3640,7 +3656,7 @@ void add_shop_purchase_menu(u8 isRelic) {
     snprintf(relicDesc.text, sizeof(relicDesc.text), "%s", desc3);
     add_dependent_text_element(gState->uiPage, relicBg3,  add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicDesc)));
 
-    TextElement relicPrice = TextElement{ Anchor::CENTER, "", 0.26f, 0.725f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_YELLOW)}; 
+    TextElement relicPrice = TextElement{ Anchor::CENTER, "", 0.26f, 0.725f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_YELLOW}; 
     relicPrice.maxWidth = 0.3f;
     snprintf(relicPrice.text, sizeof(relicPrice.text), "$%d", price1);
     add_dependent_text_element(gState->uiPage, relicBg1, add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, relicPrice)));
@@ -3667,7 +3683,7 @@ void add_shop_purchase_menu(u8 isRelic) {
     add_button_to_window(gState->uiPage, windowIndex, nextRoundId);
     add_button_to_window(gState->uiPage, windowIndex, rerollId);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Round Score", 0.26f, 0.1f, -1, true, DEFAULT_FONT_SCALE }));
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.26f, 0.15f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_PURPLE) }, 
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.26f, 0.15f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_PURPLE }, 
         "", 0, UINT_64));
 
     for(i32 i = 0; i < gState->table.numberOfSets; i++) {
@@ -3675,11 +3691,11 @@ void add_shop_purchase_menu(u8 isRelic) {
     }
 
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Tiles Used", 0.74f, 0.1f, -1, true, DEFAULT_FONT_SCALE }));
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.74f, 0.15f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_RED)}, 
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.74f, 0.15f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_RED}, 
         "", 5, UINT_64));
 
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Cash", 0.5f, 0.1f, -1, true, DEFAULT_FONT_SCALE, vec3(R_WHITE) }));
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f, 0.15f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_GOLDEN)}, 
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Cash", 0.5f, 0.1f, -1, true, DEFAULT_FONT_SCALE}));
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f, 0.15f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_GOLDEN}, 
         "$", 3, TextType::UINT_64));
 
     UIElement blur = UIElement{CENTER, -1, -1, 0.5, 0.5, 1.0f, 1.0f};
@@ -3693,17 +3709,17 @@ void add_round_complete_ui() {
     i32 windowIndex = add_window(gState->uiPage, UI_BG_2_T, Anchor::CENTER, vec2(0.12f, 0.85f), vec2(0.5f, 0.0f), vec2(0.5f, 0.07f), R_SILVER, R_DARK_BLUE); 
     
     gState->roundData.roundScore = 0;
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Round Score", 0.5f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(R_WHITE)}));
-    i32 progressIndex = add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_PURPLE)}, 
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Round Score", 0.5f, 0.035f, -1, true, DEFAULT_FONT_SCALE}));
+    i32 progressIndex = add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.5f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_PURPLE}, 
         "", 7, UINT_64);
     
     hoveredSetValue = 0;
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Set Value", 0.25f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(R_WHITE)}));
-    i32 setIndex = add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.25f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_BLUE)}, 
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Set Value", 0.25f, 0.035f, -1, true, DEFAULT_FONT_SCALE}));
+    i32 setIndex = add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.25f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_BLUE}, 
         "", 8, UINT_64);
     
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Cash", 0.75f, 0.035f, -1, true, DEFAULT_FONT_SCALE, vec3(R_WHITE)}));
-    i32 cashIndex = add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.75f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, vec3(R_GOLDEN)}, 
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "Cash", 0.75f, 0.035f, -1, true, DEFAULT_FONT_SCALE}));
+    i32 cashIndex = add_dynamic_text_element(gState->uiPage, TextElement{ Anchor::CENTER, "", 0.75f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_GOLDEN}, 
         "$", 3, UINT_64); 
 
     add_text_to_window(gState->uiPage, windowIndex, setIndex);
@@ -3772,7 +3788,7 @@ void add_main_menu_ui() {
 
     UIElement me = UIElement{ CENTER, gState->uiPage->numberOfImageElements++, ME_TILE_T, 0.1, 0.85f, 0.06f * RENDERING_ASPECT, 0.06f}; 
     me.hasShadow = true;
-    //add_rotate(&me, 2.0f * PI32, 1.0f);
+    add_rotate(&me, 2.0f * PI32, 10.0f);
     me.sheetAnimation = SheetAnimation {2, 1};
     me.sheetAnimation.currentFrame = 0;
     me.sheetAnimation.fps = 16;
@@ -3820,9 +3836,9 @@ void add_options_ui() {
 
     i32 tabs[3] = {general, video, controls};
 
-    TextElement resolution = TextElement{ Anchor::CENTER, "Resolution", 0.5f, 0.225f, -1, false, DEFAULT_FONT_SCALE * 2.5, vec3(1.0f)};
+    TextElement resolution = TextElement{ Anchor::CENTER, "Resolution", 0.5f, 0.225f, -1, false, DEFAULT_FONT_SCALE * 2.5};
     //create entries
-    TextElement resolutionEntry = TextElement{ Anchor::CENTER, "", 0.5f, 0.3f, -1, false, DEFAULT_FONT_SCALE * 2, vec3(1.0f)};
+    TextElement resolutionEntry = TextElement{ Anchor::CENTER, "", 0.5f, 0.3f, -1, false, DEFAULT_FONT_SCALE * 2};
     resolutionEntry.valueId = 9;
     resolutionEntry.numberOfValues = gMemory->numberOfSupportedResolutions;
     resolutionEntry.activeValueId = gMemory->resolutionId; 
@@ -3833,9 +3849,9 @@ void add_options_ui() {
     //
 
     //
-    TextElement videoMode = TextElement{ Anchor::CENTER, "Video mode", 0.5f, 0.425f, -1, false, DEFAULT_FONT_SCALE * 2.5, vec3(1.0f)};
+    TextElement videoMode = TextElement{ Anchor::CENTER, "Video mode", 0.5f, 0.425f, -1, false, DEFAULT_FONT_SCALE * 2.5};
 
-    TextElement videoModeEntry = TextElement{ Anchor::CENTER, "", 0.5f, 0.5f, -1, false, DEFAULT_FONT_SCALE * 2, vec3(1.0f)};
+    TextElement videoModeEntry = TextElement{ Anchor::CENTER, "", 0.5f, 0.5f, -1, false, DEFAULT_FONT_SCALE * 2};
     videoModeEntry.valueId = 10;
     videoModeEntry.numberOfValues = 2;
     videoModeEntry.activeValueId = gMemory->is_full_screen_fn();
@@ -3853,14 +3869,14 @@ void add_options_ui() {
     //
 
     add_tabs_to_window(gState->uiPage, windowIndex, tabs, 3);
-    TextElement vsync = TextElement{ Anchor::CENTER, "Vsync", 0.5f, 0.62f, -1, false, DEFAULT_FONT_SCALE * 2, vec3(1.0f)};
+    TextElement vsync = TextElement{ Anchor::CENTER, "Vsync", 0.5f, 0.62f, -1, false, DEFAULT_FONT_SCALE * 2};
 
-    TextElement viewRelics = TextElement{ TOP_LEFT, "View Relics :", 0.25f, 0.3f, -1, false, DEFAULT_FONT_SCALE * 2, vec3(1.0f)};
-    TextElement relicKey = TextElement{ TOP_RIGHT, "TAB", 0.75f, 0.3f, -1, false, DEFAULT_FONT_SCALE * 2, vec3(1.0f)};
-    TextElement sortColor = TextElement{ TOP_LEFT, "Sort by Color :", 0.25f, 0.4f, -1, false, DEFAULT_FONT_SCALE * 2, vec3(1.0f)};
-    TextElement colorKey = TextElement{ TOP_RIGHT, "C", 0.75f, 0.4f, -1, false, DEFAULT_FONT_SCALE * 2, vec3(1.0f)};
-    TextElement sortNumber = TextElement{ TOP_LEFT, "Sort by Number :", 0.25f, 0.5f, -1, false, DEFAULT_FONT_SCALE * 2, vec3(1.0f)};
-    TextElement numberKey = TextElement{ TOP_RIGHT, "N", 0.75f, 0.5f, -1, false, DEFAULT_FONT_SCALE * 2, vec3(1.0f)};
+    TextElement viewRelics = TextElement{ TOP_LEFT, "View Relics :", 0.25f, 0.3f, -1, false, DEFAULT_FONT_SCALE * 2};
+    TextElement relicKey = TextElement{ TOP_RIGHT, "TAB", 0.75f, 0.3f, -1, false, DEFAULT_FONT_SCALE * 2};
+    TextElement sortColor = TextElement{ TOP_LEFT, "Sort by Color :", 0.25f, 0.4f, -1, false, DEFAULT_FONT_SCALE * 2};
+    TextElement colorKey = TextElement{ TOP_RIGHT, "C", 0.75f, 0.4f, -1, false, DEFAULT_FONT_SCALE * 2};
+    TextElement sortNumber = TextElement{ TOP_LEFT, "Sort by Number :", 0.25f, 0.5f, -1, false, DEFAULT_FONT_SCALE * 2};
+    TextElement numberKey = TextElement{ TOP_RIGHT, "N", 0.75f, 0.5f, -1, false, DEFAULT_FONT_SCALE * 2};
 
     add_text_element_to_tab(gState->uiPage, windowIndex, video, resolution);
     add_text_element_to_tab(gState->uiPage, windowIndex, video, videoMode);
@@ -3905,7 +3921,7 @@ void add_item_window() {
 
     i32 relicDescId = add_ui_element(gState->uiPage, relicDesc);
 
-    TextElement relicDetails = TextElement{ Anchor::CENTER, "", 0, 0, -1, true, DEFAULT_FONT_SCALE, vec3(1.0f)};
+    TextElement relicDetails = TextElement{ Anchor::CENTER, "", 0, 0, -1, true, DEFAULT_FONT_SCALE};
     relicDetails.haveCountAnimation = false;
     relicDetails.visible = false;
     relicDetails.zIndex = 4;
@@ -4034,7 +4050,7 @@ void add_relics_ui() {
         }
     }
 
-    TextElement header = TextElement{ CENTER, "Relics", 0.5f, 0.1f, -1, true, DEFAULT_FONT_SCALE * 2, vec3(1.0f)};
+    TextElement header = TextElement{ CENTER, "Relics", 0.5f, 0.1f, -1, true, DEFAULT_FONT_SCALE * 2};
     header.bounce = true;
     header.typeWriter = true;
     i32 headerId = add_text_element(gState->uiPage, header);
@@ -4250,16 +4266,20 @@ void count_table() {
                 tile->object.baseModel[3][2]
             );
 
-            TextElement bonus = TextElement{ Anchor::CENTER, "", tilePos.x / RENDERING_ASPECT, tilePos.y, -1, true, DEFAULT_FONT_SCALE * 2.0 };
+            UIElement textBg = UIElement{CENTER, -1, -1, tilePos.x / RENDERING_ASPECT, tilePos.y, 0.03f * RENDERING_ASPECT, 0.03f};
+            textBg.color = R_RED;
+            add_rotate(&textBg, PI32, 5.0f);
+            add_fade(&textBg);
+            add_move_animation(&textBg, vec2(tilePos.x / RENDERING_ASPECT, tilePos.y - 0.1f), 0.25f);
+            push_ui_element(textBg);
+          
+            TextElement bonus = TextElement{ CENTER, "", tilePos.x / RENDERING_ASPECT, tilePos.y, -1, true, DEFAULT_FONT_SCALE * 2.0 };
             snprintf(bonus.text, sizeof(bonus.text), "+%d", check_cursed_value(tile, gState->runData.currentRoundType));
-            add_move_animation(&bonus, vec2(tilePos.x / RENDERING_ASPECT, tilePos.y - 0.1f), 0.25f);
-            bonus.color = R_BLACK;
-
-            ActionCommand *tileText = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, TextElement, execute_action);
-            if (tileText) {
-                tileText->action = add_text_to_page;
-                *COMMAND_PAYLOAD(tileText, TextElement) = bonus;
-            }
+            add_move_text_animation(&bonus, vec2(tilePos.x / RENDERING_ASPECT, tilePos.y - 0.1f), 0.25f);
+            bonus.color = R_WHITE;
+            add_pop_animation(&bonus, 1.0f);
+            add_fade(&bonus);
+            push_text_element(bonus);
 
             ActionCommand *shake = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, sizeof(f32), execute_action);
             if (shake) {
@@ -4271,7 +4291,6 @@ void count_table() {
             
             //adds tile number to hoveredset
             add_set_value_to_hovered_set(check_cursed_value(tile, gState->runData.currentRoundType));
-
             push_wait(&gState->cmdQueue, 0.1f);
         }
         
