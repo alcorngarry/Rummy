@@ -69,6 +69,7 @@ struct RenderEntryUIText {
     u8 bounce;
     u8 typeWriter;
     f32 typeWriterStart;
+    f32 rotation;
 };
 
 struct RenderEntryUIImage {

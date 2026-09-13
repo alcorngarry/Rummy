@@ -395,12 +395,13 @@ void move_text_element(UIPage *page, TextElement* element, f32 deltaTime) {
 
                 f32 t = glm::clamp(a->elapsed / a->duration, 0.0f, 1.0f);
                 f32 pop = sinf(t * PI32);
-                f32 amplitude = 1.5f;
+                f32 amplitude = 0.25f;
 
                 element->scale = a->start.x * (1.0f + pop * amplitude);
 
                 if (t >= 1.0f) {
                     a->complete = true;
+                    element->scale = a->start.x;
                 }
                 break;
             } 
@@ -430,6 +431,44 @@ void move_text_element(UIPage *page, TextElement* element, f32 deltaTime) {
                     eased
                 );
                 break;
+            }
+            case SHAKE: {
+                a->elapsed += deltaTime;
+
+                f32 t = glm::clamp(a->elapsed / a->duration, 0.0f, 1.0f);
+
+                f32 shake = sinf(t * PI32 * 3.0f);
+                f32 amplitude = glm::radians(8.0f);
+
+                element->rotation = shake * amplitude;
+
+                if (t >= 1.0f) {
+                    element->rotation = 0.0f;
+                    a->complete = true;
+                }
+
+                break;
+            } 
+            case ROTATE: {
+                if(a->complete) continue;
+
+                a->elapsed += deltaTime;
+
+                f32 t = a->elapsed / a->duration;
+
+                if(t >= 1.0f) {
+                    t = 1.0f;
+
+                    if(a->playOnce) {
+                        a->complete = true;
+                    } else {
+                        a->elapsed = 0.0f;
+                    }
+                }
+
+                f32 eased = ease(t, a->ease);
+
+                element->rotation = glm::mix(a->start.x, a->destination.x, eased);
             }
         }
 
@@ -553,6 +592,8 @@ void update(UIPage *page, TextElement* text, f32 deltaTime) {
             a->complete = false;
 
             text->prevValue = currValue;
+            add_pop_animation(text, 0.25f);
+            add_shake_animation(text, 0.25f);
         } else {
             set_text_value(text, currValue);
         }
@@ -1050,8 +1091,21 @@ void add_pop_animation(TextElement *e, f32 duration) {
     Animation a = {};
     a.duration = duration;
     a.animationType = POP;
-    a.start = vec2(e->scale);
+    a.start = vec2(e->baseScale);
     a.autoAnimate = true;
+    *add_animation(e->animations, &e->numberOfAnimations) = a;
+}
+
+void add_shake_animation(TextElement *e, f32 duration) {
+    Animation a = {};
+
+    a.animationType = SHAKE;
+    a.start = vec2(e->rotation);
+    a.duration = duration;
+    a.autoAnimate = true;
+    a.playOnce = true;
+    a.complete = false;
+
     *add_animation(e->animations, &e->numberOfAnimations) = a;
 }
 
@@ -1206,6 +1260,7 @@ void add_image_to_window(UIPage *page, i32 windowId, i32 elementId) {
 i32 add_text_to_window(UIPage *page, i32 windowId, i32 elementId) {
     UIElement *window = &page->uiElements[windowId];
     TextElement *text = &page->textElements[elementId];
+    text->baseScale = text->scale;
 
     i32 windowAnimationIndex = window->numberOfAnimations - 1;
     if(windowAnimationIndex < 0) assert("Window animation index negative!");
@@ -1324,7 +1379,7 @@ void button_release(UIPage *page, void* ptr) {
 
 i32 add_text_element(UIPage* page, TextElement text) {
     if (page->numberOfTextElements >= MAX_ELEMENTS) assert("Too many UI text elements");
-
+    text.baseScale = text.scale;
     i32 index = page->numberOfTextElements;
     text.id = index;
     page->textElements[page->numberOfTextElements] = text;

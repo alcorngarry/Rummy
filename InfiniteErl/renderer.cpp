@@ -294,7 +294,8 @@ void push_ui_page(RenderBuffer* buffer, UIPage* uiPage) {
                     element->hasShadow,
                     element->bounce,
                     element->typeWriter,
-                    element->typeWriterStart
+                    element->typeWriterStart,
+                    element->rotation
                 };
 
                 //ugly
@@ -643,6 +644,8 @@ static void draw_text(RenderEntryUIText *text) {
     textShader->setMat4("projection", context.projection);
     textShader->setBool("bounce", text->bounce);
     textShader->setFloat("time", context.totalTime);
+    textShader->setFloat("rotation", text->rotation);
+    textShader->setVec2("center", vec2(text->posx * RENDERING_ASPECT, text->posy));
     
     f32 shadowOffset = 0.002f;
     i32 visibleCharacters = INT_MAX;
@@ -688,6 +691,7 @@ static void draw_text(RenderEntryUIText *text) {
                 lineWidth += wordWidth;
 
                 if (*wordEnd == ' ') {
+
                     lineWidth += font.characters[' ']->advance * pixelScale;
                     wordEnd++;
                 }

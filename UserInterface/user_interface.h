@@ -50,7 +50,8 @@ enum AnimationType {
   SCALE,
   COLOR_SHIFT,
   ROTATE,
-  FADE
+  FADE,
+  SHAKE
 };
 
 enum CursorType {
@@ -166,6 +167,8 @@ struct TextElement {
   u8 bounce = false;
   u8 typeWriter = false;
   f32 typeWriterStart = -1.0f;
+  f32 baseScale = 0.001;
+  f32 rotation = 0.0f;
 };
 
 struct UIPage {
@@ -232,6 +235,7 @@ void add_bob(UIElement *element, u8 tied = false);
 void add_rotate(UIElement *element, f32 amount = 0.05f, f32 duration = 2.0f);
 void add_fade(UIElement *element);
 void add_fade(TextElement *element);
+void add_shake_animation(TextElement *e, f32 duration);
 
 void add_cursor(UIPage *page, i32 cursorHandle, vec4 color, CursorType type);
 i32 add_tab(UIPage *page, i32 tabHandle, const char* text, vec4 color, f32 fontScale = 1.0f);

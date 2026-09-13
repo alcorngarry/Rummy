@@ -548,6 +548,8 @@ u8 player_has_at_least_ten_dollars(void *ptr) {
 }
 
 u8 head_start(void *ptr) {
+    // so this can have an issue need to figure out why, can't grab ItemData sometimes
+    // do not think it is specific to this action
     ItemData actionData = * (ItemData *)ptr;
     if(!actionData.set) return true;
 
