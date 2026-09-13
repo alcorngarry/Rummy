@@ -263,7 +263,9 @@ void push_ui_page(RenderBuffer* buffer, UIPage* uiPage) {
                     element->isPanel,
                     element->hovered && element->hoverColor.x != -1 ? element->hoverColor : element->color,
                     element->hovered,
-                    element->hasShadow
+                    element->hasShadow,
+                    element->zIndex,
+                    element->rotation
                 };
 
                 push_ui_image(buffer, &image);
@@ -614,12 +616,11 @@ static void draw_entity(RenderEntryEntity *entity) {
 
         itemShader->setInt("cols", (i32)entity->cols);
         itemShader->setInt("rows", (i32)entity->rows);
+        itemShader->setBool("glow", entity->glow);
+        itemShader->setFloat("time", context.totalTime);
 
         itemShader->setBool("tiled", entity->tiled);
         itemShader->setVec2("tileCount", entity->tileCount);
-
-        //is this needed?
-        itemShader->setVec2("scrollOffset", vec2(0.0f));
     }
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, textureId);
@@ -648,7 +649,7 @@ static void draw_text(RenderEntryUIText *text) {
 
     if (text->typeWriter) {
         f32 elapsed = context.totalTime - text->typeWriterStart;
-        visibleCharacters = (i32)(elapsed * 20.0f);
+        visibleCharacters = (i32)(elapsed * 40.0f);
     }
 
     glActiveTexture(GL_TEXTURE0);
@@ -856,10 +857,10 @@ static void draw_image_ui(RenderEntryUIImage *image) {
     uiShader->setBool("isPanel", image->isPanel);
     uiShader->setVec4("color", image->color);
     //now this is actual garbage
-    uiShader->setBool("flipped", image->isHovered);
     uiShader->setBool("useColorOnly", textureId == -1);
     uiShader->setVec2("resolution", context.windowSize);
     uiShader->setVec2("size", vec2(image->width, image->height));
+    uiShader->setFloat("rotation", image->rotation);
 
     f32 px = image->posx;
     f32 py = image->posy;

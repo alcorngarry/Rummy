@@ -13,7 +13,7 @@
 #define RELIC_ROWS 5
 #define RELIC_COLUMNS 3
 
-#define TOTAL_ACTIVES 6
+#define TOTAL_ACTIVES 7
 #define MAX_ACTIVES 24
 #define ACTIVE_ROWS 3
 #define ACTIVE_COLUMNS 3

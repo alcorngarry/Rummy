@@ -33,6 +33,7 @@
 #define ROUND_SHEEN_T 25
 #define LOCKED_T 26
 #define CURSOR_T 27
+#define ME_TILE_T 28
 
 #ifdef BUILD_DLL
 #define GAME_DLL __declspec(dllexport)

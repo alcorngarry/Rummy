@@ -89,6 +89,7 @@ struct RenderEntryUIImage {
     u8 isHovered;
     u8 hasShadow;
     u8 zIndex;
+    f32 rotation;
 };
 
 struct RenderEntryPostProcess {
@@ -143,10 +144,6 @@ void render_buffer(RenderBuffer* buffer);
 f32 get_text_length(const char* text, f32 scale);
 void load_fonts();
 void load_shaders();
-
-void draw_entity(RenderEntryEntity *entity);
-void draw_text(Anchor anchor, char* text, f32 posx, f32 posy, f32 scale, f32 maxWidth, vec3 color, mat4 projection, u8 hasShadow, u8 bounce, u8 typeWriter, f32 typeWriterStart);
-void draw_image_ui(Anchor anchor, i32 textureId, f32 posx, f32 posy, f32 width, f32 height, i32 cols, i32 rows, i32 currentFrame, u8 isAnimated, u32 vao, u8 isPanel, vec4 color, u8 isHovered, vec2 windowSize, u8 hasShadow);
 
 void load_texture(i32 id, const char* filePath, u8 isMipMapped, u8 isFlipped, u8 repeated);
 u32 load_quad_buffer(f32* vertices, i32 vertexCount, u32* indices, i32 indexCount);

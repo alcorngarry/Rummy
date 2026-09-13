@@ -48,7 +48,8 @@ enum AnimationType {
   BOB,
   POP,
   SCALE,
-  COLOR_SHIFT
+  COLOR_SHIFT,
+  ROTATE
 };
 
 enum CursorType {
@@ -122,6 +123,7 @@ struct UIElement {
   //make a hover action..
   u8 isHoverable = true;
   ElementType type = DEFAULT;
+  f32 rotation = 0.0f;
 };
 
 enum TextType {
@@ -224,6 +226,7 @@ void add_pop_animation(TextElement *e, f32 duration);
 void add_pop_animation(UIElement *e, f32 duration);
 void add_text_bob(TextElement *element);
 void add_bob(UIElement *element, u8 tied = false);
+void add_rotate(UIElement *element, f32 amount = 0.05f, f32 duration = 2.0f);
 void add_cursor(UIPage *page, i32 cursorHandle, vec4 color, CursorType type);
 i32 add_tab(UIPage *page, i32 tabHandle, const char* text, vec4 color, f32 fontScale = 1.0f);
 void add_tabs_to_window(UIPage *page, i32 windowId, i32 *tabIds, i32 numberOfTabs);

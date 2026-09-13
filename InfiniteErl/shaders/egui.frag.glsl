@@ -8,7 +8,6 @@ uniform sampler2D Texture;
 uniform int rows;
 uniform int cols;
 uniform bool isPanel;
-uniform bool flipped;
 uniform vec2 size;
 uniform vec4 color;
 uniform bool useColorOnly;
@@ -75,10 +74,6 @@ void main() {
             
         uv = sectionUV;
         
-    }
-
-    if(flipped) {
-      //uv = 1.0f - uv;
     }
 
     if(color.x != -1.0f) {

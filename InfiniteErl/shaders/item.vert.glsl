@@ -11,7 +11,6 @@ uniform bool useSpriteSheet;
 uniform int frameIndex;
 uniform int cols;
 uniform int rows;
-uniform vec2 scrollOffset;
 
 out vec2 TexCoord;
 
@@ -33,6 +32,6 @@ void main()
         TexCoord = aTexCoord * vec2(frameW, frameH) + offset;
     }
     else {
-        TexCoord = aTexCoord + scrollOffset;
+        TexCoord = aTexCoord;
     }
 }

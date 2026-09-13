@@ -697,6 +697,21 @@ u8 add_new_joker(void *ptr) {
     return false;
 }
 
+u8 add_new_bridge(void *ptr) {
+    for(i32 i = 0; i < gState->pool.numberOfTiles; ++i) {
+        Tile *t = gState->pool.tiles[i]; 
+
+        if(t->details.tileNumber == 15) {
+            remove_tile_from_pool(i);
+            add_tile_to_rack(t);
+            toggle_actives();
+            snapshot_round_start();
+            return true;
+        }
+    }
+    return false;
+}
+
 //make this passive
 //u8 allow_wrap(void *ptr) {
 
@@ -757,7 +772,8 @@ Item ACTIVE_TABLE[TOTAL_ACTIVES] = {
     { COMMON, "Discard", "Discard one tile from the rack.", 1, 1, 1, nullptr, discard},
     { COMMON, "'Peak' Next 5", "'Peak' at next five draws from the pool.", 1, 1, 1, nullptr, show_next_five_in_pool},
     { RARE, "Color Wheel", "Repaint one tile's color.", 2, 1, 1, nullptr, repaint_tile},
-    { RARE, "Rainbow Run", "One run on the table is able to ignore tile color.", 2, 1, 1, nullptr, allow_rainbow_run}
+    { RARE, "Rainbow Run", "One run on the table is able to ignore tile color.", 2, 1, 1, nullptr, allow_rainbow_run},
+    { RARE, "Bridge Tile +1", "Adds a bridge tile to your rack.", 2, 1, 1, nullptr, add_new_bridge}
 };
 
 void create_actives() {
@@ -1264,8 +1280,9 @@ void draw_pool() {
       glm::scale(gState->pool.object.model, gState->player.heldActiveId != -1 ? vec3(2.2f, 2.2f, 1.0f) : vec3(2.0f, 2.0f, 1.0f)),
         gState->quadMesh,
         POOL_T,
-        R_WHITE
+        gState->player.heldActiveId != -1 ? R_GOLDEN : R_WHITE
     };
+    sides.glow = gState->player.heldActiveId != -1;
 
     gMemory->push_entity_fn(gMemory->renderBuffer, &sides);
 
@@ -3753,6 +3770,14 @@ void add_main_menu_ui() {
         add_ui_element(gState->uiPage, side);
     }
 
+    UIElement me = UIElement{ CENTER, gState->uiPage->numberOfImageElements++, ME_TILE_T, 0.1, 0.85f, 0.06f * RENDERING_ASPECT, 0.06f}; 
+    me.hasShadow = true;
+    //add_rotate(&me, 2.0f * PI32, 1.0f);
+    me.sheetAnimation = SheetAnimation {2, 1};
+    me.sheetAnimation.currentFrame = 0;
+    me.sheetAnimation.fps = 16;
+    me.sheetAnimation.trigger = true;
+    add_ui_element(gState->uiPage, me);
     
     add_text_element(gState->uiPage, TextElement{ CENTER, "v-0.0.01", 0.95f, 0.95f, -1, true, DEFAULT_FONT_SCALE});
 }
@@ -4645,26 +4670,27 @@ extern "C" GAME_DLL void game_update_and_render() {
     gState->deltaTime = gMemory->renderBuffer->deltaTime;
     execute_queue(&gState->cmdQueue);
 
-    switch(gState->mode) {
-        case GM_IN_GAME : {
-            draw_table();
-            draw_pool();
-            draw_player_rack();
-            draw_held_tile();
-            draw_held_active();
-            break;
-        }
-        case GM_ROUND_COMPLETE : {
-            draw_table();
-            draw_player_rack();
-            break;
-        }  
-        case GM_GAME_OVER : {
-            draw_table();
-            draw_player_rack();
-            draw_background();
-            break;
-        }
+      switch(gState->mode) {
+          case GM_IN_GAME : {
+              draw_table();
+              draw_pool();
+              draw_player_rack();
+              draw_held_tile();
+              draw_held_active();
+              break;
+          }
+          case GM_ROUND_COMPLETE : {
+              draw_table();
+              draw_pool();
+              draw_player_rack();
+              break;
+          }  
+          case GM_GAME_OVER : {
+              draw_table();
+              draw_player_rack();
+              draw_background();
+              break;
+          }
         case GM_START_MENU : {
             draw_background();
             break;

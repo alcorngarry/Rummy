@@ -225,6 +225,26 @@ void move_element(UIPage *page, UIElement* element, f32 deltaTime) {
 
             element->width = scale.x;
             element->height = scale.y;
+        } else if(a->animationType == ROTATE) {
+            if(a->complete) continue;
+
+            a->elapsed += deltaTime;
+
+            f32 t = a->elapsed / a->duration;
+
+            if(t >= 1.0f) {
+                t = 1.0f;
+
+                if(a->playOnce) {
+                    a->complete = true;
+                } else {
+                    a->elapsed = 0.0f;
+                }
+            }
+
+            f32 eased = ease(t, a->ease);
+
+            element->rotation = glm::mix(a->start.x, a->destination.x, eased);
         }
 
         if(a->blocking) break;
@@ -750,6 +770,22 @@ void add_bob(UIElement *element, u8 tied) {
 
     if(!tied) randomBob = randomBob >= duration ? 0.0f : randomBob + 2.0f;
     a->elapsed = randomBob;
+
+    a->autoAnimate = true;
+    a->loopAnimation = true;
+    a->playOnce = false;
+    a->complete = false;
+}
+
+void add_rotate(UIElement *element, f32 amount, f32 duration) {
+    Animation *a = add_animation(element->animations, &element->numberOfAnimations);
+
+    a->animationType = ROTATE;
+    a->start = vec2(element->rotation, 0.0f);
+    a->destination = vec2(amount, 0.0f);
+    a->duration = duration;
+
+    a->elapsed = 0.0f;
 
     a->autoAnimate = true;
     a->loopAnimation = true;

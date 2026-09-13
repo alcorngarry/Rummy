@@ -497,6 +497,7 @@ void load_textures() {
     load_texture(ROUND_SHEEN_T, "./res/round-sheen.png", true, false, false);
     load_texture(LOCKED_T, "./res/locked-tile.png", true, false, false);
     load_texture(CURSOR_T, "./res/cursor-sheet.png", true, false, false);
+    load_texture(ME_TILE_T, "./res/meTile.png", true, false, false);
 }
 
 VideoSettings load_video_settings() {

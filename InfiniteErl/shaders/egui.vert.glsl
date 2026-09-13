@@ -13,12 +13,27 @@ uniform bool useSpriteSheet;
 uniform int frameIndex;
 uniform int cols;
 uniform int rows;
+uniform float rotation;
 
-void main()
-{
-    vec2 worldPos = pos + aPos * size;
+vec2 rotate_point(vec2 point, vec2 center, float angle) {
+    float c = cos(angle);
+    float s = sin(angle);
+
+    point -= center;
+
+    point = vec2(
+        point.x * c - point.y * s,
+        point.x * s + point.y * c
+    );
+
+    return point + center;
+}
+
+void main() {
+    vec2 rotatedPos = rotate_point(aPos, vec2(0.5), rotation);
+    vec2 worldPos = pos + rotatedPos * size;
+
     gl_Position = projection * vec4(worldPos, 0.0, 1.0);
-
     localUV = aTexCoords;
 
     if (useSpriteSheet) {
