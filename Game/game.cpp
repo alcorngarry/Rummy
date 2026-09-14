@@ -623,7 +623,7 @@ Item RELIC_TABLE[TOTAL_RELICS] = {
     //{ RARE, "Wrap", "Allows runs to wrap around from highest to lowest tile.", 2, -1, -1, no_condition, add_wrap_rule }
    // { RARE, "Crok Jock", "TO DO ADD HERE", 2, 1, 1, set_even_condition, addition_action }
     { COMMON, "Big Saver", "Gain %1 bonus for every $10 you have.", 1, 2, 20, player_has_at_least_ten_dollars, no_condition, big_saver },
-    { COMMON, "Head Start", "First wild tile drawn has double the value.", 1, -1, 20, no_condition, head_start },
+    { COMMON, "Head Start", "First wild tile drawn has double the value.", 1, 1, 20, no_condition, head_start },
     { COMMON, "Costly", "Wild tiles have triple the value but cost $1 when played.", 1, 2, 20, no_condition, costly, costly_post_round },
     { COMMON, "Se7en", "Sets with a 7 tile get a %20 set value increase.", 1, 2, -20, contains_seven, addition_action },
     { COMMON, "INTERESTing", "Every round gain %3 interest on total cash.", 1, 2, 20, no_condition, no_condition, interesting },
@@ -2168,7 +2168,6 @@ vec2 world_to_ui(mat4 model, mat4 view, mat4 projection) {
 void update_set_ui(Set *set) {
     //if(hoveredSetValue == set->value) return;
     //something better..
-    
     if(!set) {
         TextElement* text = get_text_element_by_parent_id(gState->uiPage, 99);
         text->visible = false;

@@ -271,6 +271,40 @@ void move_element(UIPage *page, UIElement* element, f32 deltaTime) {
                 a->destination.x,
                 eased
             );
+        } else if(a->animationType == SHAKE) {
+            a->elapsed += deltaTime;
+
+            f32 t = glm::clamp(a->elapsed / a->duration, 0.0f, 1.0f);
+
+            f32 shake = sinf(t * PI32 * 3.0f);
+            f32 amplitude = glm::radians(8.0f);
+
+            element->rotation = shake * amplitude;
+
+            if (t >= 1.0f) {
+                element->rotation = 0.0f;
+                a->complete = true;
+            }
+
+            break;
+        } else if(a->animationType == POP) { 
+            if(a->complete) continue;
+
+            a->elapsed += deltaTime;
+
+            f32 t = glm::clamp(a->elapsed / a->duration, 0.0f, 1.0f);
+            f32 pop = sinf(t * PI32);
+            f32 amplitude = 0.25f;
+
+            element->width  = a->start.x * (1.0f + pop * amplitude);
+            element->height = a->start.y * (1.0f + pop * amplitude);
+
+            if(t >= 1.0f) {
+                a->complete = true;
+                element->width = a->start.x;
+                element->height = a->start.y;
+            }
+            break;
         }
 
         if(a->blocking) break;
@@ -574,7 +608,7 @@ void update(UIPage *page, TextElement* text, f32 deltaTime) {
         //}
     }
 
-    if (!page->values[text->valueId] || text->type == TextType::NONE) return;
+    if (!page->values[text->valueId] || text->type == NONE) return;
 
     f64 currValue = get_converted_text_type(text->type, page->values[text->valueId]);
 
@@ -601,7 +635,9 @@ void update(UIPage *page, TextElement* text, f32 deltaTime) {
 }
 
 Animation* add_animation(Animation* animations, u8* count) {
-    if (*count >= MAX_ANIMATIONS) assert("Too many animations");
+    if (*count >= MAX_ANIMATIONS) {
+        printf("Too many animations\n");
+    }
     return &animations[(*count)++];
 }
 
@@ -794,6 +830,7 @@ void add_text_bob(TextElement *element) {
     f32 duration = 5.0f;
 
     Animation *a = add_animation(element->animations, &element->numberOfAnimations);
+    if(!a) return;
 
     a->animationType = BOB;
     a->start = vec2(element->posx, element->posy);
@@ -813,6 +850,7 @@ void add_bob(UIElement *element, u8 tied) {
     f32 duration = 5.0f;
 
     Animation *a = add_animation(element->animations, &element->numberOfAnimations);
+    if(!a) return;
 
     a->animationType = BOB;
     a->start = vec2(element->posx, element->posy);
@@ -833,6 +871,7 @@ void add_fade(UIElement *element) {
         element->animations,
         &element->numberOfAnimations
     );
+    if(!a) return;
 
     a->animationType = FADE;
     a->start = vec2(element->color.a, 0.0f);
@@ -851,6 +890,7 @@ void add_fade(TextElement *element) {
         element->animations,
         &element->numberOfAnimations
     );
+    if(!a) return;
 
     a->animationType = FADE;
     a->start = vec2(element->color.a, 0.0f);
@@ -866,6 +906,7 @@ void add_fade(TextElement *element) {
 
 void add_rotate(UIElement *element, f32 amount, f32 duration) {
     Animation *a = add_animation(element->animations, &element->numberOfAnimations);
+    if(!a) return;
 
     a->animationType = ROTATE;
     a->start = vec2(element->rotation, 0.0f);
@@ -1064,30 +1105,36 @@ void next_switch(UIPage *page, void *ptr) {
 
 void add_move_animation(UIPage *page, i32 elementId, vec2 destination) {
     UIElement *e = &page->uiElements[elementId];
+    if(e->numberOfAnimations == MAX_ANIMATIONS) return;
+
     Animation a = Animation{destination, vec2(e->posx, e->posy)};
     *add_animation(e->animations, &e->numberOfAnimations) = a;
 }
 
 void add_move_text_animation(UIPage *page, i32 elementId, vec2 destination, f32 speed) {
     TextElement *e = &page->textElements[elementId];
+    if(e->numberOfAnimations == MAX_ANIMATIONS) return;
     Animation a = Animation{destination, vec2(e->posx, e->posy), true};
     a.duration = speed;
     e->animations[e->numberOfAnimations++] = a;
 }
 
 void add_move_text_animation(TextElement *e, vec2 destination, f32 speed) {
+    if(e->numberOfAnimations == MAX_ANIMATIONS) return;
     Animation a = Animation{destination, vec2(e->posx, e->posy), true};
     a.duration = speed;
     *add_animation(e->animations, &e->numberOfAnimations) = a;
 }
 
 void add_move_animation(UIElement *e, vec2 destination, f32 speed) {
+    if(e->numberOfAnimations == MAX_ANIMATIONS) return;
     Animation a = Animation{destination, vec2(e->posx, e->posy), true};
     a.duration = speed;
     *add_animation(e->animations, &e->numberOfAnimations) = a;
 }
 
 void add_pop_animation(TextElement *e, f32 duration) {
+    if(e->numberOfAnimations == MAX_ANIMATIONS) return;
     Animation a = {};
     a.duration = duration;
     a.animationType = POP;
@@ -1096,9 +1143,34 @@ void add_pop_animation(TextElement *e, f32 duration) {
     *add_animation(e->animations, &e->numberOfAnimations) = a;
 }
 
-void add_shake_animation(TextElement *e, f32 duration) {
+void add_pop_animation(UIElement *e, f32 duration) {
+    if(e->numberOfAnimations == MAX_ANIMATIONS) return;
     Animation a = {};
+    a.duration = duration;
+    a.animationType = POP;
+    a.start = vec2(e->width, e->height);
+    a.autoAnimate = true;
+    *add_animation(e->animations, &e->numberOfAnimations) = a;
+}
 
+void add_shake_animation(TextElement *e, f32 duration) {
+    if(e->numberOfAnimations == MAX_ANIMATIONS) return;
+
+    Animation a = {};
+    a.animationType = SHAKE;
+    a.start = vec2(e->rotation);
+    a.duration = duration;
+    a.autoAnimate = true;
+    a.playOnce = true;
+    a.complete = false;
+
+    *add_animation(e->animations, &e->numberOfAnimations) = a;
+}
+
+void add_shake_animation(UIElement *e, f32 duration) {
+    if(e->numberOfAnimations == MAX_ANIMATIONS) return;
+
+    Animation a = {};
     a.animationType = SHAKE;
     a.start = vec2(e->rotation);
     a.duration = duration;

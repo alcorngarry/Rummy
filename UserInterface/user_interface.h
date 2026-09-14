@@ -5,7 +5,7 @@
 #define MAX_ELEMENTS 164
 #define DEFAULT_FONT_SCALE 0.0006f
 #define MAX_DEP_TEXT 50
-#define MAX_ANIMATIONS 8
+#define MAX_ANIMATIONS 24
 
 struct UIPage;
 typedef void (*UISelfActionFuncPtr)(UIPage *page, void* self);
@@ -236,6 +236,7 @@ void add_rotate(UIElement *element, f32 amount = 0.05f, f32 duration = 2.0f);
 void add_fade(UIElement *element);
 void add_fade(TextElement *element);
 void add_shake_animation(TextElement *e, f32 duration);
+void add_shake_animation(UIElement *e, f32 duration);
 
 void add_cursor(UIPage *page, i32 cursorHandle, vec4 color, CursorType type);
 i32 add_tab(UIPage *page, i32 tabHandle, const char* text, vec4 color, f32 fontScale = 1.0f);
