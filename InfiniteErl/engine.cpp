@@ -159,7 +159,7 @@ GameMemory allocate_game_memory(RenderBuffer* buffer) {
 
     memory.shouldWindowClose = false;
     memory.toggleFullScreen = false;
-    memory.toggleVsync = false;
+    memory.toggleVsync = true;
 
     memory.resolutionId = windowResolutionId;
     memory.supportedResolutions = supportedResolutions;
@@ -182,9 +182,12 @@ void update_video_settings(GameMemory *memory) {
     }
 
     if(memory->toggleVsync) {
-        videoSettings.vsync = !videoSettings.vsync;
-        glfwSwapInterval(videoSettings.vsync); 
-        memory->toggleVsync = false;
+        //videoSettings.vsync = !videoSettings.vsync;
+        //glfwSwapInterval(videoSettings.vsync); 
+        //memory->toggleVsync = false;
+
+
+        glfwSwapInterval(true); 
     }
 }
 

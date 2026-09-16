@@ -80,7 +80,14 @@ void main() {
         if(useColorOnly) {
             FragColor = vec4(color.rgb * color.a, color.a); 
         } else {
-            FragColor = applyShadow(texture(Texture, uv) * color);
+            //FragColor = applyShadow(texture(Texture, uv) * color);
+            vec4 tex = texture(Texture, uv);
+
+            tex.rgb *= color.rgb;
+            tex.rgb *= color.a;
+            tex.a   *= color.a;
+
+            FragColor = applyShadow(tex);
         }
     } else {
         FragColor = applyShadow(texture(Texture, uv));

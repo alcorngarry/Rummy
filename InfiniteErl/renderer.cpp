@@ -60,7 +60,7 @@ void load_fonts() {
         printf("ERROR::FREETYPE: Could not init FreeType Library\n");
     }
     FT_Face face;
-    FT_Error e = FT_New_Face(ft, "./fonts/m6x11.ttf", 0, &face);
+    FT_Error e = FT_New_Face(ft, "./fonts/tandy-test.ttf", 0, &face);
     if (e) {
         printf("ERROR::FREETYPE: Failed to load font (code: %d)\n", e);
     }
@@ -661,7 +661,7 @@ static void draw_text(RenderEntryUIText *text) {
 
     for (i32 pass = text->hasShadow ? 0 : 1; pass < 2; ++pass) {
         u8 shadowPass = (pass == 0);
-        textShader->setVec4("textColor", shadowPass ? vec4(0.0f, 0.0f, 0.0f, text->color.a * 0.2f) : text->color);
+        textShader->setVec4("textColor", shadowPass ? vec4(0.0f, 0.0f, 0.0f, text->color.a * 0.3f) : text->color);
         f32 drawPosX = text->posx + (shadowPass ? shadowOffset : 0.0f);
         f32 drawPosY = text->posy + (shadowPass ? shadowOffset : 0.0f); 
 

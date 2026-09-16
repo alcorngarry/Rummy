@@ -219,10 +219,10 @@ RoundData create_round_data(ROUND_TYPE roundType, u64 round) {
             return RoundData {20, 100 * round, 0, nullptr, check_min_score_lose, "Reach target score when black tiles are not counted towards the total.", 8, 2};
         }
         case NO_ACTIVES: {
-            return RoundData {20, 100 * round, 0, nullptr, check_min_score_lose, "Reach target score when actives are ignored.", 8, 2};
+            return RoundData {20, 50 * round, 0, nullptr, check_min_score_lose, "Reach target score when actives are ignored.", 8, 2};
         }
         case NO_PASSIVES: {
-            return RoundData {20, 100 * round, 0, nullptr, check_min_score_lose, "Reach target score when passives are ignored.", 8, 2};
+            return RoundData {20, 50 * round, 0, nullptr, check_min_score_lose, "Reach target score when passives are ignored.", 8, 2};
         }
     }
     

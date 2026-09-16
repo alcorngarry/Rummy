@@ -70,6 +70,7 @@ void add_map_ui();
 void populate_challenges(i32 *arr);
 void remove_tile_from_pool(i32 id);
 void init_cursor(vec2 pos);
+u8 remove_cash(void *ptr);
 
 // validations.cpp
 i32 get_high_tile_number(Set *set);
@@ -408,17 +409,28 @@ vec4 rarity_to_color(Rarity rarity) {
     }
 }
 
-void add_multiplier_animation(Set *set, i32 value) {
+void add_multiplier_animation(Set *set, i32 value, i32 relicId) {
     vec2 setPos = world_to_ui(
         set->object.model,
         gMemory->renderBuffer->view,
         gMemory->renderBuffer->projection        
     );
 
-    TextElement multiplier = TextElement{ Anchor::CENTER, "", setPos.x, setPos.y - 0.1f, -1, true, DEFAULT_FONT_SCALE * 3.0 };
+//    UIElement textBg = UIElement{CENTER, -1, -1, setPos.x, setPos.y, 0.1f * RENDERING_ASPECT, 0.1f};
+//    textBg.color = R_DARK_SLATE;
+//    add_rotate(&textBg, PI32, 5.0f);
+//    add_fade(&textBg);
+//    add_move_animation(&textBg, vec2(setPos.x, setPos.y - 0.1f), 0.25f);
+//    push_ui_element(textBg);
+
+    TextElement multiplier = TextElement{ Anchor::CENTER, "", setPos.x - 0.025f, setPos.y, -1, true, DEFAULT_FONT_SCALE * 3.0 };
     multiplier.color = R_RED;
     snprintf(multiplier.text, sizeof(multiplier.text), "x%d", value);
+    add_move_text_animation(&multiplier, vec2(setPos.x - 0.025f, setPos.y - 0.1f), 0.25f);
     add_pop_animation(&multiplier, 0.4f);
+    add_shake_animation(&multiplier, 0.1f);
+    add_fade(&multiplier);
+
 
     ActionCommand *setText = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, TextElement, execute_action);
     if (setText) {
@@ -426,25 +438,65 @@ void add_multiplier_animation(Set *set, i32 value) {
         *COMMAND_PAYLOAD(setText, TextElement) = multiplier;
     }
 
+    UIElement relic =  UIElement{ Anchor::CENTER, -1, RELICS_T, setPos.x + 0.025f, setPos.y, 0.05f * RENDERING_ASPECT, 0.05f};
+    relic.sheetAnimation = SheetAnimation{RELIC_COLUMNS, RELIC_ROWS};
+    relic.sheetAnimation.currentFrame = relicId;
+    relic.color = R_WHITE;
+    add_move_animation(&relic, vec2(setPos.x + 0.025f, setPos.y - 0.1f), 0.25f);
+    add_fade(&relic);
+    add_shake_animation(&relic, 0.1f);
+    add_pop_animation(&relic, 0.4f);
+
+    ActionCommand *setRelic = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, UIElement, execute_action);
+    if (setRelic) {
+        setRelic->action = add_image_to_page;
+        *COMMAND_PAYLOAD(setRelic, UIElement) = relic;
+    }
+
     push_wait(&gState->cmdQueue, 0.75f);
 }
 
-void add_addition_animation(Set *set, i32 value) {
+void add_addition_animation(Set *set, i32 value, i32 relicId) {
     vec2 setPos = world_to_ui(
         set->object.model,
         gMemory->renderBuffer->view,
         gMemory->renderBuffer->projection        
     );
+//
+//    UIElement textBg = UIElement{CENTER, -1, -1, setPos.x, setPos.y, 0.04f * RENDERING_ASPECT, 0.04f};
+//    textBg.color = R_DARK_SLATE;
+//    add_rotate(&textBg, PI32, 5.0f);
+//    add_fade(&textBg);
+//    add_move_animation(&textBg, vec2(setPos.x, setPos.y - 0.1f), 0.25f);
+//    push_ui_element(textBg);
 
-    TextElement multiplier = TextElement{ Anchor::CENTER, "", setPos.x, setPos.y - 0.1f, -1, true, DEFAULT_FONT_SCALE * 3.0 };
+    TextElement multiplier = TextElement{ Anchor::CENTER, "", setPos.x - 0.025f, setPos.y, -1, true, DEFAULT_FONT_SCALE * 3.0 };
     multiplier.color = R_BLUE;
     snprintf(multiplier.text, sizeof(multiplier.text), "+%d", value);
+    add_move_text_animation(&multiplier, vec2(setPos.x - 0.025f, setPos.y - 0.1f), 0.25f);
     add_pop_animation(&multiplier, 0.4f);
+    add_shake_animation(&multiplier, 0.1f);
+    add_fade(&multiplier);
 
     ActionCommand *setText = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, TextElement, execute_action);
     if (setText) {
         setText->action = add_text_to_page;
         *COMMAND_PAYLOAD(setText, TextElement) = multiplier;
+    }
+
+    UIElement relic =  UIElement{ Anchor::CENTER, -1, RELICS_T, setPos.x + 0.025f, setPos.y, 0.05f * RENDERING_ASPECT, 0.05f};
+    relic.sheetAnimation = SheetAnimation{RELIC_COLUMNS, RELIC_ROWS};
+    relic.sheetAnimation.currentFrame = relicId;
+    relic.color = R_WHITE;
+    add_move_animation(&relic, vec2(setPos.x + 0.025f, setPos.y - 0.1f), 0.25f);
+    add_fade(&relic);
+    add_shake_animation(&relic, 0.1f);
+    add_pop_animation(&relic, 0.4f);
+
+    ActionCommand *setRelic = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, UIElement, execute_action);
+    if (setRelic) {
+        setRelic->action = add_image_to_page;
+        *COMMAND_PAYLOAD(setRelic, UIElement) = relic;
     }
 
     push_wait(&gState->cmdQueue, 0.75f);
@@ -585,8 +637,8 @@ u8 costly_post_round(void *ptr) {
             }
         }
     }
-
-    gState->runData.dollaBills = gState->runData.dollaBills == 0 ? 0 : gState->runData.dollaBills - jokersPlayed;
+    u64 cost = (u64)jokersPlayed;
+    remove_cash(&cost);
     return true;
 }
 
@@ -610,8 +662,8 @@ u8 rack_cleared_bonus(void *ptr) {
 }
 
 Item RELIC_TABLE[TOTAL_RELICS] = {
-    { COMMON, "Neophyte 3", "Every set with exactly three tiles gets double the points.", 1, 3, 2, size_equals_condition, multiplier_action },
-    { COMMON, "Plebian 4", "Every set with exactly four tiles gets double the points.", 1, 4, 2, size_equals_condition, multiplier_action },
+    { RARE, "Neophyte 3", "Every set with exactly three tiles gets double the points.", 2, 3, 2, size_equals_condition, multiplier_action },
+    { RARE, "Plebian 4", "Every set with exactly four tiles gets double the points.", 2, 4, 2, size_equals_condition, multiplier_action },
     { RARE, "Mr 5", "Every set with exactly five tiles gets triple the points.", 2, 5, 3, size_equals_condition, multiplier_action },
     { RARE, "Mrs 6", "Every set with exactly six tiles gets triple the points.", 2, 6, 3, size_equals_condition, multiplier_action },
     { EXCEEDINGLY_RARE, "Dr 7", "Every set with exactly seven tiles gets quadruple the points.", 3, 7, 4, size_equals_condition, multiplier_action },
@@ -623,12 +675,12 @@ Item RELIC_TABLE[TOTAL_RELICS] = {
     //{ RARE, "Wrap", "Allows runs to wrap around from highest to lowest tile.", 2, -1, -1, no_condition, add_wrap_rule }
    // { RARE, "Crok Jock", "TO DO ADD HERE", 2, 1, 1, set_even_condition, addition_action }
     { COMMON, "Big Saver", "Gain %1 bonus for every $10 you have.", 1, 2, 20, player_has_at_least_ten_dollars, no_condition, big_saver },
-    { COMMON, "Head Start", "First wild tile drawn has double the value.", 1, 1, 20, no_condition, head_start },
-    { COMMON, "Costly", "Wild tiles have triple the value but cost $1 when played.", 1, 2, 20, no_condition, costly, costly_post_round },
-    { COMMON, "Se7en", "Sets with a 7 tile get a %20 set value increase.", 1, 2, -20, contains_seven, addition_action },
+    { RARE, "Head Start", "First wild tile drawn has double the value.", 2, 1, 20, no_condition, head_start },
+    { EXCEEDINGLY_RARE, "Costly", "Wild tiles have triple the value but cost $1 when played.", 3, 2, 20, no_condition, costly, costly_post_round },
+    { RARE, "Se7en", "Sets with a 7 tile get a %20 set value increase.", 2, 2, -20, contains_seven, addition_action },
     { COMMON, "INTERESTing", "Every round gain %3 interest on total cash.", 1, 2, 20, no_condition, no_condition, interesting },
     { COMMON, "Shift", "Wild tiles have the ability to shift a Run's color.", 1, 2, 20, no_condition, no_condition },
-    { COMMON, "Wild Factor", "Every wild tile played gives %10 increase on set's value.", 1, 2, -10, contains_joker, wild_factor }
+    { EXCEEDINGLY_RARE, "Wild Factor", "Every wild tile played gives %10 increase on set's value.", 3, 2, -10, contains_joker, wild_factor }
     
     // ---- done ---- color shift jokers, allows color shift when jokers played
     //joker debt every joker left on rack cost $5, what..
@@ -750,7 +802,41 @@ u8 discard(void *ptr) {
 
 u8 add_cash(void *ptr) {
     u64 cash = *(u64 *)ptr;
+
+    TextElement bonus = TextElement{ CENTER, "", 0.75f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3 };
+    snprintf(bonus.text, sizeof(bonus.text), "+$%d", cash);
+    bonus.color = R_GREEN;
+    bonus.zIndex = 3;
+    add_move_text_animation(&bonus, vec2(0.75f, 0.05f), 0.05f);
+    add_pop_animation(&bonus, 0.1f);
+    add_fade(&bonus);
+    add_text_to_page(&bonus);
+
     gState->runData.dollaBills += cash;
+    return true;
+}
+
+u8 remove_cash(void *ptr) {
+    u64 cash = *(u64 *)ptr;
+    if(cash == 0) return true;
+
+    TextElement bonus = TextElement{ CENTER, "", 0.5f, 0.18f, -1, true, DEFAULT_FONT_SCALE * 3 };
+    snprintf(bonus.text, sizeof(bonus.text), "-$%d", cash);
+    bonus.color = R_RED;
+    bonus.zIndex = 3;
+    add_move_text_animation(&bonus, vec2(0.5f, 0.12f), 0.05f);
+    add_pop_animation(&bonus, 0.1f);
+    add_fade(&bonus);
+    push_text_element(bonus);
+
+    printf("Cash %llu, Total %llu\n", cash, gState->runData.dollaBills);
+
+    if(cash > gState->runData.dollaBills) {
+        gState->runData.dollaBills = 0;
+    } else {
+        gState->runData.dollaBills -= cash;
+    }
+
     return true;
 }
 
@@ -2793,6 +2879,12 @@ u8 load_map_ui(void *ptr) {
     nextRoundBg.isPanel = true;
     nextRoundBg.color = R_BLUE;
 
+    UIElement itemBg = nextRoundBg;
+    itemBg.color = R_DARK_BLUE;
+    itemBg.posy = 0.35f;
+    itemBg.width *= 0.9f;
+    itemBg.height = 0.35f;
+
     i32 challengeIds[2];
     populate_challenges(challengeIds);
     //need to specify by type as well, so one green/yell/red
@@ -2801,13 +2893,20 @@ u8 load_map_ui(void *ptr) {
     RoundData option2 = create_round_data((ROUND_TYPE)challengeIds[0], gState->runData.rounds);
     RoundData option3 = create_round_data((ROUND_TYPE)challengeIds[1], gState->runData.rounds);
 
-    TextElement desc1 = TextElement{ CENTER, "", (f32)nextRoundBg.posx, 0.5f, -1, true, DEFAULT_FONT_SCALE * 1.5f};
+    TextElement desc1 = TextElement{ CENTER, "", (f32)nextRoundBg.posx, 0.575f, -1, true, DEFAULT_FONT_SCALE * 1.5f};
     desc1.zIndex = frontIndex;  
     desc1.maxWidth = RENDERING_ASPECT * 0.2f;
     strcpy(desc1.text, option1.desc);
+    
+    TextElement scoreMin1 = TextElement{ CENTER, "", (f32)nextRoundBg.posx, 0.45f, -1, true, DEFAULT_FONT_SCALE * 1.5f};
+    scoreMin1.zIndex = frontIndex;  
+    scoreMin1.maxWidth = RENDERING_ASPECT * 0.2f;
+    snprintf(scoreMin1.text, sizeof(scoreMin1.text), "Score Minimum %llu", option1.minimumScore);
 
     i32 desc1Id = add_text_element(gState->uiPage, desc1);
+    i32 scoreMin1Id = add_text_element(gState->uiPage, scoreMin1);
     i32 challenge1 = add_ui_element(gState->uiPage, challengeImage);
+    i32 itemBg1 = add_ui_element(gState->uiPage, itemBg);
     i32 nextRoundBg1 = add_ui_element(gState->uiPage, nextRoundBg);
     i32 roundButton1 = add_button(gState->uiPage, BUTTON_T, "SELECT", vec2(nextRoundBg.posx, 0.9f), vec2(0.05f, 0.225f), R_SLATE, 0, frontIndex);
 
@@ -2818,30 +2917,37 @@ u8 load_map_ui(void *ptr) {
 
     reward.zIndex = frontIndex;
     snprintf(reward.text, sizeof(reward.text),
-             "Reward: $%llu",
+             "Reward $%llu",
              (u64)option1.cashReward);
     i32 reward1 = add_text_element(gState->uiPage, reward);
 
     nextRoundBg.posx += 0.2425f;
+    itemBg.posx += 0.2425f;
     //nextRoundBg.color = R_GREEN;
     challengeImage.sheetAnimation.currentFrame = 1;
 
     desc1.posx += 0.2425f;
+    scoreMin1.posx += 0.2425f;
     reward.posx += 0.2425f;
     challengeImage.posx += 0.2425f;
 
     strcpy(desc1.text, option2.desc);
+    snprintf(scoreMin1.text, sizeof(scoreMin1.text), "Score Minimum %llu", option2.minimumScore);
     i32 desc2Id = add_text_element(gState->uiPage, desc1);
+    i32 scoreMin2Id = add_text_element(gState->uiPage, scoreMin1);
     i32 challenge2 = add_ui_element(gState->uiPage, challengeImage);
+    i32 itemBg2 = add_ui_element(gState->uiPage, itemBg);
     i32 nextRoundBg2 = add_ui_element(gState->uiPage, nextRoundBg);
     i32 roundButton2 = add_button(gState->uiPage, BUTTON_T, "SELECT", vec2(nextRoundBg.posx, 0.9f), vec2(0.05f, 0.225f), R_SLATE, 0, frontIndex);
 
     snprintf(reward.text, sizeof(reward.text),
-             "Reward: $%llu",
+             "Reward $%llu",
              (u64)option2.cashReward);
     i32 reward2 = add_text_element(gState->uiPage, reward);
 
     nextRoundBg.posx += 0.2425f;
+    itemBg.posx += 0.2425f;
+    scoreMin1.posx += 0.2425f;
     //nextRoundBg.color = R_RED;
     challengeImage.sheetAnimation.currentFrame = 2;
     
@@ -2849,14 +2955,17 @@ u8 load_map_ui(void *ptr) {
     reward.posx += 0.2425f;
     challengeImage.posx += 0.2425f;
     strcpy(desc1.text, option3.desc);
+    snprintf(scoreMin1.text, sizeof(scoreMin1.text), "Score Minimum %llu", option3.minimumScore);
     i32 desc3Id = add_text_element(gState->uiPage, desc1);
+    i32 scoreMin3Id = add_text_element(gState->uiPage, scoreMin1);
     i32 challenge3 = add_ui_element(gState->uiPage, challengeImage);
+    i32 itemBg3 = add_ui_element(gState->uiPage, itemBg);
     i32 nextRoundBg3 = add_ui_element(gState->uiPage, nextRoundBg);
     i32 roundButton3 = add_button(gState->uiPage, BUTTON_T, "SELECT", vec2(nextRoundBg.posx, 0.9f), vec2(0.05f, 0.225f), R_SLATE, 0, frontIndex);
     UIElement round1 = UIElement{ Anchor::CENTER, -1, BUTTON_T, 0.2575f, 0.5f, 0.8f, 0.225f};
 
     snprintf(reward.text, sizeof(reward.text),
-             "Reward: $%llu",
+             "Reward $%llu",
              (u64)option3.cashReward);
     i32 reward3 = add_text_element(gState->uiPage, reward);
 
@@ -2874,6 +2983,10 @@ u8 load_map_ui(void *ptr) {
     add_image_to_window(gState->uiPage, multWindowIndex, nextRoundBg2);
     add_image_to_window(gState->uiPage, multWindowIndex, nextRoundBg3);
 
+    add_image_to_window(gState->uiPage, multWindowIndex, itemBg1);
+    add_image_to_window(gState->uiPage, multWindowIndex, itemBg2);
+    add_image_to_window(gState->uiPage, multWindowIndex, itemBg3);
+
     add_image_to_window(gState->uiPage, multWindowIndex, challenge1);
     add_image_to_window(gState->uiPage, multWindowIndex, challenge2);
     add_image_to_window(gState->uiPage, multWindowIndex, challenge3);
@@ -2887,6 +3000,10 @@ u8 load_map_ui(void *ptr) {
     add_text_to_window(gState->uiPage, multWindowIndex, desc1Id);
     add_text_to_window(gState->uiPage, multWindowIndex, desc2Id);
     add_text_to_window(gState->uiPage, multWindowIndex, desc3Id);
+
+    add_text_to_window(gState->uiPage, multWindowIndex, scoreMin1Id);
+    add_text_to_window(gState->uiPage, multWindowIndex, scoreMin2Id);
+    add_text_to_window(gState->uiPage, multWindowIndex, scoreMin3Id);
 
     add_text_to_window(gState->uiPage, multWindowIndex, reward1);
     add_text_to_window(gState->uiPage, multWindowIndex, reward2);
@@ -3342,7 +3459,11 @@ void add_relic() {
     } 
 
     //charge the player
-    gState->runData.dollaBills -= RELIC_TABLE[frame].price;
+    //gState->runData.dollaBills -= RELIC_TABLE[frame].price;
+    u64 cost = RELIC_TABLE[frame].price;
+    remove_cash(&cost);
+    //remove_cash(&RELIC_TABLE[frame].price);
+
     if(gState->player.numberOfRelics <= MAX_RELICS - 2) gState->player.numberOfRelics++;
 
     if(gState->runData.dollaBills == 0) {
@@ -3367,7 +3488,9 @@ void add_active() {
     gState->player.actives[gState->player.numberOfActives] = gState->actives[frame];
     
     //charge the player
-    gState->runData.dollaBills -= ACTIVE_TABLE[frame].price;
+    //gState->runData.dollaBills -= ACTIVE_TABLE[frame].price;
+    u64 cost = ACTIVE_TABLE[frame].price;
+    remove_cash(&cost);
 
     if(gState->player.numberOfActives <= MAX_ACTIVES - 2) {
         gState->player.numberOfActives++;
@@ -3726,8 +3849,6 @@ void add_round_complete_ui() {
     add_text_to_window(gState->uiPage, windowIndex, setIndex);
     add_text_to_window(gState->uiPage, windowIndex, cashIndex);
     add_text_to_window(gState->uiPage, windowIndex, progressIndex);
-
-    //add_actives_ui(false);
 }
 
 void add_main_menu_ui() {
@@ -4137,7 +4258,7 @@ u8 add_table_value_total(void *ptr) {
     return true;
 }
 
-void push_set_bonus(ItemData *actionData, CmdActionFuncPtr relicFn) {
+void push_set_bonus(ItemData *actionData, CmdActionFuncPtr relicFn, i32 relicId) {
     ActionCommand *shake = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, sizeof(f32), execute_action);
     if (shake) {
         shake->action = screen_shake;
@@ -4145,9 +4266,9 @@ void push_set_bonus(ItemData *actionData, CmdActionFuncPtr relicFn) {
     } 
 
     if(relicFn == addition_action) {
-        add_addition_animation(actionData->set, actionData->value);
+        add_addition_animation(actionData->set, actionData->value, relicId);
     } else {
-        add_multiplier_animation(actionData->set, actionData->value);
+        add_multiplier_animation(actionData->set, actionData->value, relicId);
     }
 
     ActionCommand *setVal = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, ItemData, execute_action);
@@ -4175,7 +4296,7 @@ u64 calculate_set_bonuses(Set *set, u8 uiAnimation) {
             if(item.condition(&conditionData)) {
                 ItemData actionData = ItemData {set, item.modifierValue};
                 if(uiAnimation) {
-                    push_set_bonus(&actionData, item.action);
+                    push_set_bonus(&actionData, item.action, gState->player.relics[i]);
                 } else {
                     //this is expecting the multiplier/additive, broken until hoveredSetValue is .. Removed?
                     item.action(&actionData);
@@ -4192,7 +4313,7 @@ u64 calculate_set_bonuses(Set *set, u8 uiAnimation) {
             if(item.condition(&condition)) {
                 ItemData actionData = ItemData {set, item.modifierValue};
                 if(uiAnimation) {
-                    push_set_bonus(&actionData, item.action);
+                    push_set_bonus(&actionData, item.action, gState->player.relics[i]);
                 } else {
                     //this is expecting the multiplier/additive, broken until hoveredSetValue is .. Removed?
                     item.action(&actionData);
