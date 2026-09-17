@@ -15,6 +15,42 @@ i32 get_cursed_color_values(Set *set, u8 color) {
     return cursedValue;
 }
 
+i32 check_cursed_value(Set *set, ROUND_TYPE type) {
+    i32 totalValue = 0;
+
+    for (i32 i = 0; i < set->numberOfTiles; i++) {
+        Tile *tile = set->tiles[i];
+
+        i32 tileValue = (i32)tile->details.tileNumber;
+
+        switch(type) {
+            case CURSED_RED:
+                if (tile->details.tileColor == 0)
+                    tileValue = 0;
+                break;
+
+            case CURSED_BLUE:
+                if (tile->details.tileColor == 1)
+                    tileValue = 0;
+                break;
+
+            case CURSED_GREEN:
+                if (tile->details.tileColor == 2)
+                    tileValue = 0;
+                break;
+
+            case CURSED_BLACK:
+                if (tile->details.tileColor == 3)
+                    tileValue = 0;
+                break;
+        }
+
+        totalValue += tileValue;
+    }
+
+    return totalValue;
+}
+
 i32 check_cursed_value(Tile *tile, ROUND_TYPE type) {
     i32 tileValue = (i32)tile->details.tileNumber;
     switch(type) {
@@ -190,6 +226,10 @@ void difficulty_to_text(u8 value, char *text) {
 }
 
 RoundData create_round_data(ROUND_TYPE roundType, u64 round) {
+    // joker curse 
+    // bridge curse 
+    // evens only count 
+    // odds only count
     switch(roundType) {
         case MIN_SCORE: {
             return RoundData {20, 100 * round, 0, nullptr, check_min_score_lose, "Reach target score.", 2};

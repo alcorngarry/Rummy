@@ -59,9 +59,41 @@ static inline std::string add_commas_int64(int64_t value) {
     return s;
 }
 
-static inline std::string add_commas_uint64(uint64_t value) {
+static inline std::string add_commas_uint64(u64 value) {
+    if (value >= 1000000000000) {
+        f64 trillions = value / 1000000.0;
+
+        if (trillions >= 100.0)
+            return std::to_string((u64)trillions) + "t";
+
+        char buffer[16];
+        snprintf(buffer, sizeof(buffer), "%.1ft", trillions);
+
+        return buffer;
+    } else if (value >= 1000000000) {
+        f64 billions = value / 1000000.0;
+
+        if (billions >= 100.0)
+            return std::to_string((u64)billions) + "b";
+
+        char buffer[16];
+        snprintf(buffer, sizeof(buffer), "%.1fb", billions);
+
+        return buffer;
+    } else if (value >= 1000000) {
+        f64 millions = value / 1000000.0;
+
+        if (millions >= 100.0)
+            return std::to_string((u64)millions) + "m";
+
+        char buffer[16];
+        snprintf(buffer, sizeof(buffer), "%.1fm", millions);
+
+        return buffer;
+    } 
+
     std::string s = std::to_string(value);
-    i32 insertPosition = s.length() - 3;
+    i32 insertPosition = (i32)s.length() - 3;
 
     while (insertPosition > 0) {
         s.insert(insertPosition, ",");

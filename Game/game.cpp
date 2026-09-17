@@ -96,6 +96,7 @@ u8 check_min_score_endgame(void *ptr);
 void difficulty_to_text(u8 value, char *text);
 void check_set_value_rules(Set *set, u64* hoveredSetValue, ROUND_TYPE type);
 i32 check_cursed_value(Tile *tile, ROUND_TYPE type);
+i32 check_cursed_value(Set *set, ROUND_TYPE type);
 // game_queue.cpp
 void* push(CommandQueue *b, u64 size);
 void* push_command(CommandQueue *q, u32 totalSize, CmdActionFuncPtr executeFn);
@@ -698,7 +699,7 @@ Item RELIC_TABLE[TOTAL_RELICS] = {
 u64 get_set_value(Set *set) {
     u64 value = 0; 
     for(i32 i = 0; i < set->numberOfTiles; ++i) {
-        value += set->tiles[i]->details.tileNumber;
+        value += check_cursed_value(set->tiles[i], gState->runData.currentRoundType);
     }
     return value;
 };
@@ -829,7 +830,7 @@ u8 remove_cash(void *ptr) {
     add_fade(&bonus);
     push_text_element(bonus);
 
-    printf("Cash %llu, Total %llu\n", cash, gState->runData.dollaBills);
+    //printf("Cash %llu, Total %llu\n", cash, gState->runData.dollaBills);
 
     if(cash > gState->runData.dollaBills) {
         gState->runData.dollaBills = 0;
@@ -2691,7 +2692,7 @@ void release_active() {
     if(gState->player.heldActiveId != -1) {
         Active *active = &gState->player.actives[gState->player.heldActiveId];
 
-        if(is_inside_pool(active->object.model)) {
+        if(is_inside_pool(active->object.model) && gState->runData.currentRoundType != NO_ACTIVES) {
             if(active->item.action(nullptr)) {
                 active->originalPosition = gState->pool.object.model;
                 remove_active();
@@ -4253,6 +4254,7 @@ u8 add_table_value_total(void *ptr) {
     clear_round_score(&gState->roundData); //zero it out first 
     for(i32 i = 0; i < gState->table.numberOfSets; ++i) {
         Set *set = &gState->table.sets[i];
+        set->score = check_cursed_value(set, gState->runData.currentRoundType);
         gState->roundData.roundScore += calculate_set_bonuses(set, false); 
     }
     return true;
@@ -4282,6 +4284,7 @@ u64 calculate_set_bonuses(Set *set, u8 uiAnimation) {
     //if(!uiAnimation) {
     
     set->score = get_set_value(set);
+    if(gState->runData.currentRoundType == NO_PASSIVES) return set->score;
         // deals only wil round challenges 
     //set->score = check_set_value_rules(set, &setValue, gState->runData.currentRoundType);
 
@@ -4326,17 +4329,19 @@ u64 calculate_set_bonuses(Set *set, u8 uiAnimation) {
 }
 
 void calculate_round_cash(RunData *gd) {
-    for(i32 i = 0; i < gState->player.numberOfRelics; ++i) {
-        Item item = gState->relics[gState->player.relics[i]];
-        
-        if(item.postRunAction) {
-            ItemData conditionData = ItemData {nullptr, item.conditionValue};
-            if(item.condition(&conditionData)) {
-                ItemData actionData = ItemData {nullptr, item.modifierValue};
-                //push_set_bonus(actionData, item.action);
-                item.postRunAction(&actionData);
-            }
-        } 
+    if(gState->runData.currentRoundType != NO_PASSIVES) {
+        for(i32 i = 0; i < gState->player.numberOfRelics; ++i) {
+            Item item = gState->relics[gState->player.relics[i]];
+            
+            if(item.postRunAction) {
+                ItemData conditionData = ItemData {nullptr, item.conditionValue};
+                if(item.condition(&conditionData)) {
+                    ItemData actionData = ItemData {nullptr, item.modifierValue};
+                    //push_set_bonus(actionData, item.action);
+                    item.postRunAction(&actionData);
+                }
+            } 
+        }
     }
     
     rack_cleared_bonus(nullptr);
@@ -4926,7 +4931,7 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
         ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u64, execute_action);
         if (total) {
             total->action = add_cash;
-            *COMMAND_PAYLOAD(total, u64) = 99;
+            *COMMAND_PAYLOAD(total, u64) = 100000;
         }
     }
 
