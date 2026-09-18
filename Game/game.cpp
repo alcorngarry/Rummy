@@ -665,13 +665,13 @@ u8 rack_cleared_bonus(void *ptr) {
 Item RELIC_TABLE[TOTAL_RELICS] = {
     { RARE, "Neophyte 3", "Every set with exactly three tiles gets double the points.", 2, 3, 2, size_equals_condition, multiplier_action },
     { RARE, "Plebian 4", "Every set with exactly four tiles gets double the points.", 2, 4, 2, size_equals_condition, multiplier_action },
-    { RARE, "Mr 5", "Every set with exactly five tiles gets triple the points.", 2, 5, 3, size_equals_condition, multiplier_action },
-    { RARE, "Mrs 6", "Every set with exactly six tiles gets triple the points.", 2, 6, 3, size_equals_condition, multiplier_action },
-    { EXCEEDINGLY_RARE, "Dr 7", "Every set with exactly seven tiles gets quadruple the points.", 3, 7, 4, size_equals_condition, multiplier_action },
-    { EXCEEDINGLY_RARE, "Ruler 8", "Every set with exactly eight tiles gets eight times the points.", 3, 8, 4, size_equals_condition, multiplier_action },
+    { COMMON, "Mr 5", "Every set with exactly five tiles gets triple the points.", 1, 5, 3, size_equals_condition, multiplier_action },
+    { COMMON, "Mrs 6", "Every set with exactly six tiles gets triple the points.", 1, 6, 3, size_equals_condition, multiplier_action },
+    { COMMON, "Dr 7", "Every set with exactly seven tiles gets quadruple the points.", 1, 7, 4, size_equals_condition, multiplier_action },
+    { COMMON, "Ruler 8", "Every set with exactly eight tiles gets eight times the points.", 1, 8, 4, size_equals_condition, multiplier_action },
     //these need to change names..
-    { COMMON, "Even Steven", "Every even set gets +20.", 1, 2, 20, set_even_condition, addition_action },
-    { COMMON, "Odd Todd", "Every odd set gets +20.", 1, 2, 20, set_odd_condition, addition_action },
+    { RARE, "Even Steven", "Every even set gets +20.", 2, 2, 20, set_even_condition, addition_action },
+    { RARE, "Odd Todd", "Every odd set gets +20.", 2, 2, 20, set_odd_condition, addition_action },
     //These need to be added
     //{ RARE, "Wrap", "Allows runs to wrap around from highest to lowest tile.", 2, -1, -1, no_condition, add_wrap_rule }
    // { RARE, "Crok Jock", "TO DO ADD HERE", 2, 1, 1, set_even_condition, addition_action }
@@ -3576,9 +3576,11 @@ void reroll(u8 isRelic) {
 
     ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u64, execute_action);
     if (total) {
-        total->action = add_cash;
-        *COMMAND_PAYLOAD(total, u64) = -1;
+        total->action = remove_cash;
+        *COMMAND_PAYLOAD(total, u64) = 1;
     }
+
+    push_wait(&gState->cmdQueue, 1.0f);
 
     ActionCommand *nextRound = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u8, execute_action);
     if (nextRound) { 
