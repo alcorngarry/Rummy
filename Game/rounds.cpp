@@ -15,6 +15,23 @@ i32 get_cursed_color_values(Set *set, u8 color) {
     return cursedValue;
 }
 
+void add_table_space_modifier(TableSpace *space, i32 *tileValue) {
+    if(!space) return;
+
+    if(space->addend != 0) {
+        *tileValue += space->multiplier;
+    }
+    if(space->subtrahend != 0) {
+        *tileValue -= space->multiplier;
+    }
+    if(space->multiplier != 0) {
+        *tileValue *= space->multiplier;
+    }
+    if(space->divisor != 0) {
+        *tileValue /= space->multiplier;
+    }
+};
+
 i32 check_cursed_value(Set *set, ROUND_TYPE type) {
     i32 totalValue = 0;
 
@@ -44,6 +61,7 @@ i32 check_cursed_value(Set *set, ROUND_TYPE type) {
                     tileValue = 0;
                 break;
         }
+
 
         totalValue += tileValue;
     }
@@ -78,7 +96,21 @@ i32 check_cursed_value(Tile *tile, ROUND_TYPE type) {
             }
             break;
         }
+        case EVENS_CURSED: {
+            if(tileValue % 2 == 0 && tileValue <= 13) {
+                tileValue = 0; 
+            }
+            break;
+        }
+        case ODDS_CURSED: {
+            if(tileValue % 2 == 1 && tileValue <= 13) {
+                tileValue = 0; 
+            }
+            break;
+        }
     }
+
+    add_table_space_modifier(tile->spaceItem, &tileValue);
     return tileValue;
 }
 
@@ -282,6 +314,12 @@ RoundData create_round_data(ROUND_TYPE roundType, u64 round) {
         }
         case NO_PASSIVES: {
             return RoundData {20, minScore, 0, nullptr, check_min_score_lose, "Reach target score when passives are ignored.", 8, 2};
+        }
+        case EVENS_CURSED: {
+            return RoundData {20, minScore, 0, nullptr, check_min_score_lose, "Reach target score when even tiles are cursed.", 8, 2};
+        }
+        case ODDS_CURSED: {
+            return RoundData {20, minScore, 0, nullptr, check_min_score_lose, "Reach target score when odd tiles are cursed.", 8, 2};
         }
     }
     

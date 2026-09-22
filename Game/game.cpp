@@ -32,7 +32,7 @@ char *videoModes[2] = {"Window", "Fullscreen"};
 
 void get_playable_tiles(Set *set);
 void remove_empty_sets();
-u8 is_tile_released_inside_table(Tile* tile);
+u8 is_released_inside_table(mat4 model);
 u8 is_active_released_inside_pool(Active *active);
 u8 snap_tile_to_table_space(Tile *tile);
 Tile* find_left_most_tile(Set *set);
@@ -665,8 +665,8 @@ u8 rack_cleared_bonus(void *ptr) {
 Item RELIC_TABLE[TOTAL_RELICS] = {
     { RARE, "Neophyte 3", "Every set with exactly three tiles gets double the points.", 2, 3, 2, size_equals_condition, multiplier_action },
     { RARE, "Plebian 4", "Every set with exactly four tiles gets double the points.", 2, 4, 2, size_equals_condition, multiplier_action },
-    { COMMON, "Mr 5", "Every set with exactly five tiles gets triple the points.", 1, 5, 3, size_equals_condition, multiplier_action },
-    { COMMON, "Mrs 6", "Every set with exactly six tiles gets triple the points.", 1, 6, 3, size_equals_condition, multiplier_action },
+    { RARE, "Mr 5", "Every set with exactly five tiles gets triple the points.", 2, 5, 3, size_equals_condition, multiplier_action },
+    { RARE, "Mrs 6", "Every set with exactly six tiles gets triple the points.", 2, 6, 3, size_equals_condition, multiplier_action },
     { COMMON, "Dr 7", "Every set with exactly seven tiles gets quadruple the points.", 1, 7, 4, size_equals_condition, multiplier_action },
     { COMMON, "Ruler 8", "Every set with exactly eight tiles gets eight times the points.", 1, 8, 4, size_equals_condition, multiplier_action },
     //these need to change names..
@@ -711,7 +711,7 @@ void create_relics() {
 
 void create_tiles() {
     GameObject obj = GameObject{};
-    obj.animation = {SHEEN_T, 6, 1, 6};
+    obj.sheetAnimation = {SHEEN_T, 6, 1, 6};
 
     i32 tileIndex = 0;
     for(u8 color = 0; color < 4; ++color) {
@@ -871,20 +871,22 @@ u8 allow_rainbow_run(void *ptr) {
 
 Item ACTIVE_TABLE[TOTAL_ACTIVES] = {
     //{ COMMON, "Pawn Shop", "Sell any relic or active for $$$.", 1, 1, 1, nullptr, sell_item},
-    { RARE, "Wild Tile +1", "Adds a wild tile to your rack.", 2, 1, 1, nullptr, add_new_joker},
+    { EXCEEDINGLY_RARE, "Wild Tile +1", "Adds a wild tile to your rack.", 3, 1, 1, nullptr, add_new_joker},
     //{ EXCEEDINGLY_RARE, "Wrap", "Allows '12' Tiles to connect to '1' tiles", 3, 1, 1, nullptr, nullptr},
     { EXCEEDINGLY_RARE, "Twins Basil", "Sets of two are allowed for the current round.", 3, 1, 1, nullptr, allow_twins_for_round},
     { COMMON, "Discard", "Discard one tile from the rack.", 1, 1, 1, nullptr, discard},
     { COMMON, "'Peak' Next 5", "'Peak' at next five draws from the pool.", 1, 1, 1, nullptr, show_next_five_in_pool},
     { RARE, "Color Wheel", "Repaint one tile's color.", 2, 1, 1, nullptr, repaint_tile},
     { RARE, "Rainbow Run", "One run on the table is able to ignore tile color.", 2, 1, 1, nullptr, allow_rainbow_run},
-    { RARE, "Bridge Tile +1", "Adds a bridge tile to your rack.", 2, 1, 1, nullptr, add_new_bridge}
+    { EXCEEDINGLY_RARE, "Bridge Tile +1", "Adds a bridge tile to your rack.", 3, 1, 1, nullptr, add_new_bridge},
+    { EXCEEDINGLY_RARE, "Space x2", "Adds times 2 value to a space on the table.", 3, 1, 1, nullptr, add_new_bridge},
+    { EXCEEDINGLY_RARE, "Space +10", "Adds plus 10 value to a space on the table.", 3, 1, 1, nullptr, add_new_bridge}
 };
 
 void create_actives() {
     GameObject obj = GameObject{};
     obj.model = gState->pool.object.model;
-    obj.animation = {SHEEN_T, 6, 1, 6};
+    obj.sheetAnimation = {SHEEN_T, 6, 1, 6};
 
     for(u8 i = 0; i < TOTAL_ACTIVES; ++i) {
         gState->actives[i] = Active{obj, ACTIVE_TABLE[i], false, gState->pool.object.model, vec2(0.0f), i};
@@ -920,7 +922,7 @@ void init_table() {
     for(i32 row = 0; row < TABLE_ROWS; ++row) {
         for(i32 col = 0; col < TABLE_COLUMNS; ++col) { 
             mat4 space = glm::scale(startPos, defaultTileScale * TABLE_SCALE);
-            gState->table.tableSpaces[row][col].object = glm::translate(space, vec3(col, row, 0));
+            gState->table.tableSpaces[row][col].object.model = glm::translate(space, vec3(col, row, 0));
             gState->table.tableSpaces[row][col].isOccupied = false;
             gState->table.tableSpaces[row][col].isHovered = false;
         }
@@ -1462,10 +1464,6 @@ void draw_background() {
     gMemory->push_entity_fn(gMemory->renderBuffer, &table);
 }
 
-void draw_cursor() {
-
-}
-
 void draw_table() {
     draw_background();
 
@@ -1482,18 +1480,59 @@ void draw_table() {
               if(gState->table.tableSpaces[row][col].isHovered) {
                 color -= vec3(R_DARK_GRAY);
               } else {
-                color = R_WHITE;
+                if(gState->table.tableSpaces[row][col].multiplier != 0) {
+                  color = R_BLUE;
+                } else {
+
+                  color = R_WHITE;
+                }
               }
             }
 
             RenderEntryEntity X = RenderEntryEntity{
-                gState->table.tableSpaces[row][col].object,
+                gState->table.tableSpaces[row][col].object.model,
                 gState->quadMesh,
                 TILE_SLOT_T,
                 vec4(color, 1.0f)
             };
+            //X.glow = gState->table.tableSpaces[row][col].multiplier != 0;
 
             gMemory->push_entity_fn(gMemory->renderBuffer, &X);
+
+            if(gState->table.tableSpaces[row][col].multiplier != 0) {
+                ObjSheetAnimation *a = &gState->table.tableSpaces[row][col].object.sheetAnimation;
+                a->timer += gState->deltaTime;
+
+                f32 frameTime = 1.0f / (f32)a->fps;
+
+                if(a->timer >= frameTime) {
+                    a->timer -= frameTime;
+                    a->currentFrame++;
+
+                    i32 frameCount = a->cols * a->rows;
+
+                    if(a->currentFrame >= frameCount) {
+                        a->currentFrame = 0;
+                    }
+                }
+
+
+                RenderEntryEntity effect = RenderEntryEntity{
+                    gState->table.tableSpaces[row][col].object.model,
+                    gState->quadMesh,
+                    TILE_EFFECTS_T,
+                    vec4(color, 1.0f),
+                };
+               
+                effect.useSpriteSheet = true;
+                effect.cols = 1;
+                effect.rows = 1;
+                effect.frameIndex = a->currentFrame;
+                effect.glow = true;
+
+                gMemory->push_entity_fn(gMemory->renderBuffer, &effect);
+
+            }
         }
     }
 
@@ -1889,7 +1928,7 @@ void check_table_space_hovered(f64 xpos, f64 ypos) {
 
     for(i32 row = 0; row < TABLE_ROWS; ++row) {
         for(i32 col = 0; col < TABLE_COLUMNS; ++col) {
-            vec3 pos = vec3(gState->table.tableSpaces[row][col].object[3]);
+            vec3 pos = vec3(gState->table.tableSpaces[row][col].object.model[3]);
             //f32 half = TABLE_SCALE * 0.5f;
             f32 half = (defaultTileScale.x * TABLE_SCALE) * 0.5f;
             u8 inside = xpos > pos.x - half && xpos < pos.x + half &&
@@ -2068,36 +2107,45 @@ void calculate_tile_tablespace(Set *set, Tile *tile) {
         targetSpace = isHigh ? rightSpace : leftSpace;
     }
 
-    tile->object.model = glm::scale(gState->table.tableSpaces[(i32)targetSpace.x][(i32)targetSpace.y].object, vec3(1.0f / TABLE_SCALE));
+    tile->object.model = glm::scale(gState->table.tableSpaces[(i32)targetSpace.x][(i32)targetSpace.y].object.model, vec3(1.0f / TABLE_SCALE));
     tile->tableSpace = targetSpace;
     gState->table.tableSpaces[(i32)targetSpace.x][(i32)targetSpace.y].isOccupied = true;
+    tile->spaceItem = &gState->table.tableSpaces[(i32)targetSpace.x][(i32)targetSpace.y];
 }
 
-u8 snap_tile_to_table_space(Tile *tile) {
+//this is duplicated but needed for actives, refactor later
+vec2 get_nearest_table_space(vec3 pos) {
     f32 minDistance = F32_MAX;
-    mat4 test = mat4(1.0f);
-    vec3 tilePos = vec3(tile->object.model[3]);
-
-    // be aware this assumes there's a match. Should always be one but who knows....
     vec2 tableSpace = vec2(-1, -1);
-    
+
     for(i32 row = 0; row < TABLE_ROWS; ++row) {
         for(i32 col = 0; col < TABLE_COLUMNS; ++col) {
-            vec3 tablePos = vec3(gState->table.tableSpaces[row][col].object[3]);
-            f32 distance = glm::distance(tilePos, tablePos);
+            vec3 tablePos = vec3(gState->table.tableSpaces[row][col].object.model[3]);
+            f32 distance = glm::distance(pos, tablePos);
             if(minDistance > distance) {
                 minDistance = distance;
-                test = gState->table.tableSpaces[row][col].object;
                 tableSpace = vec2(row, col);
             }
         }
     }
+
+    return tableSpace;
+}
+
+u8 snap_tile_to_table_space(Tile *tile) {
+    mat4 test = mat4(1.0f);
+    vec3 tilePos = vec3(tile->object.model[3]);
+
+    // be aware this assumes there's a match. Should always be one but who knows....
+    vec2 tableSpace = get_nearest_table_space(tilePos);
+    test = gState->table.tableSpaces[(i32)tableSpace.x][(i32)tableSpace.y].object.model;
 
     if(is_table_space_occupied(tableSpace)) return false;
 
     tile->object.model = glm::scale(test, vec3(1.0f / TABLE_SCALE));
     tile->tableSpace = tableSpace;
     gState->table.tableSpaces[(i32)tableSpace.x][(i32)tableSpace.y].isOccupied = true;
+    tile->spaceItem = &gState->table.tableSpaces[(i32)tableSpace.x][(i32)tableSpace.y];
 
     return true;
 }
@@ -2152,17 +2200,17 @@ Tile* find_right_most_tile(Set *set) {
     return set->tiles[index];
 }
 
-u8 is_tile_released_inside_table(Tile* tile) {
-    vec3 tilePos  = vec3(tile->object.model[3]);
+u8 is_released_inside_table(mat4 model) {
+    vec3 pos  = vec3(model[3]);
     vec3 tablePos = vec3(gState->table.object.model[3]);
 
     f32 halfWidth  = glm::length(vec3(gState->table.object.model[0])) * 0.5f;
     f32 halfHeight = glm::length(vec3(gState->table.object.model[1])) * 0.5f;
 
-    return tilePos.x >= tablePos.x - halfWidth &&
-           tilePos.x <= tablePos.x + halfWidth &&
-           tilePos.y >= tablePos.y - halfHeight &&
-           tilePos.y <= tablePos.y + halfHeight;
+    return pos.x >= tablePos.x - halfWidth &&
+           pos.x <= tablePos.x + halfWidth &&
+           pos.y >= tablePos.y - halfHeight &&
+           pos.y <= tablePos.y + halfHeight;
 }
 
 u8 is_tile_released_inside_rack(Tile *tile) {
@@ -2298,7 +2346,7 @@ void add_tile_to_table_space(Tile* tile, vec2 tableSpace) {
     }
     
     tile->tableSpace = tableSpace;
-    tile->object.model = glm::scale(gState->table.tableSpaces[(i32)tableSpace.x][(i32)tableSpace.y].object, vec3(1.0f / TABLE_SCALE));
+    tile->object.model = glm::scale(gState->table.tableSpaces[(i32)tableSpace.x][(i32)tableSpace.y].object.model, vec3(1.0f / TABLE_SCALE));
 }
 
 void order_set_tiles(Set* set) {
@@ -2636,7 +2684,7 @@ void release_tile() {
             tile->object.model = tile->originalPosition;
         }
     } else {
-        if(is_tile_released_inside_table(tile)) {
+        if(is_released_inside_table(tile->object.model)) {
             if(wasFromTable) handle_tile_removal(&gState->table.sets[oldSetId], tile);
 
             free_table_space(oldTableSpace);
@@ -2701,6 +2749,12 @@ void release_active() {
                 active->object.model = active->originalPosition;
                 gState->player.heldActiveId = -1;
             }
+        } else if(is_released_inside_table(active->object.model) && active->id > 6) {
+            vec2 tableSpace = get_nearest_table_space(active->object.model[3]);
+            active->object.model = gState->table.tableSpaces[(i32)tableSpace.x][(i32)tableSpace.y].object.model;
+            gState->table.tableSpaces[(i32)tableSpace.x][(i32)tableSpace.y].multiplier = 2;
+            remove_active();
+            sort_active_rack();
         } else {
             active->object.model = active->originalPosition;
             gState->player.heldActiveId = -1;
@@ -3556,8 +3610,10 @@ void populate_actives_in_shop(i32 *arr) {
 }
 
 void populate_challenges(i32 *arr) {
+    //yellow
     arr[0] = rng_range(1,3);
-    arr[1] = rng_range(4,10);
+    //red
+    arr[1] = rng_range(4,TOTAL_CHALLENGES - 1);
 }
 
 //

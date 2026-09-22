@@ -12,8 +12,9 @@
 #define MAX_RELICS 50
 #define RELIC_ROWS 5
 #define RELIC_COLUMNS 3
+#define TOTAL_CHALLENGES 13 
 
-#define TOTAL_ACTIVES 7
+#define TOTAL_ACTIVES 9
 #define MAX_ACTIVES 24
 #define ACTIVE_ROWS 3
 #define ACTIVE_COLUMNS 3
@@ -146,6 +147,7 @@ struct DragState {
 };
 
 struct Set;
+struct TableSpace;
 
 // 0-r, 1-blu, 2-y, 3-blk
 struct Tile {
@@ -158,6 +160,7 @@ struct Tile {
     mat4 originalPosition;
     i32 setId = -1;
     vec2 tableSpace = vec2(-1, -1);
+    TableSpace *spaceItem;
 };
 
 struct Set {
@@ -185,9 +188,14 @@ struct Rack {
 };
 
 struct TableSpace {
-    mat4 object;
+    GameObject object;
     u8 isOccupied = false;
     u8 isHovered = false;
+    //might be huge
+    u64 multiplier = 0;
+    u64 addend = 0;
+    u64 subtrahend = 0;
+    u64 divisor = 0;
 };
 
 struct Table {
@@ -267,7 +275,9 @@ enum ROUND_TYPE : u8{
     CURSED_GREEN,
     CURSED_BLACK,
     NO_ACTIVES,
-    NO_PASSIVES
+    NO_PASSIVES,
+    ODDS_CURSED,
+    EVENS_CURSED
 };
 
 struct RoundData {

@@ -214,21 +214,23 @@ vec4 effect_aura(vec4 color) {
 vec4 effect_portal(vec4 color) {
     vec2 uv = TexCoord - 0.5;
 
-    float radius = length(uv);
+    float radius = length(uv) ;
     float angle = atan(uv.y, uv.x);
 
-    angle += radius * 4.0 - time * 2.0;
+    angle += radius * 4.0 - time * 0.01;
+    angle = step(angle, 0.5f);
 
     float vortex = sin(
         angle * 8.0 +
-        radius * 20.0
+        radius * 40.0
     );
 
     vortex = vortex * 0.5 + 0.5;
+    vortex = step(vortex, uv.x);
 
     vec3 effect = vec3(
-        0.4,
-        0.1,
+        1.0,
+        0.5,
         1.0
     ) * vortex * 0.25;
 
@@ -359,7 +361,7 @@ vec4 effect_pulse(vec4 color) {
 }
 
 vec4 add_glow(vec4 color) {
-    float pulse = 0.85 + sin(time * 4.0) * 0.15;
+    float pulse = 0.85 + sin(time) * 0.15;
     float offset = 0.008 * pulse;
 
     float r = texture(quadTexture, TexCoord + vec2(offset, 0.0)).r;
@@ -389,6 +391,7 @@ void main() {
 
     if(glow) {
       outputColor = add_glow(outputColor);
+      //outputColor = effect_portal(outputColor);
     }
 
     FragColor = outputColor;

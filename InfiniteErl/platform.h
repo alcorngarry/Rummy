@@ -34,6 +34,7 @@
 #define LOCKED_T 26
 #define CURSOR_T 27
 #define ME_TILE_T 28
+#define TILE_EFFECTS_T 29
 
 #ifdef BUILD_DLL
 #define GAME_DLL __declspec(dllexport)
