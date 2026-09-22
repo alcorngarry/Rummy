@@ -361,8 +361,9 @@ vec4 effect_pulse(vec4 color) {
 }
 
 vec4 add_glow(vec4 color) {
-    float pulse = 0.85 + sin(time) * 0.15;
-    float offset = 0.008 * pulse;
+    float pulse = 0.90 + 0.10 * (0.5 + 0.5 * sin(time * 1.5));
+
+    float offset = 0.006 * pulse;
 
     float r = texture(quadTexture, TexCoord + vec2(offset, 0.0)).r;
     float g = texture(quadTexture, TexCoord).g;
@@ -370,8 +371,9 @@ vec4 add_glow(vec4 color) {
 
     vec3 chromatic = vec3(r, g, b);
 
-    color.rgb = mix(color.rgb, chromatic, 0.35);
-    color.rgb += color.rgb * (pulse - 0.85) * 1.5;
+    color.rgb = mix(color.rgb, chromatic, 0.20);
+    color.rgb *= 1.15;
+    color.rgb *= pulse;
 
     return color;
 }

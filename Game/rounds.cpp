@@ -19,16 +19,16 @@ void add_table_space_modifier(TableSpace *space, i32 *tileValue) {
     if(!space) return;
 
     if(space->addend != 0) {
-        *tileValue += space->multiplier;
+        *tileValue += space->addend;
     }
     if(space->subtrahend != 0) {
-        *tileValue -= space->multiplier;
+        *tileValue -= space->subtrahend;
     }
     if(space->multiplier != 0) {
         *tileValue *= space->multiplier;
     }
     if(space->divisor != 0) {
-        *tileValue /= space->multiplier;
+        *tileValue /= space->divisor;
     }
 };
 

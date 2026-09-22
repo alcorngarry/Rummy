@@ -869,6 +869,20 @@ u8 allow_rainbow_run(void *ptr) {
     return true;
 }
 
+u8 add_addend_to_table_space(void *ptr) {
+    TableSpace *space = (TableSpace *)ptr;
+    if(!space) return true;
+
+    space->addend = 10;
+}
+
+u8 add_multipler_to_table_space(void *ptr) {
+    TableSpace *space = (TableSpace *)ptr;
+    if(!space) return true;
+
+    space->multiplier = 2;
+}
+
 Item ACTIVE_TABLE[TOTAL_ACTIVES] = {
     //{ COMMON, "Pawn Shop", "Sell any relic or active for $$$.", 1, 1, 1, nullptr, sell_item},
     { EXCEEDINGLY_RARE, "Wild Tile +1", "Adds a wild tile to your rack.", 3, 1, 1, nullptr, add_new_joker},
@@ -879,8 +893,8 @@ Item ACTIVE_TABLE[TOTAL_ACTIVES] = {
     { RARE, "Color Wheel", "Repaint one tile's color.", 2, 1, 1, nullptr, repaint_tile},
     { RARE, "Rainbow Run", "One run on the table is able to ignore tile color.", 2, 1, 1, nullptr, allow_rainbow_run},
     { EXCEEDINGLY_RARE, "Bridge Tile +1", "Adds a bridge tile to your rack.", 3, 1, 1, nullptr, add_new_bridge},
-    { EXCEEDINGLY_RARE, "Space x2", "Adds times 2 value to a space on the table.", 3, 1, 1, nullptr, add_new_bridge},
-    { EXCEEDINGLY_RARE, "Space +10", "Adds plus 10 value to a space on the table.", 3, 1, 1, nullptr, add_new_bridge}
+    { EXCEEDINGLY_RARE, "Space x2", "Adds times 2 value to a space on the table.", 3, 1, 1, nullptr, add_multipler_to_table_space},
+    { EXCEEDINGLY_RARE, "Space +10", "Adds plus 10 value to a space on the table.", 3, 1, 1, nullptr, add_addend_to_table_space}
 };
 
 void create_actives() {
@@ -900,6 +914,15 @@ void create_actives() {
 
 void clear_sets() {
     memset(gState->table.sets, 0, sizeof(gState->table.sets));
+}
+
+void clear_table_values() {
+    for(i32 row = 0; row < TABLE_ROWS; ++row) {
+        for(i32 col = 0; col < TABLE_COLUMNS; ++col) { 
+            gState->table.tableSpaces[row][col].multiplier = 0;
+            gState->table.tableSpaces[row][col].addend = 0;
+        }
+    }
 }
 
 void init_table() {
@@ -1481,9 +1504,10 @@ void draw_table() {
                 color -= vec3(R_DARK_GRAY);
               } else {
                 if(gState->table.tableSpaces[row][col].multiplier != 0) {
-                  color = R_BLUE;
+                  color = R_PURPLE;
+                } else if(gState->table.tableSpaces[row][col].addend != 0) { 
+                  color = R_GOLDEN;
                 } else {
-
                   color = R_WHITE;
                 }
               }
@@ -1500,21 +1524,21 @@ void draw_table() {
             gMemory->push_entity_fn(gMemory->renderBuffer, &X);
 
             if(gState->table.tableSpaces[row][col].multiplier != 0) {
-                ObjSheetAnimation *a = &gState->table.tableSpaces[row][col].object.sheetAnimation;
-                a->timer += gState->deltaTime;
-
-                f32 frameTime = 1.0f / (f32)a->fps;
-
-                if(a->timer >= frameTime) {
-                    a->timer -= frameTime;
-                    a->currentFrame++;
-
-                    i32 frameCount = a->cols * a->rows;
-
-                    if(a->currentFrame >= frameCount) {
-                        a->currentFrame = 0;
-                    }
-                }
+//                ObjSheetAnimation *a = &gState->table.tableSpaces[row][col].object.sheetAnimation;
+//                a->timer += gState->deltaTime;
+//
+//                f32 frameTime = 1.0f / (f32)a->fps;
+//
+//                if(a->timer >= frameTime) {
+//                    a->timer -= frameTime;
+//                    a->currentFrame++;
+//
+//                    i32 frameCount = a->cols * a->rows;
+//
+//                    if(a->currentFrame >= frameCount) {
+//                        a->currentFrame = 0;
+//                    }
+//                }
 
 
                 RenderEntryEntity effect = RenderEntryEntity{
@@ -1525,14 +1549,48 @@ void draw_table() {
                 };
                
                 effect.useSpriteSheet = true;
-                effect.cols = 1;
+                effect.cols = 2;
                 effect.rows = 1;
-                effect.frameIndex = a->currentFrame;
+                effect.frameIndex = 0;
+                effect.glow = true;
+
+                gMemory->push_entity_fn(gMemory->renderBuffer, &effect);
+
+            } else if(gState->table.tableSpaces[row][col].addend != 0) {
+//                ObjSheetAnimation *a = &gState->table.tableSpaces[row][col].object.sheetAnimation;
+//                a->timer += gState->deltaTime;
+//
+//                f32 frameTime = 1.0f / (f32)a->fps;
+//
+//                if(a->timer >= frameTime) {
+//                    a->timer -= frameTime;
+//                    a->currentFrame++;
+//
+//                    i32 frameCount = a->cols * a->rows;
+//
+//                    if(a->currentFrame >= frameCount) {
+//                        a->currentFrame = 0;
+//                    }
+//                }
+
+
+                RenderEntryEntity effect = RenderEntryEntity{
+                    gState->table.tableSpaces[row][col].object.model,
+                    gState->quadMesh,
+                    TILE_EFFECTS_T,
+                    vec4(color, 1.0f),
+                };
+               
+                effect.useSpriteSheet = true;
+                effect.cols = 2;
+                effect.rows = 1;
+                effect.frameIndex = 1;
                 effect.glow = true;
 
                 gMemory->push_entity_fn(gMemory->renderBuffer, &effect);
 
             }
+
         }
     }
 
@@ -2752,7 +2810,8 @@ void release_active() {
         } else if(is_released_inside_table(active->object.model) && active->id > 6) {
             vec2 tableSpace = get_nearest_table_space(active->object.model[3]);
             active->object.model = gState->table.tableSpaces[(i32)tableSpace.x][(i32)tableSpace.y].object.model;
-            gState->table.tableSpaces[(i32)tableSpace.x][(i32)tableSpace.y].multiplier = 2;
+
+            active->item.action(&gState->table.tableSpaces[(i32)tableSpace.x][(i32)tableSpace.y]);
             remove_active();
             sort_active_rack();
         } else {
@@ -2869,6 +2928,7 @@ void start_new_run() {
     gState->runData.currentRoundType = MIN_SCORE;
     gState->runData.rounds = 1;
     gState->runData.dollaBills = 0;
+    clear_table_values();
     clear_player_data();
     start_transition();
 }
@@ -5044,6 +5104,23 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
         gState->player.actives[i].originalPosition = rackSpaces[i];
         gState->player.numberOfActives++;   
     }
+    if (key == 326 && action == 1) {
+        u8 i = gState->player.numberOfActives;
+        gState->player.actives[i] = gState->actives[7];
+        gState->player.actives[i].object.model = rackSpaces[i];
+        gState->player.actives[i].originalPosition = rackSpaces[i];
+        gState->player.numberOfActives++;   
+    }
+    if (key == 327 && action == 1) {
+        u8 i = gState->player.numberOfActives;
+        gState->player.actives[i] = gState->actives[8];
+        gState->player.actives[i].object.model = rackSpaces[i];
+        gState->player.actives[i].originalPosition = rackSpaces[i];
+        gState->player.numberOfActives++;   
+    }
+
+
+
 
     if(key == 297 && action == 1) {
         //gState->player.numberOfRelics = 0;
