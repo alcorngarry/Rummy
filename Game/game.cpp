@@ -264,6 +264,7 @@ void snapshot_round_start() {
         sizeof(Tile) * TOTAL_TILES
     );
 
+    //reset will clear out the tile values...
     memcpy(
         &gState->roundStart.table,
         &gState->table,
@@ -281,6 +282,15 @@ void snapshot_round_start() {
         &gState->playerRack,
         sizeof(Rack)
     );
+
+    //this is broken for peek!
+    memcpy(
+        &gState->roundStart.actives,
+        &gState->player.actives,
+        sizeof(Active) * MAX_ACTIVES
+    );
+
+    gState->roundStart.numberOfActives = gState->player.numberOfActives;
 }
 
 inline mat4 make_tile_model(vec3 pos) {
@@ -360,6 +370,15 @@ void revert_to_round_start() {
         &gState->roundStart.rack,
         sizeof(Rack)
     );
+
+    //need to copy the actives!
+    memcpy(
+        &gState->player.actives,
+        &gState->roundStart.actives,
+        sizeof(Active) * MAX_ACTIVES
+    );
+
+    gState->player.numberOfActives = gState->roundStart.numberOfActives;
 
     for(i32 i = 0; i < gState->playerRack.numberOfTiles; ++i) {
         Tile *tile = gState->playerRack.tiles[i];
@@ -1487,6 +1506,23 @@ void draw_background() {
     gMemory->push_entity_fn(gMemory->renderBuffer, &table);
 }
 
+
+//                ObjSheetAnimation *a = &gState->table.tableSpaces[row][col].object.sheetAnimation;
+//                a->timer += gState->deltaTime;
+//
+//                f32 frameTime = 1.0f / (f32)a->fps;
+//
+//                if(a->timer >= frameTime) {
+//                    a->timer -= frameTime;
+//                    a->currentFrame++;
+//
+//                    i32 frameCount = a->cols * a->rows;
+//
+//                    if(a->currentFrame >= frameCount) {
+//                        a->currentFrame = 0;
+//                    }
+//                }
+
 void draw_table() {
     draw_background();
 
@@ -1499,6 +1535,12 @@ void draw_table() {
                 } else {
                     color = vec3(1.0f, 0.0f, 0.0f);
                 } 
+
+                if(gState->table.tableSpaces[row][col].multiplier != 0) {
+                  color = R_PURPLE;
+                } else if(gState->table.tableSpaces[row][col].addend != 0) { 
+                  color = R_GOLDEN;
+                }
             } else {
               if(gState->table.tableSpaces[row][col].isHovered) {
                 color -= vec3(R_DARK_GRAY);
@@ -1524,23 +1566,6 @@ void draw_table() {
             gMemory->push_entity_fn(gMemory->renderBuffer, &X);
 
             if(gState->table.tableSpaces[row][col].multiplier != 0) {
-//                ObjSheetAnimation *a = &gState->table.tableSpaces[row][col].object.sheetAnimation;
-//                a->timer += gState->deltaTime;
-//
-//                f32 frameTime = 1.0f / (f32)a->fps;
-//
-//                if(a->timer >= frameTime) {
-//                    a->timer -= frameTime;
-//                    a->currentFrame++;
-//
-//                    i32 frameCount = a->cols * a->rows;
-//
-//                    if(a->currentFrame >= frameCount) {
-//                        a->currentFrame = 0;
-//                    }
-//                }
-
-
                 RenderEntryEntity effect = RenderEntryEntity{
                     gState->table.tableSpaces[row][col].object.model,
                     gState->quadMesh,
@@ -1557,23 +1582,6 @@ void draw_table() {
                 gMemory->push_entity_fn(gMemory->renderBuffer, &effect);
 
             } else if(gState->table.tableSpaces[row][col].addend != 0) {
-//                ObjSheetAnimation *a = &gState->table.tableSpaces[row][col].object.sheetAnimation;
-//                a->timer += gState->deltaTime;
-//
-//                f32 frameTime = 1.0f / (f32)a->fps;
-//
-//                if(a->timer >= frameTime) {
-//                    a->timer -= frameTime;
-//                    a->currentFrame++;
-//
-//                    i32 frameCount = a->cols * a->rows;
-//
-//                    if(a->currentFrame >= frameCount) {
-//                        a->currentFrame = 0;
-//                    }
-//                }
-
-
                 RenderEntryEntity effect = RenderEntryEntity{
                     gState->table.tableSpaces[row][col].object.model,
                     gState->quadMesh,
@@ -1588,9 +1596,7 @@ void draw_table() {
                 effect.glow = true;
 
                 gMemory->push_entity_fn(gMemory->renderBuffer, &effect);
-
             }
-
         }
     }
 
@@ -2996,9 +3002,9 @@ u8 load_map_ui(void *ptr) {
 
     UIElement itemBg = nextRoundBg;
     itemBg.color = R_DARK_BLUE;
-    itemBg.posy = 0.35f;
+    itemBg.posy = 0.525f;
     itemBg.width *= 0.9f;
-    itemBg.height = 0.35f;
+    itemBg.height = 0.02f;
 
     i32 challengeIds[2];
     populate_challenges(challengeIds);

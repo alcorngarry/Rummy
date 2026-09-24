@@ -262,6 +262,8 @@ struct RoundSnapshot {
     Table table;
     Pool pool;
     Rack rack;
+    Active actives[MAX_ACTIVES];
+    u8 numberOfActives;
 };
 
 enum ROUND_TYPE : u8{

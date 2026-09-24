@@ -9,12 +9,10 @@ uniform vec2 shakeOffset;
 
 #define res (resolution)
 
-float hardScan = -4.0;
-float hardPix  = -2.0;
+float hardScan = -3.0;
+float hardPix  = -1.0;
 
-vec2 warp = vec2(1.0 / 32.0, 1.0 / 24.0);
-
-float maskDark  = 0.8;
+float maskDark  = 0.6;
 float maskLight = 1.2;
 
 float ToLinear1(float c) {
@@ -116,17 +114,6 @@ vec3 Tri(vec2 pos) {
     float wc = Scan(pos,  1.0);
 
     return a * wa + b * wb + c * wc;
-}
-
-vec2 Warp(vec2 pos) {
-    pos = pos * 2.0 - 1.0;
-
-    pos *= vec2(
-        1.0 + (pos.y * pos.y) * warp.x,
-        1.0 + (pos.x * pos.x) * warp.y
-    );
-
-    return pos * 0.5 + 0.5;
 }
 
 vec3 Mask(vec2 fragCoord) {
