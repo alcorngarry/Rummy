@@ -165,14 +165,11 @@ vec3 SampleChromatic(vec2 uv) {
 
 void main() {
     vec2 fragCoord = gl_FragCoord.xy;
-
     vec2 uv = TexCoord;
     vec3 color = SampleChromatic(uv);
-    //too costly
-    //vec3 bloom = SampleBloom(uv);
-    //color += bloom * 0.1;
 
     color *= Mask(fragCoord);
+    color = clamp(color, 0.0, 1.0);
 
     color = ToSrgb(color);
 

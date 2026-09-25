@@ -175,6 +175,7 @@ struct UIPage {
 	UIElement uiElements[MAX_ELEMENTS];
 	TextElement textElements[MAX_ELEMENTS];
 	i8 elementHovered;
+  i8 previousElementHovered;
 	u8 actionableElementCount = 0;
 	i32 numberOfImageElements = 0;
 	i32 numberOfTextElements = 0;
@@ -233,7 +234,7 @@ void add_pop_animation(UIElement *e, f32 duration);
 void add_text_bob(TextElement *element);
 void add_bob(UIElement *element, u8 tied = false);
 void add_rotate(UIElement *element, f32 amount = 0.05f, f32 duration = 2.0f);
-void add_fade(UIElement *element);
+void add_fade(UIElement *element, f32 duration = 1.0f);
 void add_fade(TextElement *element);
 void add_shake_animation(TextElement *e, f32 duration);
 void add_shake_animation(UIElement *e, f32 duration);

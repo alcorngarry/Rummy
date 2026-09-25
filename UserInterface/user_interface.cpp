@@ -136,6 +136,7 @@ inline bool ui_point_inside(const UIElement& e, f64 x, f64 y) {
 }
 
 void check_elements_hovered(UIPage* page, f64 xpos, f64 ypos) {
+    page->previousElementHovered = page->elementHovered;
     page->elementHovered = -1;
     for (i32 i = 0; i < page->numberOfImageElements; ++i) {
         if(page->uiElements[i].actionId == -1 || 
@@ -898,7 +899,7 @@ void add_bob(UIElement *element, u8 tied) {
     a->complete = false;
 }
 
-void add_fade(UIElement *element) {
+void add_fade(UIElement *element, f32 duration) {
     Animation *a = add_animation(
         element->animations,
         &element->numberOfAnimations
@@ -908,7 +909,7 @@ void add_fade(UIElement *element) {
     a->animationType = FADE;
     a->start = vec2(element->color.a, 0.0f);
     a->destination = vec2(0.0f, 0.0f);
-    a->duration = 1.0f;
+    a->duration = duration;
 
     a->elapsed = 0.0f;
     a->autoAnimate = true;
@@ -1631,6 +1632,7 @@ UIPage* create_ui_page(UIMemory* mem) {
     UIPage* page = (UIPage*)ui_push_size(mem, sizeof(UIPage));
     memset(page, 0, sizeof(UIPage));
     page->elementHovered = -1;
+    page->previousElementHovered = -1;
     page->tabCursorId = -1;
     page->elementCursorId = -1;
     page->tabSelected = -1;
