@@ -197,7 +197,7 @@ i32 main() {
 i32 APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, i32 cmdshow) {
 #endif
     window = create_window();
-    load_window_icon();
+    //load_window_icon();
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     load_textures();
     load_fonts();
@@ -412,19 +412,20 @@ void toggle_fullscreen(GLFWwindow* window) {
 }
 
 void load_window_icon() {
-    i32 width, height, channels;
-    unsigned char* pixels = stbi_load("./res/icon.png", &width, &height, &channels, 0);
-    if (!pixels) {
-        printf("Unable to load window icon!\n");
-    }
-
-    GLFWimage icon_image;
-    icon_image.width = width;
-    icon_image.height = height;
-    icon_image.pixels = pixels;
-
-    glfwSetWindowIcon(window, 1, &icon_image);
-    stbi_image_free(pixels);
+// IGNORE ICON FOR NOW
+//    i32 width, height, channels;
+//    unsigned char* pixels = stbi_load("./res/icon.ei", &width, &height, &channels, 0);
+//    if (!pixels) {
+//        printf("Unable to load window icon!\n");
+//    }
+//
+//    GLFWimage icon_image;
+//    icon_image.width = width;
+//    icon_image.height = height;
+//    icon_image.pixels = pixels;
+//
+//    glfwSetWindowIcon(window, 1, &icon_image);
+//    stbi_image_free(pixels);
 }
 
 void framebuffer_size_callback(GLFWwindow* window, i32 width, i32 height) {
@@ -472,36 +473,35 @@ void key_callback(GLFWwindow* window, i32 key, i32 scancode, i32 action, i32 mod
 }
 
 void load_textures() {
-    //mipmmapped, flipped, repeated
-    load_texture(TILE_ATLAS_T, "./res/tile-map2.png", false, true, true);
-    load_texture(TILE_FACE_T, "./res/tile-face64.png", true, false, false);
-    load_texture(TILE_SIDES_T, "./res/tile-bg64.png", true, false, false);
-    load_texture(NUMBER_SHEET_T, "./res/number-sheet.png", true, false, true);
-    load_texture(BRIDGE_T, "./res/bridge.png", true, false, true);
-    load_texture(TILE_SLOT_T, "./res/tile-slot.png", true, false, false);
-    load_texture(BUTTON_T, "./res/button.png", true, false, false);
-    load_texture(POOL_T, "./res/pool.png", true, false, false);
-    load_texture(CIRCLE_BUTTON_T, "./res/circle-button.png", true, false, false);
-    load_texture(RELICS_T, "./res/relics.png", true, false, true);
-    load_texture(UI_BG_2_T, "./res/ui-bg2.png", true, false, false);
-    load_texture(BUTTON_SELECT_T, "./res/button-select.png", true, true, false);
-    load_texture(RADIO_T, "./res/radio-sheet.png", true, true, false);
-    load_texture(BACK_T, "./res/back-icon.png", true, true, false);
-    load_texture(OPTION_T, "./res/option-button.png", true, false, false);
-    load_texture(SETTINGS_T, "./res/settings.png", true, false, false);
-    load_texture(EXIT_T, "./res/exit.png", true, false, false);
-    load_texture(UI_TILE_T, "./res/ui-tile.png", true, false, false);
-    load_texture(TITLE_T, "./res/title-sheet.png", true, false, false);
-    load_texture(ACTIVES_T, "./res/actives.png", true, false, false);
-    load_texture(TOOL_TIP_T, "./res/tooltip.png", true, false, false);
-    load_texture(ROUND_CHALLENGE_T, "./res/round-challenge.png", true, false, false);
-    load_texture(BUMP_BG_T, "./res/bump-bg.png", true, false, false);
-    load_texture(SHEEN_T, "./res/sheen.png", true, false, false);
-    load_texture(ROUND_SHEEN_T, "./res/round-sheen.png", true, false, false);
-    load_texture(LOCKED_T, "./res/locked-tile.png", true, false, false);
-    load_texture(CURSOR_T, "./res/cursor-sheet.png", true, false, false);
-    load_texture(ME_TILE_T, "./res/meTile.png", true, false, false);
-    load_texture(TILE_EFFECTS_T, "./res/tile-effects.png", true, false, false);
+    load_texture_asset(TILE_ATLAS_T, "./res/tile-map2.ei");
+    load_texture_asset(TILE_FACE_T, "./res/tile-face64.ei");
+    load_texture_asset(TILE_SIDES_T, "./res/tile-bg64.ei");
+    load_texture_asset(NUMBER_SHEET_T, "./res/number-sheet.ei");
+    load_texture_asset(BRIDGE_T, "./res/bridge.ei");
+    load_texture_asset(TILE_SLOT_T, "./res/tile-slot.ei");
+    load_texture_asset(BUTTON_T, "./res/button.ei");
+    load_texture_asset(POOL_T, "./res/pool.ei");
+    load_texture_asset(CIRCLE_BUTTON_T, "./res/circle-button.ei");
+    load_texture_asset(RELICS_T, "./res/relics.ei");
+    load_texture_asset(UI_BG_2_T, "./res/ui-bg2.ei");
+    load_texture_asset(BUTTON_SELECT_T, "./res/button-select.ei");
+    load_texture_asset(RADIO_T, "./res/radio-sheet.ei");
+    load_texture_asset(BACK_T, "./res/back-icon.ei");
+    load_texture_asset(OPTION_T, "./res/option-button.ei");
+    load_texture_asset(SETTINGS_T, "./res/settings.ei");
+    load_texture_asset(EXIT_T, "./res/exit.ei");
+    load_texture_asset(UI_TILE_T, "./res/ui-tile.ei");
+    load_texture_asset(TITLE_T, "./res/title-sheet.ei");
+    load_texture_asset(ACTIVES_T, "./res/actives.ei");    
+    load_texture_asset(TOOL_TIP_T, "./res/tooltip.ei");
+    load_texture_asset(ROUND_CHALLENGE_T, "./res/round-challenge.ei");
+    load_texture_asset(BUMP_BG_T, "./res/bump-bg.ei");
+    load_texture_asset(SHEEN_T, "./res/sheen.ei");
+    load_texture_asset(ROUND_SHEEN_T, "./res/round-sheen.ei");
+    load_texture_asset(LOCKED_T, "./res/locked-tile.ei");
+    load_texture_asset(CURSOR_T, "./res/cursor-sheet.ei");
+    load_texture_asset(ME_TILE_T, "./res/meTile.ei");
+    load_texture_asset(TILE_EFFECTS_T, "./res/tile-effects.ei");
 }
 
 VideoSettings load_video_settings() {

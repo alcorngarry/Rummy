@@ -15,9 +15,6 @@ if not exist build\res (
     mkdir build\res
 )
 
-robocopy InfiniteErl\res build\res /E /IS /IT
-
-
 if not exist build mkdir build
 pushd build
 
@@ -35,7 +32,6 @@ set CommonLinkerFlags= ^
 /LIBPATH:"C:\Dev\third-party-dependencies\lib" ^
 opengl32.lib ^
 glfw3.lib ^
-freetype.lib ^
 user32.lib gdi32.lib shell32.lib winmm.lib ^
 kernel32.lib ole32.lib oleaut32.lib uuid.lib ^
 comdlg32.lib advapi32.lib ^

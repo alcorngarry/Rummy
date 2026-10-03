@@ -2,16 +2,14 @@
 #define RENDERER_H
 #include "data_types.h"
 #include "user_interface.h"
-#include "renderer/shader.h"
-#include "stb_image.h"
-#include <ft2build.h>
-#include FT_FREETYPE_H
+#include "shader.h"
 
 static Shader* textShader;
 static Shader* uiShader;
 static Shader* itemShader;
 static Shader* bgShader;
 static Shader* ppShader;
+
 
 struct Character {
     ivec2 atlasPos;
@@ -29,6 +27,34 @@ struct Font {
     i32 fontAtlasWidth;
     i32 fontAtlasHeight;
     i32 lineHeight;
+};
+
+struct FontAssetHeader {
+    u32 magic;
+    u32 version;
+
+    u32 atlasWidth;
+    u32 atlasHeight;
+
+    i32 fontAscent;
+    i32 fontDescent;
+    i32 lineHeight;
+
+    u32 characterCount;
+};
+
+struct TextureAssetHeader {
+    u32 magic;
+    u32 version;
+
+    u32 width;
+    u32 height;
+
+    u32 channels;
+
+    u8 isMipMapped;
+    u8 isRepeated;
+    u8 padding[2];
 };
 
 enum RenderEntryType {
@@ -146,7 +172,7 @@ f32 get_text_length(const char* text, f32 scale);
 void load_fonts();
 void load_shaders();
 
-void load_texture(i32 id, const char* filePath, u8 isMipMapped, u8 isFlipped, u8 repeated);
+void load_texture_asset(i32 id, const char* filePath);
 u32 load_quad_buffer(f32* vertices, i32 vertexCount, u32* indices, i32 indexCount);
 u32 load_ui_quad_buffer(f32* vertices, i32 vertexCount, u32* indices, i32 indexCount);
 void unload_renderer();

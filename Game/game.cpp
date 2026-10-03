@@ -3810,30 +3810,45 @@ void add_shop_purchase_menu(u8 isRelic) {
     //relics
     i32 relicIds[3];
     populate_relics_in_shop(relicIds);
-    UIElement relic = UIElement{CENTER, -1, RELICS_T, 0.26f, 0.35f, 0.08f * RENDERING_ASPECT, 0.08f};
+    UIElement relic = UIElement{CENTER, -1, RELICS_T, 0.26f, 0.325f, 0.08f * RENDERING_ASPECT, 0.08f};
     relic.isHoverable = true;
     relic.sheetAnimation = SheetAnimation{RELIC_COLUMNS, RELIC_ROWS};
     relic.actionId = 11;
     //actives
     i32 activeIds[3];
     populate_actives_in_shop(activeIds);
-    UIElement active = UIElement{CENTER, -1, ACTIVES_T, 0.26f, 0.65f, 0.08f * RENDERING_ASPECT, 0.08f};
+    UIElement active = UIElement{CENTER, -1, ACTIVES_T, 0.26f, 0.625f, 0.08f * RENDERING_ASPECT, 0.08f};
     active.sheetAnimation = SheetAnimation{ACTIVE_COLUMNS, ACTIVE_ROWS};
     active.actionId = 17;
     active.isHoverable = true;
+
+    TextElement price = TextElement{CENTER, "$", 0.26f, 0.425f, -1, true, DEFAULT_FONT_SCALE * 2.0f};
+    price.color = R_GOLDEN;
+
+    i32 priceIds[6];
+    i32 j = 0;
 
     for(i32 i = 0; i < 3; i++) {
         relic.posx = 0.26f + i * 0.24f;
         relic.sheetAnimation.currentFrame = relicIds[i];
         relicIds[i] = add_ui_element(gState->uiPage, relic);
 
+        price.posy = 0.425f;
+        price.posx = 0.26f + i * 0.24f;
+        snprintf(price.text, sizeof(price.text), "$%d", (i32)gState->relics[relicIds[i]].price);
+        priceIds[j++] = add_text_element(gState->uiPage, price);
+
         active.posx = 0.26f + i * 0.24f;
         active.sheetAnimation.currentFrame = activeIds[i];
         activeIds[i] = add_ui_element(gState->uiPage, active);
+        
+        price.posy = 0.725f;
+        snprintf(price.text, sizeof(price.text), "$%d", (i32)gState->actives[activeIds[i]].item.price);
+        priceIds[j++] = add_text_element(gState->uiPage, price);
     }
 
     i32 bgIds[2];
-    UIElement itemBg = UIElement{CENTER, -1, BUTTON_T, 0.5f, 0.35f, 0.2f, 0.6f};
+    UIElement itemBg = UIElement{CENTER, -1, BUTTON_T, 0.5f, 0.35f, 0.25f, 0.6f};
     itemBg.sheetAnimation = SheetAnimation{3, 3};
     //itemBg.actionId = 17;
     itemBg.isPanel = true;
@@ -3860,6 +3875,9 @@ void add_shop_purchase_menu(u8 isRelic) {
     for(i32 i = 0; i < 3; ++i) {
         add_image_to_window(gState->uiPage, windowIndex, relicIds[i]);
         add_image_to_window(gState->uiPage, windowIndex, activeIds[i]);
+    }
+    for(i32 i = 0; i < 6; ++i) {
+        add_text_to_window(gState->uiPage, windowIndex, priceIds[i]);
     }
 
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{Anchor::CENTER, "Round Score", 0.26f, 0.1f, -1, true, DEFAULT_FONT_SCALE}));

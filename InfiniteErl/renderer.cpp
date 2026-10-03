@@ -54,133 +54,103 @@ vec4 get_font_uv(Character *ch) {
 }
 
 void load_fonts() {
-    FT_Library ft;
+    FILE* file = fopen("./fonts/tandy.ef", "rb");
 
-    if (FT_Init_FreeType(&ft)) {
-        printf("ERROR::FREETYPE: Could not init FreeType Library\n");
+    if (!file) {
+        printf("ERROR::FONT: Failed to open %s\n", "./fonts/tandy.ef");
+        return;
     }
-    FT_Face face;
-    FT_Error e = FT_New_Face(ft, "./fonts/tandy-test.ttf", 0, &face);
-    if (e) {
-        printf("ERROR::FREETYPE: Failed to load font (code: %d)\n", e);
+
+    FontAssetHeader header{};
+
+    if (fread(&header, sizeof(FontAssetHeader), 1, file) != 1) {
+        printf("ERROR::FONT: Failed to read header\n");
+        fclose(file);
+        return;
     }
-    else {
-        FT_Set_Pixel_Sizes(face, 0, 48);
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-        font.fontAscent = face->size->metrics.ascender >> 6;
-        font.fontDescent = face->size->metrics.descender >> 6;
-        font.lineHeight = face->size->metrics.height >> 6;
 
-        i32 columns = 15;
-        i32 rows = 7;
-        i32 padding = 2;
+    if (header.magic != 0xDEADBEEF) {
+        printf("ERROR::FONT: Invalid font asset\n");
+        fclose(file);
+        return;
+    }
 
-        i32 maxGlyphHeight = 0;
-        i32 maxGlyphWidth = 0;
+    if (header.version != 1) {
+        printf("ERROR::FONT: Unsupported font version: %d\n", header.version);
+        fclose(file);
+        return;
+    }
 
-        for (unsigned char c = 32; c < 127; ++c) {
-            if (FT_Load_Char(face, c, FT_LOAD_RENDER)) {
-                printf("ERROR::FREETYTPE: Failed to load Glyph\n");
-                continue;
-            }
+    font.fontAtlasWidth = header.atlasWidth;
+    font.fontAtlasHeight = header.atlasHeight;
 
-            FT_GlyphSlot glyph = face->glyph;
-            
-            if((i32)glyph->bitmap.rows > maxGlyphHeight) {
-                maxGlyphHeight = glyph->bitmap.rows;
-            } 
+    font.fontAscent = header.fontAscent;
+    font.fontDescent = header.fontDescent;
+    font.lineHeight = header.lineHeight;
 
-            if((i32)glyph->bitmap.width > maxGlyphWidth) {
-                maxGlyphWidth = glyph->bitmap.width;
-            } 
+    for (u32 i = 0; i < header.characterCount; ++i) {
+        Character character{};
+
+        if (fread(&character, sizeof(Character), 1, file) != 1) {
+            printf("ERROR::FONT: Failed to read character data\n");
+            fclose(file);
+            return;
         }
-      
-        i32 cellWidth = maxGlyphWidth + padding;
-        i32 cellHeight = maxGlyphHeight + padding;
-        //using cells here means that the texture has extra space on the right side 
 
-        font.fontAtlasWidth = cellWidth * columns;
-        font.fontAtlasHeight = cellHeight * rows;
-
-        glGenTextures(1, &font.fontAtlas);
-        glBindTexture(GL_TEXTURE_2D, font.fontAtlas);
-
-        glTexImage2D(
-            GL_TEXTURE_2D,
-            0,
-            GL_RED,
-            font.fontAtlasWidth,
-            font.fontAtlasHeight,
-            0,
-            GL_RED,
-            GL_UNSIGNED_BYTE,
-            NULL
-        );
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-        i32 atlasX = 0;
-        i32 atlasY = 0;
-        i32 i = 0;
-        for (unsigned char c = 32; c < 127; c++) {
-            if (FT_Load_Char(face, c, FT_LOAD_RENDER)) {
-                printf("ERROR::FREETYTPE: Failed to load Glyph\n");
-                continue;
-            }
-            
-            FT_GlyphSlot glyph = face->glyph;
-            i32 gwidth = glyph->bitmap.width;
-            i32 gheight = glyph->bitmap.rows;
-
-            font.characters[c] = new Character{
-                ivec2(atlasX, atlasY),
-                ivec2(gwidth, gheight),
-                ivec2(glyph->bitmap_left, glyph->bitmap_top),
-                (i32)face->glyph->advance.x >> 6,
-                face->glyph->metrics.horiAdvance >> 6,
-            };
-
-            glTexSubImage2D(
-                GL_TEXTURE_2D,
-                0,
-                atlasX,
-                atlasY,
-                gwidth,
-                gheight,
-                GL_RED,
-                GL_UNSIGNED_BYTE,
-                glyph->bitmap.buffer
-            );
-
-            i++;
-
-            if(i == columns) {
-                atlasX = 0;
-                atlasY += cellHeight;
-                i = 0;
-            } else {
-                atlasX += gwidth + padding;
-            }
+        u32 c = 32 + i;
+        if (c < 128) {
+            font.characters[c] = new Character(character);
         }
     }
 
+    size_t atlasSize = (size_t)header.atlasWidth * (size_t)header.atlasHeight;
+    u8* atlas = new u8[atlasSize];
+
+    if (fread(atlas, sizeof(u8), atlasSize, file) != atlasSize) {
+        printf("ERROR::FONT: Failed to read atlas data\n");
+
+        delete[] atlas;
+        fclose(file);
+        return;
+    }
+
+    fclose(file);
+    glGenTextures(1, &font.fontAtlas);
+    glBindTexture(GL_TEXTURE_2D, font.fontAtlas);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+    glTexImage2D(
+        GL_TEXTURE_2D,
+        0,
+        GL_RED,
+        font.fontAtlasWidth,
+        font.fontAtlasHeight,
+        0,
+        GL_RED,
+        GL_UNSIGNED_BYTE,
+        atlas
+    );
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    FT_Done_Face(face);
-    FT_Done_FreeType(ft);
+    delete[] atlas;
 
     glGenVertexArrays(1, &textVAO);
     glGenBuffers(1, &textVBO);
     glBindVertexArray(textVAO);
     glBindBuffer(GL_ARRAY_BUFFER, textVBO);
+
     glBufferData(GL_ARRAY_BUFFER, sizeof(f32) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(f32), 0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
+
+    printf("Loaded font: %s (%dx%d)\n", "./fonts/tandy.ef", font.fontAtlasWidth, font.fontAtlasHeight);
 }
 
 void load_shaders() {
@@ -889,65 +859,70 @@ static void draw_image_ui(RenderEntryUIImage *image) {
     glDepthMask(GL_TRUE);
 }
 
-void load_texture(i32 id, const char* filePath, u8 isMipMapped, u8 isFlipped, u8 repeated) {
+void load_texture_asset(i32 id, const char* filePath) {
+    FILE* file = fopen(filePath, "rb");
+
+    if (!file) {
+        printf("Failed to open texture asset: %s\n", filePath);
+        return;
+    }
+
+    TextureAssetHeader header{};
+    fread(&header, sizeof(TextureAssetHeader), 1, file);
+
+    if (header.magic != 0x5458454C) {
+        printf("Invalid texture asset\n");
+        fclose(file);
+        return;
+    }
+
+    size_t dataSize = (size_t)header.width * (size_t)header.height * header.channels;
+    u8* data = new u8[dataSize];
+
+    fread(data, sizeof(u8), dataSize, file);
+    fclose(file);
     u32 textureID;
+
     glGenTextures(1, &textureID);
     glBindTexture(GL_TEXTURE_2D, textureID);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-    i32 width, height, nrChannels;
-    if (isFlipped) {
-        stbi_set_flip_vertically_on_load(0);
+    glTexImage2D(
+        GL_TEXTURE_2D,
+        0,
+        GL_RGBA,
+        header.width,
+        header.height,
+        0,
+        GL_RGBA,
+        GL_UNSIGNED_BYTE,
+        data
+    );
+
+    if (header.isMipMapped) {
+        glGenerateMipmap(GL_TEXTURE_2D);
+    }
+
+    if (header.isRepeated) {
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     } else {
-        stbi_set_flip_vertically_on_load(1);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     }
-    
-    //store these chars
-    unsigned char* data = stbi_load(filePath, &width, &height, &nrChannels, 0);
 
-    if (data) {
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-        if (nrChannels == 4) {
-            // premultiplying alpha
-            for (i32 i = 0; i < width * height; i++) {
-                f32 alpha = data[i * 4 + 3] / 255.0f;
-                data[i * 4 + 0] = (unsigned char)(data[i * 4 + 0] * alpha);
-                data[i * 4 + 1] = (unsigned char)(data[i * 4 + 1] * alpha);
-                data[i * 4 + 2] = (unsigned char)(data[i * 4 + 2] * alpha);
-            }
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-        }
-        else {
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-        }
-        //mipmap requires power of two sizing that's why there was an issue, look into mipmapping
-        if (isMipMapped)
-        {
-            glGenerateMipmap(GL_TEXTURE_2D);
-        }
-
-        if (repeated) {
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        }
-        else {
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        }
-
-        // Nearest filtering for pixel-perfect UI
+    if (header.isMipMapped) {
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    } else {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-        std::cout << "Loaded texture: " << filePath << std::endl;
     }
-    else {
-        std::cout << "Failed to load texture: " << filePath << std::endl;
-    }
-    stbi_image_free(data);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glBindTexture(GL_TEXTURE_2D, 0);
 
-    textures[textureCount] = Texture{ id, textureID };
+    delete[] data;
+
+    textures[textureCount] = Texture{id, textureID};
     textureCount++;
 }
 
