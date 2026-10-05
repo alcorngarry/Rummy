@@ -5,7 +5,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <string>
-#include <windows.h>
+//this should not be here!
+//#include <windows.h>
 #include <cstring>
 
 #define PI32 3.14159265359f

@@ -3,7 +3,7 @@
 #define MAGIC 0x0C0FFEE
 #define VERSION 1
 #define MAX_PROFILE 3
-#include "platform.h"
+#include "engine_interface.h"
 
 struct SaveHeader {
     u32 magic;

@@ -169,7 +169,7 @@ void push_post_process(RenderBuffer* buffer, RenderEntryPostProcess* postProcess
 void render_buffer(RenderBuffer* buffer);
 
 f32 get_text_length(const char* text, f32 scale);
-void load_fonts();
+void load_font(const char* filePath);
 void load_shaders();
 
 void load_texture_asset(i32 id, const char* filePath);

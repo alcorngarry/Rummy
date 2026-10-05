@@ -248,11 +248,15 @@ void shuffle_tiles(Tile** tiles, i32 count) {
     }
 }
 
-void set_seed() {
-    FILETIME ft;
-    GetSystemTimeAsFileTime(&ft);
 
-    gState->rng = RNG{(u64(ft.dwHighDateTime) << 32) | u64(ft.dwLowDateTime)};
+// WINDOWS SPECIFIC!
+void set_seed() {
+    //FILETIME ft;
+    //GetSystemTimeAsFileTime(&ft);
+    //gState->rng = RNG{(u64(ft.dwHighDateTime) << 32) | u64(ft.dwLowDateTime)};
+
+    u64 time = gMemory->get_system_time_fn();
+    gState->rng = RNG{time};
     init_rng(&gState->rng);
 }
 
@@ -3924,263 +3928,6 @@ void add_shop_purchase_menu(u8 isRelic) {
     add_ui_element(gState->uiPage, blur);
 }
 
-//void add_shop_purchase_menu(u8 isRelic) {
-//    set_page_state(isRelic ? RELICS_PURCHASE : ACTIVES_PURCHASE);
-//    clear_game_ui();
-//
-//    i32 itemIds[3];
-//    i32 bgIds[3];
-//    i32 itemDataIds[3];
-//
-//    SheetAnimation itemSheet;
-//    UIElement item;
-//
-//    if(isRelic) {
-//        populate_relics_in_shop(itemDataIds);
-//
-//        item = UIElement{CENTER, -1, RELICS_T, 0.26f, 0.4f, 0.08f * RENDERING_ASPECT, 0.08f};
-//        itemSheet = SheetAnimation{RELIC_COLUMNS, RELIC_ROWS};
-//    } else {
-//        populate_actives_in_shop(itemDataIds);
-//
-//        item = UIElement{CENTER, -1, ACTIVES_T, 0.26f, 0.4f, 0.08f * RENDERING_ASPECT, 0.08f};
-//        itemSheet = SheetAnimation{ACTIVE_COLUMNS, ACTIVE_ROWS};
-//    }
-//
-//    item.sheetAnimation = itemSheet;
-//    for(i32 i = 0; i < 3; i++) {
-//        item.posx = 0.26f + i * 0.24f;
-//        item.sheetAnimation.currentFrame = itemDataIds[i];
-//
-//        itemIds[i] = add_ui_element(gState->uiPage, item);
-//    }
-//
-//    SheetAnimation panelSheet = SheetAnimation{3, 3};
-//    UIElement itemBg = UIElement{CENTER, -1, BUTTON_T, 0.26f, 0.5275f, 0.65f, 0.225f};
-//
-//    itemBg.sheetAnimation = panelSheet;
-//    itemBg.actionId = isRelic ? 11 : 17;
-//
-//    itemBg.isPanel = true;
-//    itemBg.color = R_BLUE;
-//    itemBg.hoverColor = R_BLUE * vec4(0.8f, 0.8f, 0.8f, 1.0f);
-//    itemBg.isHoverable = true;
-//
-//    for(i32 i = 0; i < 3; i++) {
-//        itemBg.posx = 0.26f + i * 0.24f;
-//        itemBg.imageChildId = itemIds[i];
-//
-//        bgIds[i] = add_ui_element(gState->uiPage, itemBg);
-//    }
-//
-//    i32 nextRoundId = add_button(gState->uiPage, BUTTON_T, isRelic ? "Active Shop" : "Round Challenge", vec2(0.74f, 0.9f), vec2(0.05f, 0.225f), R_GRAY, isRelic ? 16 : 20);
-//
-//    i32 rerollActionId = 12;
-//
-//    if(gState->runData.dollaBills > 0) {
-//        rerollActionId = isRelic ? 28 : 29;
-//    }
-//
-//    i32 rerollId = add_button(gState->uiPage, BUTTON_T, "REROLL", vec2(0.26f, 0.9f), vec2(0.05f, 0.225f), R_RED, rerollActionId);
-//
-//    if(rerollActionId == 12) {
-//        disable_button(gState->uiPage, rerollId);
-//    }
-//
-//    i32 windowIndex = add_window(gState->uiPage, UI_BG_2_T, CENTER, vec2(0.9f, 0.75f), vec2(0.5f, 2.0f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE);
-//
-//    Item items[3];
-//    for(i32 i = 0; i < 3; i++) {
-//        if(isRelic) {
-//            items[i] = gState->relics[itemDataIds[i]];
-//        } else {
-//            items[i] = gState->actives[itemDataIds[i]].item;
-//        }
-//    }
-//
-//    for(i32 i = 0; i < 3; i++) {
-//        f32 x = 0.26f + i * 0.24f;
-//
-//        TextElement name = TextElement{CENTER, "", x, 0.25f, -1, true, DEFAULT_FONT_SCALE * 2.5f};
-//        name.bounce = true;
-//        snprintf(name.text, sizeof(name.text), "%s", items[i].name);
-//
-//        add_dependent_text_element(gState->uiPage, bgIds[i], add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, name)));
-//
-//        TextElement rarity = TextElement{CENTER, "", x, 0.525f, -1, true, DEFAULT_FONT_SCALE * 1.75f};
-//        snprintf(rarity.text, sizeof(rarity.text), "%s", rarity_to_string(items[i].rarity));
-//
-//        add_dependent_text_element(gState->uiPage, bgIds[i], add_text_to_window(gState->uiPage, windowIndex,add_text_element(gState->uiPage, rarity)));
-//
-//        TextElement desc = TextElement{CENTER, "", x, 0.575f, -1, true, DEFAULT_FONT_SCALE};
-//        desc.maxWidth = 0.3f;
-//        snprintf(desc.text, sizeof(desc.text), "%s", items[i].description);
-//
-//        add_dependent_text_element(gState->uiPage, bgIds[i], add_text_to_window(gState->uiPage, windowIndex,add_text_element(gState->uiPage, desc)));
-//
-//        TextElement price = TextElement{
-//            Anchor::CENTER,
-//            "",
-//            x,
-//            0.725f,
-//            -1,
-//            true,
-//            DEFAULT_FONT_SCALE * 3.0f,
-//            R_YELLOW
-//        };
-//
-//        price.maxWidth = 0.3f;
-//
-//        snprintf(
-//            price.text,
-//            sizeof(price.text),
-//            "$%d",
-//            (i32)items[i].price
-//        );
-//
-//        add_dependent_text_element(
-//            gState->uiPage,
-//            bgIds[i],
-//            add_text_to_window(
-//                gState->uiPage,
-//                windowIndex,
-//                add_text_element(gState->uiPage, price)
-//            )
-//        );
-//    }
-//
-//    for(i32 i = 0; i < 3; i++) {
-//        add_image_to_window(gState->uiPage, windowIndex, itemIds[i]);
-//        add_image_to_window(gState->uiPage, windowIndex, bgIds[i]);
-//    }
-//
-//    add_button_to_window(gState->uiPage, windowIndex, nextRoundId);
-//    add_button_to_window(gState->uiPage, windowIndex, rerollId);
-//
-//    add_text_to_window(
-//        gState->uiPage,
-//        windowIndex,
-//        add_text_element(
-//            gState->uiPage,
-//            TextElement{
-//                Anchor::CENTER,
-//                "Round Score",
-//                0.26f,
-//                0.1f,
-//                -1,
-//                true,
-//                DEFAULT_FONT_SCALE
-//            }
-//        )
-//    );
-//
-//    add_text_to_window(
-//        gState->uiPage,
-//        windowIndex,
-//        add_dynamic_text_element(
-//            gState->uiPage,
-//            TextElement{
-//                Anchor::CENTER,
-//                "",
-//                0.26f,
-//                0.15f,
-//                -1,
-//                true,
-//                DEFAULT_FONT_SCALE * 3.0f,
-//                R_PURPLE
-//            },
-//            "",
-//            0,
-//            UINT_64
-//        )
-//    );
-//
-//    numTableTiles = 0;
-//    for(i32 i = 0; i < gState->table.numberOfSets; i++) {
-//        numTableTiles += gState->table.sets[i].numberOfTiles;
-//    }
-//
-//    add_text_to_window(
-//        gState->uiPage,
-//        windowIndex,
-//        add_text_element(
-//            gState->uiPage,
-//            TextElement{
-//                Anchor::CENTER,
-//                "Tiles Used",
-//                0.74f,
-//                0.1f,
-//                -1,
-//                true,
-//                DEFAULT_FONT_SCALE
-//            }
-//        )
-//    );
-//
-//    add_text_to_window(
-//        gState->uiPage,
-//        windowIndex,
-//        add_dynamic_text_element(
-//            gState->uiPage,
-//            TextElement{
-//                Anchor::CENTER,
-//                "",
-//                0.74f,
-//                0.15f,
-//                -1,
-//                true,
-//                DEFAULT_FONT_SCALE * 3.0f,
-//                R_RED
-//            },
-//            "",
-//            5,
-//            UINT_64
-//        )
-//    );
-//
-//    add_text_to_window(
-//        gState->uiPage,
-//        windowIndex,
-//        add_text_element(
-//            gState->uiPage,
-//            TextElement{
-//                Anchor::CENTER,
-//                "Cash",
-//                0.5f,
-//                0.1f,
-//                -1,
-//                true,
-//                DEFAULT_FONT_SCALE
-//            }
-//        )
-//    );
-//
-//    add_text_to_window(
-//        gState->uiPage,
-//        windowIndex,
-//        add_dynamic_text_element(
-//            gState->uiPage,
-//            TextElement{
-//                Anchor::CENTER,
-//                "",
-//                0.5f,
-//                0.15f,
-//                -1,
-//                true,
-//                DEFAULT_FONT_SCALE * 3.0f,
-//                R_GOLDEN
-//            },
-//            "$",
-//            3,
-//            TextType::UINT_64
-//        )
-//    );
-//
-//    UIElement blur = UIElement{CENTER, -1, -1, 0.5f, 0.5f, 1.0f, 1.0f};
-//    blur.color = vec4(0.0f, 0.0f, 0.0f, 0.5f);
-//    add_ui_element(gState->uiPage, blur);
-//}
-
 void add_round_complete_ui() {
     // 8 hoveredsetvalue
     set_page_state(ROUND_COMPLETE);
@@ -5136,6 +4883,42 @@ void reinit_page_state() {
     }
 }
 
+void load_font() {
+    gMemory->load_font_fn("./fonts/tandy.ef");
+}
+
+void load_textures() {
+    gMemory->load_texture_asset_fn(TILE_ATLAS_T, "./res/tile-map2.ei");
+    gMemory->load_texture_asset_fn(TILE_FACE_T, "./res/tile-face64.ei");
+    gMemory->load_texture_asset_fn(TILE_SIDES_T, "./res/tile-bg64.ei");
+    gMemory->load_texture_asset_fn(NUMBER_SHEET_T, "./res/number-sheet.ei");
+    gMemory->load_texture_asset_fn(BRIDGE_T, "./res/bridge.ei");
+    gMemory->load_texture_asset_fn(TILE_SLOT_T, "./res/tile-slot.ei");
+    gMemory->load_texture_asset_fn(BUTTON_T, "./res/button.ei");
+    gMemory->load_texture_asset_fn(POOL_T, "./res/pool.ei");
+    gMemory->load_texture_asset_fn(CIRCLE_BUTTON_T, "./res/circle-button.ei");
+    gMemory->load_texture_asset_fn(RELICS_T, "./res/relics.ei");
+    gMemory->load_texture_asset_fn(UI_BG_2_T, "./res/ui-bg2.ei");
+    gMemory->load_texture_asset_fn(BUTTON_SELECT_T, "./res/button-select.ei");
+    gMemory->load_texture_asset_fn(RADIO_T, "./res/radio-sheet.ei");
+    gMemory->load_texture_asset_fn(BACK_T, "./res/back-icon.ei");
+    gMemory->load_texture_asset_fn(OPTION_T, "./res/option-button.ei");
+    gMemory->load_texture_asset_fn(SETTINGS_T, "./res/settings.ei");
+    gMemory->load_texture_asset_fn(EXIT_T, "./res/exit.ei");
+    gMemory->load_texture_asset_fn(UI_TILE_T, "./res/ui-tile.ei");
+    gMemory->load_texture_asset_fn(TITLE_T, "./res/title-sheet.ei");
+    gMemory->load_texture_asset_fn(ACTIVES_T, "./res/actives.ei");    
+    gMemory->load_texture_asset_fn(TOOL_TIP_T, "./res/tooltip.ei");
+    gMemory->load_texture_asset_fn(ROUND_CHALLENGE_T, "./res/round-challenge.ei");
+    gMemory->load_texture_asset_fn(BUMP_BG_T, "./res/bump-bg.ei");
+    gMemory->load_texture_asset_fn(SHEEN_T, "./res/sheen.ei");
+    gMemory->load_texture_asset_fn(ROUND_SHEEN_T, "./res/round-sheen.ei");
+    gMemory->load_texture_asset_fn(LOCKED_T, "./res/locked-tile.ei");
+    gMemory->load_texture_asset_fn(CURSOR_T, "./res/cursor-sheet.ei");
+    gMemory->load_texture_asset_fn(ME_TILE_T, "./res/meTile.ei");
+    gMemory->load_texture_asset_fn(TILE_EFFECTS_T, "./res/tile-effects.ei");
+}
+
 extern "C" GAME_DLL void game_init(GameMemory* memory, i32 preserveState) {
     if(!init_profile_directories()) printf("ERROR CREATING DIRECTORIES\n");
     if(!load_profile(0)) {
@@ -5154,6 +4937,8 @@ extern "C" GAME_DLL void game_init(GameMemory* memory, i32 preserveState) {
     create_queue(&gState->cmdQueue, memoryCursor, MB);
 
     debug_state_memory(memory, memoryCursor);
+    load_font();
+    load_textures();
 
     //too many rebuilds could leak imagemesh memory
     create_quad();

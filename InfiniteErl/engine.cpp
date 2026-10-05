@@ -1,8 +1,9 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include "platform.h"
+#include "engine_interface.h"
 #include "renderer.h"
 #include "audio.h"
+#include "windows.h"
 
 GLFWwindow* window;
 GLFWwindow* create_window();
@@ -96,8 +97,14 @@ void load(GameDLL* g, const char* dllPath) {
     g->game_shutdown = (game_shutdown_fn)GetProcAddress(g->dll, "game_shutdown");
 }
 
-bool file_time_changed(FILETIME a, FILETIME b) {
+u8 file_time_changed(FILETIME a, FILETIME b) {
     return (CompareFileTime(&a, &b) == 1);
+}
+
+u64 get_system_time() {
+    FILETIME ft;
+    GetSystemTimeAsFileTime(&ft);
+    return (u64)ft.dwHighDateTime;
 }
 
 boolean hot_reload(GameDLL* g, const char* dllPath) {
@@ -169,6 +176,9 @@ GameMemory allocate_game_memory(RenderBuffer* buffer) {
     memory.play_audio_pitch_fn = play_audio_pitch;
     memory.load_home_music_fn = load_home_music;
     memory.set_resolution_fn = set_resolution;
+    memory.get_system_time_fn = get_system_time;
+    memory.load_texture_asset_fn = load_texture_asset;
+    memory.load_font_fn = load_font;
     memory.format_resolution_fn = format_resolution;
     memory.is_full_screen_fn = is_full_screen;
     memory.is_vsync_on_fn = is_vsync_on;
@@ -185,8 +195,6 @@ void update_video_settings(GameMemory *memory) {
         //videoSettings.vsync = !videoSettings.vsync;
         //glfwSwapInterval(videoSettings.vsync); 
         //memory->toggleVsync = false;
-
-
         glfwSwapInterval(true); 
     }
 }
@@ -199,8 +207,6 @@ i32 APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, i32 cmd
     window = create_window();
     //load_window_icon();
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    load_textures();
-    load_fonts();
     load_shaders();
     init_audio();
     init_post_process(windowResolution.width, windowResolution.height); 
@@ -470,38 +476,6 @@ void mouse_button_callback(GLFWwindow* window, i32 button, i32 action, i32 mods)
 
 void key_callback(GLFWwindow* window, i32 key, i32 scancode, i32 action, i32 mods) {
    game.game_update_input(action, key, (lastX / windowResolution.width) * defaultedAspect, lastY / windowResolution.height);
-}
-
-void load_textures() {
-    load_texture_asset(TILE_ATLAS_T, "./res/tile-map2.ei");
-    load_texture_asset(TILE_FACE_T, "./res/tile-face64.ei");
-    load_texture_asset(TILE_SIDES_T, "./res/tile-bg64.ei");
-    load_texture_asset(NUMBER_SHEET_T, "./res/number-sheet.ei");
-    load_texture_asset(BRIDGE_T, "./res/bridge.ei");
-    load_texture_asset(TILE_SLOT_T, "./res/tile-slot.ei");
-    load_texture_asset(BUTTON_T, "./res/button.ei");
-    load_texture_asset(POOL_T, "./res/pool.ei");
-    load_texture_asset(CIRCLE_BUTTON_T, "./res/circle-button.ei");
-    load_texture_asset(RELICS_T, "./res/relics.ei");
-    load_texture_asset(UI_BG_2_T, "./res/ui-bg2.ei");
-    load_texture_asset(BUTTON_SELECT_T, "./res/button-select.ei");
-    load_texture_asset(RADIO_T, "./res/radio-sheet.ei");
-    load_texture_asset(BACK_T, "./res/back-icon.ei");
-    load_texture_asset(OPTION_T, "./res/option-button.ei");
-    load_texture_asset(SETTINGS_T, "./res/settings.ei");
-    load_texture_asset(EXIT_T, "./res/exit.ei");
-    load_texture_asset(UI_TILE_T, "./res/ui-tile.ei");
-    load_texture_asset(TITLE_T, "./res/title-sheet.ei");
-    load_texture_asset(ACTIVES_T, "./res/actives.ei");    
-    load_texture_asset(TOOL_TIP_T, "./res/tooltip.ei");
-    load_texture_asset(ROUND_CHALLENGE_T, "./res/round-challenge.ei");
-    load_texture_asset(BUMP_BG_T, "./res/bump-bg.ei");
-    load_texture_asset(SHEEN_T, "./res/sheen.ei");
-    load_texture_asset(ROUND_SHEEN_T, "./res/round-sheen.ei");
-    load_texture_asset(LOCKED_T, "./res/locked-tile.ei");
-    load_texture_asset(CURSOR_T, "./res/cursor-sheet.ei");
-    load_texture_asset(ME_TILE_T, "./res/meTile.ei");
-    load_texture_asset(TILE_EFFECTS_T, "./res/tile-effects.ei");
 }
 
 VideoSettings load_video_settings() {

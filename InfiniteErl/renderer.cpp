@@ -53,11 +53,11 @@ vec4 get_font_uv(Character *ch) {
     return vec4(u0, v0, u1, v1);
 }
 
-void load_fonts() {
-    FILE* file = fopen("./fonts/tandy.ef", "rb");
+void load_font(const char* filePath) {
+    FILE* file = fopen(filePath, "rb");
 
     if (!file) {
-        printf("ERROR::FONT: Failed to open %s\n", "./fonts/tandy.ef");
+        printf("ERROR::FONT: Failed to open %s\n", filePath);
         return;
     }
 
@@ -150,7 +150,7 @@ void load_fonts() {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
-    printf("Loaded font: %s (%dx%d)\n", "./fonts/tandy.ef", font.fontAtlasWidth, font.fontAtlasHeight);
+    printf("Loaded font: %s (%dx%d)\n", filePath, font.fontAtlasWidth, font.fontAtlasHeight);
 }
 
 void load_shaders() {
@@ -814,7 +814,8 @@ static void draw_image_ui(RenderEntryUIImage *image) {
     if(!image) return;
     glDepthMask(GL_FALSE);
     glEnable(GL_BLEND);
-    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+    //glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     u32 textureId = get_texture_id(image->textureName);
     u32 vao = gMeshes[image->meshHandle].vao;
 
