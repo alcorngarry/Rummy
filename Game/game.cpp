@@ -545,6 +545,47 @@ u8 addition_action(void *ptr) {
     return true;
 }
 
+u8 add_new_bridge(void *ptr) {
+    for(i32 i = 0; i < gState->pool.numberOfTiles; ++i) {
+        Tile *t = gState->pool.tiles[i]; 
+
+        if(t->details.tileNumber == 15) {
+            remove_tile_from_pool(i);
+            add_tile_to_rack(t);
+            if(activesShown) activesShown = false;
+            snapshot_round_start();
+            return true;
+        }
+    }
+    return false;
+}
+
+u8 bridge_chance(void *ptr) {
+    if(gState->mode != GM_IN_GAME) return true;
+    ItemData actionData = * (ItemData *)ptr;
+    if(actionData.value == 1) return true;
+
+    i32 numberOfBridges = 0;
+
+    for(i32 i = 0; i < gState->table.numberOfSets; ++i ) {
+        Set set = gState->table.sets[i];
+        for(i32 j = 0; j < set.numberOfTiles; ++j) {
+            Tile *tile = set.tiles[j];
+            if(tile->details.tileNumber == 15) {
+                numberOfBridges++;
+            }
+        }
+    }
+
+    i32 randVal = rng_range(1, 100);
+    if(randVal <= numberOfBridges * 15) {
+        add_new_bridge(nullptr);
+        gState->relics[13].modifierValue = 1;
+    }
+
+    return true;
+}
+
 u8 wild_factor(void *ptr) {
     ItemData actionData = * (ItemData *)ptr;
     if(!actionData.set) return true;
@@ -698,7 +739,7 @@ Item RELIC_TABLE[TOTAL_RELICS] = {
     { EXCEEDINGLY_RARE, "Costly", "Wild tiles have triple the value but cost $1 when played.", 3, 2, 20, no_condition, costly, costly_post_round },
     { RARE, "Se7en", "Sets with a 7 tile get a %20 set value increase.", 2, 2, -20, contains_seven, addition_action },
     { COMMON, "INTERESTing", "Every round gain %3 interest on total cash.", 1, 2, 20, no_condition, no_condition, interesting },
-    { COMMON, "Shift", "Wild tiles have the ability to shift a Run's color.", 1, 2, 20, no_condition, no_condition },
+    { COMMON, "Bridge Chance", "When a bridge is played, 15\% chance a second bridge is drawn.", 1, 2, 0, no_condition, bridge_chance },
     { EXCEEDINGLY_RARE, "Wild Factor", "Every wild tile played gives %10 increase on set's value.", 3, 2, -10, contains_joker, wild_factor }
     
     // ---- done ---- color shift jokers, allows color shift when jokers played
@@ -785,26 +826,6 @@ u8 add_new_joker(void *ptr) {
     }
     return false;
 }
-
-u8 add_new_bridge(void *ptr) {
-    for(i32 i = 0; i < gState->pool.numberOfTiles; ++i) {
-        Tile *t = gState->pool.tiles[i]; 
-
-        if(t->details.tileNumber == 15) {
-            remove_tile_from_pool(i);
-            add_tile_to_rack(t);
-            toggle_actives();
-            snapshot_round_start();
-            return true;
-        }
-    }
-    return false;
-}
-
-//make this passive
-//u8 allow_wrap(void *ptr) {
-
-//}
 
 u8 allow_twins_for_round(void *ptr) {
     gState->rules.minSetSize = 2;
@@ -1242,6 +1263,7 @@ u8 draw_from_pool(Rack &rack) {
     if(nextFiveShown) {
       peekTilesAmount == 0 ? 5 : peekTilesAmount--;
     }
+
     return true;
 }
 
@@ -4419,6 +4441,7 @@ void add_relics_ui() {
     i32 relicIds[MAX_RELICS];
     i32 slotIds[MAX_RELICS];
     i32 sheenIds[MAX_RELICS];
+    add_item_window();
 
     for(i32 i = 0; i < MAX_RELICS; ++i) {
         relicIds[i] = -1;
@@ -4427,8 +4450,6 @@ void add_relics_ui() {
 
     vec2 relicSlotPositions[MAX_RELICS] = {}; 
     layout_grid(relicSlotPositions, MAX_RELICS / 10, MAX_RELICS / 5, CENTER, vec2(0.5f), vec2(0.75f, 0.9f), vec2(0.05f));
-
-
     //add xWhatever to relics rather than having multiple of the same images
 
     for(i32 i = 0; i < gState->player.numberOfRelics; ++i) {
@@ -4918,6 +4939,16 @@ void end_turn() {
                     gState->player.playerData.timesDrawn++;
                     gState->roundData.turnLimit--;
 
+                    for(i32 i = 0; i < gState->player.numberOfRelics; ++i) {
+                        Item item = gState->relics[gState->player.relics[i]];
+                        if(item.action == bridge_chance) {
+                            ItemData conditionData = ItemData {nullptr, item.conditionValue};
+                            if(item.condition(&conditionData)) {
+                                ItemData actionData = ItemData {nullptr, item.modifierValue};
+                                item.action(&actionData);
+                            }
+                        }
+                    }
 //                    if(gState->roundData.turnLimit == 0 && 
 //                        gState->uiPage->numberOfImageElements > 18 && 
 //                        gState->uiPage->numberOfTextElements > 13) {
