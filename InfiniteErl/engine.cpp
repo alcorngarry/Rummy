@@ -5,6 +5,14 @@
 #include "audio.h"
 #include "windows.h"
 
+#ifdef CONSOLE
+#define GAME_DLL_PATH "../build/Game.dll"
+#define GAME_TEMP_DLL "../build/game_temp.dll"
+#else
+#define GAME_DLL_PATH "Game.dll"
+#define GAME_TEMP_DLL "game_temp.dll"
+#endif
+
 GLFWwindow* window;
 GLFWwindow* create_window();
 
@@ -88,9 +96,9 @@ void unload(GameDLL* g) {
 void load(GameDLL* g, const char* dllPath) {
     g->lastWriteTime = get_last_write_time(dllPath);
 
-    CopyFileA(dllPath, "../build/game_temp.dll", FALSE);
+    CopyFileA(dllPath, GAME_TEMP_DLL , FALSE);
 
-    g->dll = LoadLibraryA("game_temp.dll");
+    g->dll = LoadLibraryA(GAME_TEMP_DLL );
     g->game_init = (game_init_fn)GetProcAddress(g->dll, "game_init");
     g->game_update_and_render = (game_update_and_render_fn)GetProcAddress(g->dll, "game_update_and_render");
     g->game_update_input = (game_update_input_fn)GetProcAddress(g->dll, "game_update_input");
@@ -116,11 +124,11 @@ boolean hot_reload(GameDLL* g, const char* dllPath) {
 
         CopyFileA(
             dllPath,
-            "../build/game_temp.dll",
+            "game_temp.dll",
             FALSE
         );
 
-        g->dll = LoadLibraryA("game_temp.dll");
+        g->dll = LoadLibraryA(GAME_TEMP_DLL );
         g->game_init =
             (game_init_fn)GetProcAddress(g->dll, "game_init");
         g->game_update_and_render =
@@ -211,7 +219,7 @@ i32 APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, i32 cmd
     init_audio();
     init_post_process(windowResolution.width, windowResolution.height); 
     
-    load(&game, "../build/Game.dll");
+    load(&game, GAME_DLL_PATH);
     RenderBuffer* buffer = allocate_render_buffer(MB / 2);
     if (!buffer) {
         OutputDebugStringA("Failed to allocate render buffer\n");
@@ -225,7 +233,7 @@ i32 APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, i32 cmd
         update_audio();
         update_video_settings(&memory);
 
-        if (hot_reload(&game, "../build/Game.dll")) {
+        if (hot_reload(&game, GAME_DLL_PATH)) {
           game.game_init(&memory, true);
           ui_reset(&memory.uiMem);
         }

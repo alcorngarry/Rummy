@@ -3183,7 +3183,7 @@ void add_profile_ui() {
     clear_game_ui();
 
     TextElement desc1 = TextElement{ CENTER, "", 0.5f, 0.2f, -1, true, DEFAULT_FONT_SCALE * 1.5f};
-    desc1.maxWidth = RENDERING_ASPECT * 0.2f;
+    desc1.maxWidth = RENDERING_ASPECT * 0.5f;
     snprintf(desc1.text, sizeof(desc1.text), "Runs Started: %llu", profile.runStarted);
     
     i32 desc1Id = add_text_element(gState->uiPage, desc1);
@@ -3575,9 +3575,15 @@ void add_end_game_ui() {
 void clear_shop_options() {
     if(gState->uiPage->elementHovered == -1) return;
     i32 id = gState->uiPage->elementHovered;
-    add_fade(&gState->uiPage->uiElements[id], 0.1f);
-    add_shake_animation(&gState->uiPage->uiElements[id], 0.1f);
-    gState->uiPage->uiElements[id].actionId = -1;
+    UIElement *option = &gState->uiPage->uiElements[id];
+
+    if(!option) return;
+    add_fade(option, 0.1f);
+    add_shake_animation(option, 0.1f);
+    option->actionId = -1;
+
+    if(!option->textChild) return;
+    option->textChild->visible = false;
 }
 
 void add_relic() {
@@ -3809,15 +3815,13 @@ void shop_item_hovered() {
 
     rarity->posx = pos.x;
     rarity->posy = pos.y - 0.05f;
-    snprintf(rarity->text, sizeof(rarity->text), "%s",
-             rarity_to_string(item->rarity));
+    snprintf(rarity->text, sizeof(rarity->text), "%s", rarity_to_string(item->rarity));
     rarity->color = rarity_to_color(item->rarity);
 
     desc->posx = pos.x;
     desc->posy = pos.y;
     desc->maxWidth = (bg->width * RENDERING_ASPECT) - 0.05f;
-    snprintf(desc->text, sizeof(desc->text), "%s",
-             item->description);
+    snprintf(desc->text, sizeof(desc->text), "%s", item->description);
 
     bg->posx = pos.x;
     bg->posy = pos.y - 0.02f;
@@ -3855,22 +3859,26 @@ void add_shop_purchase_menu(u8 isRelic) {
     i32 j = 0;
 
     for(i32 i = 0; i < 3; i++) {
-        relic.posx = 0.26f + i * 0.24f;
-        relic.sheetAnimation.currentFrame = relicIds[i];
-        relicIds[i] = add_ui_element(gState->uiPage, relic);
-
         price.posy = 0.425f;
         price.posx = 0.26f + i * 0.24f;
         snprintf(price.text, sizeof(price.text), "$%d", (i32)gState->relics[relicIds[i]].price);
         priceIds[j++] = add_text_element(gState->uiPage, price);
 
-        active.posx = 0.26f + i * 0.24f;
-        active.sheetAnimation.currentFrame = activeIds[i];
-        activeIds[i] = add_ui_element(gState->uiPage, active);
-        
+        relic.textChild = &gState->uiPage->textElements[priceIds[j - 1]];
+
+        relic.posx = 0.26f + i * 0.24f;
+        relic.sheetAnimation.currentFrame = relicIds[i];
+        relicIds[i] = add_ui_element(gState->uiPage, relic);
+
         price.posy = 0.725f;
         snprintf(price.text, sizeof(price.text), "$%d", (i32)gState->actives[activeIds[i]].item.price);
         priceIds[j++] = add_text_element(gState->uiPage, price);
+
+        active.textChild = &gState->uiPage->textElements[priceIds[j - 1]];
+
+        active.posx = 0.26f + i * 0.24f;
+        active.sheetAnimation.currentFrame = activeIds[i];
+        activeIds[i] = add_ui_element(gState->uiPage, active);
     }
 
     i32 bgIds[2];
@@ -3907,15 +3915,15 @@ void add_shop_purchase_menu(u8 isRelic) {
     }
 
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{Anchor::CENTER, "Round Score", 0.26f, 0.1f, -1, true, DEFAULT_FONT_SCALE}));
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{Anchor::CENTER, "", 0.26f, 0.15f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_PURPLE}, "", 0, UINT_64));
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{Anchor::CENTER, "", 0.26f, 0.15f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_WHITE}, "", 0, UINT_64));
 
     numTableTiles = 0;
     for(i32 i = 0; i < gState->table.numberOfSets; i++) {
         numTableTiles += gState->table.sets[i].numberOfTiles;
     }
 
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{Anchor::CENTER, "Tiles Used", 0.74f, 0.1f, -1, true, DEFAULT_FONT_SCALE}));
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{Anchor::CENTER, "", 0.74f, 0.15f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_RED}, "", 5, UINT_64));
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{CENTER, "Next Round", 0.74f, 0.1f, -1, true, DEFAULT_FONT_SCALE}));
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{CENTER, "", 0.74f, 0.15f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_PURPLE}, "", 6, UINT_64));
 
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{Anchor::CENTER, "Cash", 0.5f, 0.1f, -1, true, DEFAULT_FONT_SCALE}));
     add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{CENTER, "", 0.5f, 0.15f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_GOLDEN}, "$", 3, UINT_64));
@@ -4038,11 +4046,11 @@ void add_options_ui() {
     i32 gameStats = 0;
 
     if(gState->prevState == MAIN_MENU ) {
-        relics = add_button(gState->uiPage, BUTTON_T, "Relics", vec2(0.5f, 0.3f), vec2(0.1f, 0.4f), R_BLUE, 15, 0, 2);
+        relics = add_button(gState->uiPage, BUTTON_T, "Passives", vec2(0.5f, 0.3f), vec2(0.1f, 0.4f), R_BLUE, 15, 0, 2);
         gameStats = add_button(gState->uiPage, BUTTON_T, "Game Stats", vec2(0.5f, 0.45f), vec2(0.1f, 0.4f), R_BLUE, 15, 0, 2);
     } else {
         newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.5f, 0.6f), vec2(0.1f, 0.4f), R_DARK_GREEN_TWO, 27, 0, 2);
-        relics = add_button(gState->uiPage, BUTTON_T, "View Relics", vec2(0.5f, 0.3f), vec2(0.1f, 0.4f), R_BLUE, 15, 0, 2);
+        relics = add_button(gState->uiPage, BUTTON_T, "View Passives", vec2(0.5f, 0.3f), vec2(0.1f, 0.4f), R_BLUE, 15, 0, 2);
         profile = add_button(gState->uiPage, BUTTON_T, "Profile", vec2(0.5f, 0.45f), vec2(0.1f, 0.4f), R_BLUE, 26, 0, 2);
         quitGame = add_button(gState->uiPage, BUTTON_T, "Main Menu", vec2(0.5f, 0.75f), vec2(0.1f, 0.4f), R_RED, 14, 0, 2);
     }
@@ -4094,12 +4102,19 @@ void add_options_ui() {
     add_tabs_to_window(gState->uiPage, windowIndex, tabs, 3);
     TextElement vsync = TextElement{ Anchor::CENTER, "Vsync", 0.5f, 0.62f, -1, false, DEFAULT_FONT_SCALE * 2};
 
-    TextElement viewRelics = TextElement{ TOP_LEFT, "View Relics :", 0.25f, 0.3f, -1, false, DEFAULT_FONT_SCALE * 2};
+    TextElement viewRelics = TextElement{ TOP_LEFT, "View Passives :", 0.25f, 0.3f, -1, false, DEFAULT_FONT_SCALE * 2};
     TextElement relicKey = TextElement{ TOP_RIGHT, "TAB", 0.75f, 0.3f, -1, false, DEFAULT_FONT_SCALE * 2};
     TextElement sortColor = TextElement{ TOP_LEFT, "Sort by Color :", 0.25f, 0.4f, -1, false, DEFAULT_FONT_SCALE * 2};
     TextElement colorKey = TextElement{ TOP_RIGHT, "C", 0.75f, 0.4f, -1, false, DEFAULT_FONT_SCALE * 2};
     TextElement sortNumber = TextElement{ TOP_LEFT, "Sort by Number :", 0.25f, 0.5f, -1, false, DEFAULT_FONT_SCALE * 2};
     TextElement numberKey = TextElement{ TOP_RIGHT, "N", 0.75f, 0.5f, -1, false, DEFAULT_FONT_SCALE * 2};
+
+    TextElement toggleActives = TextElement{ TOP_LEFT, "Toggle Actives :", 0.25f, 0.6f, -1, false, DEFAULT_FONT_SCALE * 2};
+    TextElement toggleActivesKey = TextElement{ TOP_RIGHT, "Left Shift", 0.75f, 0.6f, -1, false, DEFAULT_FONT_SCALE * 2};
+    TextElement endTurn = TextElement{ TOP_LEFT, "End Turn/Draw Tile :", 0.25f, 0.7f, -1, false, DEFAULT_FONT_SCALE * 2};
+    TextElement endTurnKey = TextElement{ TOP_RIGHT, "Space", 0.75f, 0.7f, -1, false, DEFAULT_FONT_SCALE * 2};
+    TextElement resetBoard = TextElement{ TOP_LEFT, "Reset Board :", 0.25f, 0.8f, -1, false, DEFAULT_FONT_SCALE * 2};
+    TextElement resetBoardKey = TextElement{ TOP_RIGHT, "R", 0.75f, 0.8f, -1, false, DEFAULT_FONT_SCALE * 2};
 
     add_text_element_to_tab(gState->uiPage, windowIndex, video, resolution);
     add_text_element_to_tab(gState->uiPage, windowIndex, video, videoMode);
@@ -4111,6 +4126,13 @@ void add_options_ui() {
     add_text_element_to_tab(gState->uiPage, windowIndex, controls, relicKey);
     add_text_element_to_tab(gState->uiPage, windowIndex, controls, numberKey);
     add_text_element_to_tab(gState->uiPage, windowIndex, controls, colorKey);
+
+    add_text_element_to_tab(gState->uiPage, windowIndex, controls, toggleActives);
+    add_text_element_to_tab(gState->uiPage, windowIndex, controls, toggleActivesKey);
+    add_text_element_to_tab(gState->uiPage, windowIndex, controls, endTurn);
+    add_text_element_to_tab(gState->uiPage, windowIndex, controls, endTurnKey);
+    add_text_element_to_tab(gState->uiPage, windowIndex, controls, resetBoard);
+    add_text_element_to_tab(gState->uiPage, windowIndex, controls, resetBoardKey);
 
     add_element_to_tab(gState->uiPage, windowIndex, video, resOptionId);
     add_element_to_tab(gState->uiPage, windowIndex, video, videoModeId);
@@ -4271,11 +4293,15 @@ void add_relics_ui() {
         }
     }
 
-    TextElement header = TextElement{ CENTER, "Relics", 0.5f, 0.1f, -1, true, DEFAULT_FONT_SCALE * 2};
+    TextElement header = TextElement{ CENTER, "Passives", 0.5f, 0.1f, -1, true, DEFAULT_FONT_SCALE * 2};
     header.bounce = true;
     header.typeWriter = true;
     i32 headerId = add_text_element(gState->uiPage, header);
     add_text_to_window(gState->uiPage, multWindowIndex, headerId);
+
+    TextElement exit = TextElement{ TOP_LEFT, "[TAB]", 0.14f, 0.08f, -1, true, DEFAULT_FONT_SCALE};
+    i32 exitId = add_text_element(gState->uiPage, exit);
+    add_text_to_window(gState->uiPage, multWindowIndex, exitId);
 
     UIElement blur = UIElement{CENTER, -1, -1, 0.5, 0.5, 1.0f, 1.0f};
     blur.color = vec4(0.0f, 0.0f, 0.0f, 0.5);
@@ -5055,157 +5081,150 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
         check_pool_hovered(xpos, ypos);
     }
 
-
-    if (key == 256) {
-        quit();
-    }
-
-    if (key == 300 && action == 1) {
-        gMemory->toggleFullScreen = true;
-    }
-
-    if (key == 301 && action == 1) {
-        gState->roundData.minimumScore = 1;
-    }
-
-    if (key == 299 && action == 1) {
-        clear_game_ui();
-        add_end_game_ui();
-    }
-
-    if(key == 297 && action == 1) {
-        ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u64, execute_action);
-        if (total) {
-            total->action = add_cash;
-            *COMMAND_PAYLOAD(total, u64) = 100000;
+    #ifdef CONSOLE
+        if(key == 48 && action == 1) {
+            gState->player.relics[gState->player.numberOfRelics++] = 8;
         }
-    }
-
-    if (key == 298 && action == 1) { // f9
-        gState->player.numberOfRelics = 0;
-
-        for (i32 i = 0; i < TOTAL_RELICS; ++i) {
-            gState->player.relics[i] = i;
-            gState->player.numberOfRelics++;
+        if(key == 49 && action == 1) {
+            gState->player.relics[gState->player.numberOfRelics++] = 9;
         }
-    }
+        if(key == 50 && action == 1) {
+            gState->player.relics[gState->player.numberOfRelics++] = 10;
+        }
+        if(key == 51 && action == 1) {
+            gState->player.relics[gState->player.numberOfRelics++] = 11;
+        }
+        if(key == 52 && action == 1) {
+            gState->player.relics[gState->player.numberOfRelics++] = 12;
+        }
+        if(key == 53 && action == 1) {
+            gState->player.relics[gState->player.numberOfRelics++] = 13;
+        }
+        if(key == 54 && action == 1) {
+            gState->player.relics[gState->player.numberOfRelics++] = 14;
+        }
+        if(key == 55 && action == 1) {
+            gState->player.relics[gState->player.numberOfRelics++] = 0;
+        }
+        if(key == 297 && action == 1) {
+            ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u64, execute_action);
+            if (total) {
+                total->action = add_cash;
+                *COMMAND_PAYLOAD(total, u64) = 100000;
+            }
+        }
 
-    if (key == 320 && action == 1) {
-        u8 i = gState->player.numberOfActives;
-        gState->player.actives[i] = gState->actives[0];
-        gState->player.actives[i].object.model = rackSpaces[i];
-        gState->player.actives[i].originalPosition = rackSpaces[i];
-        gState->player.numberOfActives++;
-    }
-    if (key == 321 && action == 1) {
-        u8 i = gState->player.numberOfActives;
-        gState->player.actives[i] = gState->actives[1];
-        gState->player.actives[i].object.model = rackSpaces[i];
-        gState->player.actives[i].originalPosition = rackSpaces[i];
-        gState->player.numberOfActives++;   
-    }
-    if (key == 322 && action == 1) {
-        u8 i = gState->player.numberOfActives;
-        gState->player.actives[i] = gState->actives[2];
-        gState->player.actives[i].object.model = rackSpaces[i];
-        gState->player.actives[i].originalPosition = rackSpaces[i];
-        gState->player.numberOfActives++;  
-    }
-    if (key == 323 && action == 1) {
-        u8 i = gState->player.numberOfActives;
-        gState->player.actives[i] = gState->actives[3];
-        gState->player.actives[i].object.model = rackSpaces[i];
-        gState->player.actives[i].originalPosition = rackSpaces[i];
-        gState->player.numberOfActives++;   
-    }
-    if (key == 324 && action == 1) {
-        u8 i = gState->player.numberOfActives;
-        gState->player.actives[i] = gState->actives[4];
-        gState->player.actives[i].object.model = rackSpaces[i];
-        gState->player.actives[i].originalPosition = rackSpaces[i];
-        gState->player.numberOfActives++;   
-    }
-    if (key == 325 && action == 1) {
-        u8 i = gState->player.numberOfActives;
-        gState->player.actives[i] = gState->actives[5];
-        gState->player.actives[i].object.model = rackSpaces[i];
-        gState->player.actives[i].originalPosition = rackSpaces[i];
-        gState->player.numberOfActives++;   
-    }
-    if (key == 326 && action == 1) {
-        u8 i = gState->player.numberOfActives;
-        gState->player.actives[i] = gState->actives[7];
-        gState->player.actives[i].object.model = rackSpaces[i];
-        gState->player.actives[i].originalPosition = rackSpaces[i];
-        gState->player.numberOfActives++;   
-    }
-    if (key == 327 && action == 1) {
-        u8 i = gState->player.numberOfActives;
-        gState->player.actives[i] = gState->actives[8];
-        gState->player.actives[i].object.model = rackSpaces[i];
-        gState->player.actives[i].originalPosition = rackSpaces[i];
-        gState->player.numberOfActives++;   
-    }
+        if (key == 298 && action == 1) { // f9
+            gState->player.numberOfRelics = 0;
 
+            for (i32 i = 0; i < TOTAL_RELICS; ++i) {
+                gState->player.relics[i] = i;
+                gState->player.numberOfRelics++;
+            }
+        }
 
+        if (key == 320 && action == 1) {
+            u8 i = gState->player.numberOfActives;
+            gState->player.actives[i] = gState->actives[0];
+            gState->player.actives[i].object.model = rackSpaces[i];
+            gState->player.actives[i].originalPosition = rackSpaces[i];
+            gState->player.numberOfActives++;
+        }
+        if (key == 321 && action == 1) {
+            u8 i = gState->player.numberOfActives;
+            gState->player.actives[i] = gState->actives[1];
+            gState->player.actives[i].object.model = rackSpaces[i];
+            gState->player.actives[i].originalPosition = rackSpaces[i];
+            gState->player.numberOfActives++;   
+        }
+        if (key == 322 && action == 1) {
+            u8 i = gState->player.numberOfActives;
+            gState->player.actives[i] = gState->actives[2];
+            gState->player.actives[i].object.model = rackSpaces[i];
+            gState->player.actives[i].originalPosition = rackSpaces[i];
+            gState->player.numberOfActives++;  
+        }
+        if (key == 323 && action == 1) {
+            u8 i = gState->player.numberOfActives;
+            gState->player.actives[i] = gState->actives[3];
+            gState->player.actives[i].object.model = rackSpaces[i];
+            gState->player.actives[i].originalPosition = rackSpaces[i];
+            gState->player.numberOfActives++;   
+        }
+        if (key == 324 && action == 1) {
+            u8 i = gState->player.numberOfActives;
+            gState->player.actives[i] = gState->actives[4];
+            gState->player.actives[i].object.model = rackSpaces[i];
+            gState->player.actives[i].originalPosition = rackSpaces[i];
+            gState->player.numberOfActives++;   
+        }
+        if (key == 325 && action == 1) {
+            u8 i = gState->player.numberOfActives;
+            gState->player.actives[i] = gState->actives[5];
+            gState->player.actives[i].object.model = rackSpaces[i];
+            gState->player.actives[i].originalPosition = rackSpaces[i];
+            gState->player.numberOfActives++;   
+        }
+        if (key == 326 && action == 1) {
+            u8 i = gState->player.numberOfActives;
+            gState->player.actives[i] = gState->actives[7];
+            gState->player.actives[i].object.model = rackSpaces[i];
+            gState->player.actives[i].originalPosition = rackSpaces[i];
+            gState->player.numberOfActives++;   
+        }
+        if (key == 327 && action == 1) {
+            u8 i = gState->player.numberOfActives;
+            gState->player.actives[i] = gState->actives[8];
+            gState->player.actives[i].object.model = rackSpaces[i];
+            gState->player.actives[i].originalPosition = rackSpaces[i];
+            gState->player.numberOfActives++;   
+        }
+        if (key == 256) {
+            quit();
+        }
 
+        if (key == 300 && action == 1) {
+            gMemory->toggleFullScreen = true;
+        }
 
-    if(key == 297 && action == 1) {
-        //gState->player.numberOfRelics = 0;
-
-        //for (i32 i = 0; i < TOTAL_RELICS; ++i) {
-        //    gState->player.relics[i] = i;
-        //    gState->player.numberOfRelics++;
-        //}
-    }
-
-    if(key == 296 && action == 1) {//0
-    }
-
-    if(key == 48 && action == 1) {
-        gState->player.relics[gState->player.numberOfRelics++] = 8;
-    }
-    if(key == 49 && action == 1) {
-        gState->player.relics[gState->player.numberOfRelics++] = 9;
-    }
-    if(key == 50 && action == 1) {
-        gState->player.relics[gState->player.numberOfRelics++] = 10;
-    }
-    if(key == 51 && action == 1) {
-        gState->player.relics[gState->player.numberOfRelics++] = 11;
-    }
-    if(key == 52 && action == 1) {
-        gState->player.relics[gState->player.numberOfRelics++] = 12;
-    }
-    if(key == 53 && action == 1) {
-        gState->player.relics[gState->player.numberOfRelics++] = 13;
-    }
-    if(key == 54 && action == 1) {
-        gState->player.relics[gState->player.numberOfRelics++] = 14;
-    }
-    if(key == 55 && action == 1) {
-        gState->player.relics[gState->player.numberOfRelics++] = 0;
-    }
+        if (key == 301 && action == 1) {
+            gState->roundData.minimumScore = 1;
+        }
+        if (key == 299 && action == 1) {
+            clear_game_ui();
+            add_end_game_ui();
+        }
+        if (key == 77 && action == 1) { //m
+            //add_map_ui();
+            //add_end_game_ui();
+            add_shop_purchase_menu(true);
+            //printf("Rainbow run enabled = %i\n", gState->rules.rainbowRunEnabled);
+            //printf("Rainbow run setId = %i\n", gState->rules.rainbowRunSetId);
+            //__debugbreak();
+        }
+    #endif
 
     if (key == 78 && action == 1) {
         gMemory->play_audio_fn(0);
         sort_rack_by_number();
     }
 
+    if (key == 32 && action == 1) {
+        end_turn();
+    }
+
+    if (key == 340 && action == 1) {
+        toggle_actives();
+    }
+
+    if (key == 82 && action == 1) {
+        reset_board();
+    }
+
     if (key == 67 && action == 1) {
         gMemory->play_audio_fn(0);
         sort_rack_by_color();
     }
-
-    if (key == 77 && action == 1) { //m
-        //add_map_ui();
-        //add_end_game_ui();
-        add_shop_purchase_menu(true);
-        //printf("Rainbow run enabled = %i\n", gState->rules.rainbowRunEnabled);
-        //printf("Rainbow run setId = %i\n", gState->rules.rainbowRunSetId);
-        //__debugbreak();
-    }
-
     if (key == 294 && action == 1) {
         ActionCommand *shake = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, 0, execute_action);
         if (shake) {
@@ -5236,9 +5255,7 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
                 } else {
                     grab_tile(xpos, ypos);
                 }
-              
             }
-
             if(gState->uiPage->elementHovered != -1) {
                 if(gState->uiPage->uiElements[gState->uiPage->elementHovered].visible) BUTTON_PRESS(gState->uiPage->uiElements[gState->uiPage->elementHovered]);
             } 
@@ -5251,7 +5268,6 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
                     release_tile();
                 }
             } 
-
     //if(set->numberOfTiles == 13) return false; isComplete does this
             if(gState->uiPage->elementHovered != -1 && !gState->player.heldTile) {
                 BUTTON_RELEASE(gState->uiPage->uiElements[gState->uiPage->elementHovered]);
@@ -5259,7 +5275,6 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
             }
         }
     }
-
     if(gState->pageState == IN_GAME) {
         if(clickHeld) {
             if(activesShown) {
@@ -5275,11 +5290,9 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
             }
         }
     }
-
     if(gState->pageState == RELICS_PURCHASE || gState->pageState == ACTIVES_PURCHASE) {
         shop_item_hovered();
     }
-
     update_cursor(vec2(xpos * (1.0f / RENDERING_ASPECT), ypos));
 }
 

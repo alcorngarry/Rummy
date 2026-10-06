@@ -50,8 +50,6 @@
 #define ME_TILE_T 28
 #define TILE_EFFECTS_T 29
 
-
-
 const i32 TABLE_ROWS = 6;
 const i32 TABLE_COLUMNS = 16;
 const i32 RACK_SPACES = 24;
