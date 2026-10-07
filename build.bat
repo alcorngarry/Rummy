@@ -11,6 +11,7 @@ if not exist build\shaders (
 
 robocopy InfiniteErl\shaders build\shaders /E /IS /IT
 robocopy InfiniteErl\res build\res /E /IS /IT
+robocopy InfiniteErl\audio build\audio /E /IS /IT
 
 if not exist build\res (
     mkdir build\res

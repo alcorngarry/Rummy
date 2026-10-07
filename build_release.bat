@@ -21,6 +21,10 @@ if not exist release\res (
     mkdir release\res
 )
 
+if not exist release\audio (
+    mkdir release\audio
+)
+
 rem --------------------------
 rem Copy Shaders
 rem --------------------------
@@ -36,6 +40,10 @@ rem --------------------------
 echo Copying resources...
 
 robocopy InfiniteErl\res release\res /E /IS /IT > NUL
+
+echo Copying audio...
+
+robocopy InfiniteErl\audio release\audio /E /IS /IT > NUL
 
 rem --------------------------
 rem Enter Release Directory

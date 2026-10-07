@@ -20,7 +20,6 @@ void key_callback(GLFWwindow* window, i32 key, i32 scancode, i32 action, i32 mod
 void mouse_button_callback(GLFWwindow* window, i32 button, i32 action, i32 mods);
 void framebuffer_size_callback(GLFWwindow* window, i32 width, i32 height);
 void mouse_callback(GLFWwindow* window, f64 xpos, f64 ypos);
-void load_textures();
 void load_window_icon();
 void toggle_fullscreen(GLFWwindow* window);
 void set_resolution(i32 resolutionId);

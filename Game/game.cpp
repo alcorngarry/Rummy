@@ -4098,6 +4098,9 @@ void add_options_ui() {
     i32 windowIndex = add_window(gState->uiPage, UI_BG_2_T, Anchor::CENTER, vec2(0.95f, 0.6f), vec2(0.5f, 2.0f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE); 
     //add_button_to_window(gState->uiPage, windowIndex, back);
     //
+    TextElement tab = TextElement{ TOP_LEFT, "[TAB]", 0.225f, 0.05f, -1, true, DEFAULT_FONT_SCALE};
+    i32 tabId = add_text_element(gState->uiPage, tab);
+    add_text_to_window(gState->uiPage, windowIndex, tabId);
 
     add_tabs_to_window(gState->uiPage, windowIndex, tabs, 3);
     TextElement vsync = TextElement{ Anchor::CENTER, "Vsync", 0.5f, 0.62f, -1, false, DEFAULT_FONT_SCALE * 2};

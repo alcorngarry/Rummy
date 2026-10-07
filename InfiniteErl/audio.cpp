@@ -1,38 +1,79 @@
 #include "audio.h"
-#include "data_types.h"
 #define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
-
-#define MAX_INSTANCES 128
-#define MAX_ASSETS 32
 
 ma_engine engine;
 ma_sound homeMusic;
 i32 isInitialized = false;
 
-ma_sound audioSources[MAX_ASSETS];
 struct AudioInstance {
     ma_sound sound;
     bool active;
 };
 
 AudioInstance audioInstances[MAX_INSTANCES];
+LoadedAudio loadedAudio[MAX_ASSETS];
 
 u8 load_audio(i32 id, const char* fileName) {
-    ma_result result = ma_sound_init_from_file(
-        &engine,
-        fileName,
-        0,
-        NULL,
-        NULL,
-        &audioSources[id]
-    );
+    FILE* file = fopen(fileName, "rb");
 
-    if (result != MA_SUCCESS) {
-        printf("Failed to load audio: %s (%d)\n", fileName, result);
+    if (!file) {
+        printf("Failed to open audio asset: %s\n", fileName);
         return false;
     }
 
+    AudioAssetHeader header;
+
+    if (fread(&header, sizeof(header), 1, file) != 1) {
+        printf("Failed to read audio header: %s\n", fileName);
+        fclose(file);
+        return false;
+    }
+
+    if (header.magic != AUDIO_ASSET_MAGIC) {
+        printf("Invalid audio asset: %s\n", fileName);
+        fclose(file);
+        return false;
+    }
+
+    void* data = malloc((size_t)header.dataSize);
+
+    if (!data) {
+        printf("Failed to allocate audio data: %s\n", fileName);
+        fclose(file);
+        return false;
+    }
+
+    if (fread(data, 1, (size_t)header.dataSize, file) != header.dataSize) {
+        printf("Failed to read audio data: %s\n", fileName);
+
+        free(data);
+        fclose(file);
+        return false;
+    }
+
+    fclose(file);
+    ma_audio_buffer_config config = ma_audio_buffer_config_init(ma_format_s16,header.channels, header.frameCount,data,NULL);
+
+    config.sampleRate = header.sampleRate;
+    printf(
+        "Audio: format=s16 rate=%u channels=%u frames=%llu dataSize=%llu data=%p\n",
+        header.sampleRate,
+        header.channels,
+        header.frameCount,
+        header.dataSize,
+        data
+    );
+    ma_result result = ma_audio_buffer_init(&config, &loadedAudio[id].buffer);
+
+    if (result != MA_SUCCESS) {
+        printf("Failed to initialize audio buffer: %s (%d)\n", fileName, result);
+        free(data);
+        return false;
+    }
+
+    loadedAudio[id].data = data;
+    printf("Loaded audio asset: %s\n", fileName);
     return true;
 }
 
@@ -48,9 +89,9 @@ void init_audio() {
 
     isInitialized = true;
 
-    load_audio(0, "./audio/place_tile.wav");
-    load_audio(1, "./audio/button_click.wav");
-    load_audio(2, "./audio/clink.wav");
+    load_audio(0, "./audio/place_tile.ea");
+    load_audio(1, "./audio/button_click.ea");
+    load_audio(2, "./audio/clink.ea");
     //load_home_music("./audio/menu.wav");
 
     printf("Audio loaded.\n");
@@ -61,13 +102,17 @@ void play_audio(i32 id) {
 }
 
 void play_audio_pitch(i32 id, f32 pitch) {
-    for (i32 i = 0; i < MAX_INSTANCES; i++) {
+    if (id < 0 || id >= MAX_ASSETS) {
+        printf("Invalid audio ID: %d\n", id);
+        return;
+    }
 
+    for (i32 i = 0; i < MAX_INSTANCES; i++) {
         if (audioInstances[i].active) continue;
 
-        ma_result result = ma_sound_init_copy(
+        ma_result result = ma_sound_init_from_data_source(
             &engine,
-            &audioSources[id],
+            &loadedAudio[id].buffer,
             0,
             NULL,
             &audioInstances[i].sound
