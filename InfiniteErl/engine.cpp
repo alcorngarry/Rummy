@@ -20,7 +20,7 @@ void key_callback(GLFWwindow* window, i32 key, i32 scancode, i32 action, i32 mod
 void mouse_button_callback(GLFWwindow* window, i32 button, i32 action, i32 mods);
 void framebuffer_size_callback(GLFWwindow* window, i32 width, i32 height);
 void mouse_callback(GLFWwindow* window, f64 xpos, f64 ypos);
-void load_window_icon();
+void load_window_icon(const char* filePath);
 void toggle_fullscreen(GLFWwindow* window);
 void set_resolution(i32 resolutionId);
 i32 get_supported_resolutions(Resolution *resolutions);
@@ -185,6 +185,7 @@ GameMemory allocate_game_memory(RenderBuffer* buffer) {
     memory.set_resolution_fn = set_resolution;
     memory.get_system_time_fn = get_system_time;
     memory.load_texture_asset_fn = load_texture_asset;
+    memory.load_window_icon_fn = load_window_icon;
     memory.load_font_fn = load_font;
     memory.format_resolution_fn = format_resolution;
     memory.is_full_screen_fn = is_full_screen;
@@ -212,7 +213,6 @@ i32 main() {
 i32 APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, i32 cmdshow) {
 #endif
     window = create_window();
-    //load_window_icon();
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     load_shaders();
     init_audio();
@@ -227,7 +227,8 @@ i32 APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, i32 cmd
   
     GameMemory memory = allocate_game_memory(buffer);
     game.game_init(&memory, false);
-    
+    glfwPollEvents();
+
     while (!memory.shouldWindowClose) {
         update_audio();
         update_video_settings(&memory);
@@ -424,21 +425,36 @@ void toggle_fullscreen(GLFWwindow* window) {
     resize_post_process(windowResolution.width, windowResolution.height);
 }
 
-void load_window_icon() {
-// IGNORE ICON FOR NOW
-//    i32 width, height, channels;
-//    unsigned char* pixels = stbi_load("./res/icon.ei", &width, &height, &channels, 0);
-//    if (!pixels) {
-//        printf("Unable to load window icon!\n");
-//    }
-//
-//    GLFWimage icon_image;
-//    icon_image.width = width;
-//    icon_image.height = height;
-//    icon_image.pixels = pixels;
-//
-//    glfwSetWindowIcon(window, 1, &icon_image);
-//    stbi_image_free(pixels);
+void load_window_icon(const char* filePath) {
+    FILE* file = fopen(filePath, "rb");
+
+    if (!file) {
+        printf("Failed to open texture asset: %s\n", filePath);
+        return;
+    }
+
+    TextureAssetHeader header{};
+    fread(&header, sizeof(TextureAssetHeader), 1, file);
+
+    if (header.magic != 0x5458454C) {
+        printf("Invalid texture asset\n");
+        fclose(file);
+        return;
+    }
+
+    size_t dataSize = (size_t)header.width * (size_t)header.height * header.channels;
+    u8* data = new u8[dataSize];
+
+    fread(data, sizeof(u8), dataSize, file);
+    fclose(file);
+    u32 textureID;
+
+    GLFWimage icon_image;
+    icon_image.width = header.width;
+    icon_image.height = header.height;
+    icon_image.pixels = data;
+
+    glfwSetWindowIcon(window, 1, &icon_image);
 }
 
 void framebuffer_size_callback(GLFWwindow* window, i32 width, i32 height) {

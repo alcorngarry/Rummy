@@ -86,8 +86,8 @@ struct RenderEntryEntity {
 struct RenderEntryUIText {
     Anchor anchor;
     char text[1024];
-    f32 posx;
-    f32 posy;
+    f64 posx;
+    f64 posy;
     f32 scale;
     f32 maxWidth;
     vec4 color;

@@ -174,169 +174,178 @@ void check_elements_hovered(UIPage* page, f64 xpos, f64 ypos) {
     }
 }
 
+// pos y
+void bob(Animation *a, f32 deltaTime, f64 *posy) {
+    a->elapsed += deltaTime;
+
+    if (a->elapsed >= a->duration)
+        a->elapsed = fmodf(a->elapsed, a->duration);
+
+    f32 t = a->elapsed / a->duration;
+    f32 offset = -sinf(t * 2.0f * PI32) * a->destination.y;
+
+    *posy = a->start.y + offset;
+}
+
+//pos x y
+void move(Animation *a, f32 deltaTime, f64 *posx, f64 *posy) {
+    a->elapsed += deltaTime;
+
+    f32 t = a->elapsed / a->duration;
+
+    if(t >= 1.0f) {
+        t = 1.0f;
+
+        if(a->playOnce) {
+            a->complete = true;
+        } else {
+            a->elapsed = 0.0f;
+        }
+    }
+
+    f32 eased = ease(t, a->ease);
+
+    vec2 pos = glm::mix(a->start, a->destination, eased);
+
+    *posx = pos.x;
+    *posy = pos.y;
+}
+
+// width height
+void scale(Animation *a, f32 deltaTime, f32 *width, f32 *height) {
+    a->elapsed += deltaTime;
+
+    f32 t = a->elapsed / a->duration;
+
+    if(t >= 1.0f) {
+        t = 1.0f;
+
+        if(a->playOnce) {
+            a->complete = true;
+        } else {
+            a->elapsed = 0.0f;
+        }
+    }
+
+    f32 eased = ease(t, a->ease);
+    vec2 scale = glm::mix(a->start, a->destination, eased);
+    *width = scale.x;
+    *height = scale.y;
+}
+
+
+void color_shift(Animation *a, f32 deltaTime) {
+}
+
+//rotation
+void rotate(Animation *a, f32 deltaTime, f32 *rotation) {
+    a->elapsed += deltaTime;
+
+    f32 t = a->elapsed / a->duration;
+
+    if(t >= 1.0f) {
+        t = 1.0f;
+
+        if(a->playOnce) {
+            a->complete = true;
+        } else {
+            a->elapsed = 0.0f;
+        }
+    }
+
+    f32 eased = ease(t, a->ease);
+
+    *rotation = glm::mix(a->start.x, a->destination.x, eased);
+}
+
+//color
+void fade(Animation *a, f32 deltaTime, vec4 *color, u8 *visible) {
+    a->elapsed += deltaTime;
+
+    f32 t = a->elapsed / a->duration;
+
+    if(t >= 1.0f) {
+        t = 1.0f;
+
+        if(a->playOnce) {
+            a->complete = true;
+            *visible = false;
+        } else {
+            a->elapsed = 0.0f;
+        }
+    }
+
+    f32 eased = ease(t, a->ease);
+
+    color->a = glm::mix(
+        a->start.x,
+        a->destination.x,
+        eased
+    );
+}
+
+//rotation
+void shake(Animation *a, f32 deltaTime, f32 *rotation) {
+    a->elapsed += deltaTime;
+
+    f32 t = glm::clamp(a->elapsed / a->duration, 0.0f, 1.0f);
+    f32 shake = sinf(t * PI32 * 3.0f);
+    f32 amplitude = glm::radians(8.0f);
+
+    *rotation = shake * amplitude;
+
+    if (t >= 1.0f) {
+        *rotation = 0.0f;
+        a->complete = true;
+    }
+}
+
+//width height
+void pop(Animation *a, f32 deltaTime, f32 *width, f32 *height) {
+    a->elapsed += deltaTime;
+
+    f32 t = glm::clamp(a->elapsed / a->duration, 0.0f, 1.0f);
+    f32 pop = sinf(t * PI32);
+    f32 amplitude = 0.25f;
+
+    *width  = a->start.x * (1.0f + pop * amplitude);
+    *height = a->start.y * (1.0f + pop * amplitude);
+
+    if(t >= 1.0f) {
+        a->complete = true;
+        *width = a->start.x;
+        *height = a->start.y;
+    }
+}
+
 void move_element(UIPage *page, UIElement* element, f32 deltaTime) {
     for(i32 i = 0; i < element->numberOfAnimations; ++i) {
         Animation* a = &element->animations[i];
         if(!a->autoAnimate) continue;
 
-          if (a->animationType == BOB) {
-              a->elapsed += deltaTime;
-
-              if (a->elapsed >= a->duration)
-                  a->elapsed = fmodf(a->elapsed, a->duration);
-
-              f32 t = a->elapsed / a->duration;
-              f32 offset = -sinf(t * 2.0f * PI32) * a->destination.y;
-
-              element->posy = a->start.y + offset;
-          } else if(a->animationType == MOVE){
-            
+        if (a->animationType == BOB) {
+            bob(a, deltaTime, &element->posy);
+        } else if(a->animationType == MOVE) {            
             if(a->complete) continue;
-
-            a->elapsed += deltaTime;
-
-            f32 t = a->elapsed / a->duration;
-
-            if(t >= 1.0f) {
-                t = 1.0f;
-
-                if(a->playOnce) {
-                    a->complete = true;
-                } else {
-                    a->elapsed = 0.0f;
-                }
-            }
-
-            f32 eased = ease(t, a->ease);
-
-            vec2 pos = glm::mix(a->start, a->destination, eased);
-
-            element->posx = pos.x;
-            element->posy = pos.y;
+            move(a, deltaTime, &element->posx, &element->posy);
         } else if(a->animationType == SCALE) {
             if(a->complete) continue;
-
-            a->elapsed += deltaTime;
-
-            f32 t = a->elapsed / a->duration;
-
-            if(t >= 1.0f) {
-                t = 1.0f;
-
-                if(a->playOnce) {
-                    a->complete = true;
-                } else {
-                    a->elapsed = 0.0f;
-                }
-            }
-
-            f32 eased = ease(t, a->ease);
-
-            vec2 scale = glm::mix(a->start, a->destination, eased);
-
-            element->width = scale.x;
-            element->height = scale.y;
+            scale(a, deltaTime, &element->width, &element->height);
         } else if(a->animationType == COLOR_SHIFT) {
             if(a->complete) continue;
-
-            a->elapsed += deltaTime;
-
-            f32 t = a->elapsed / a->duration;
-
-            if(t >= 1.0f) {
-                t = 1.0f;
-
-                if(a->playOnce) {
-                    a->complete = true;
-                } else {
-                    a->elapsed = 0.0f;
-                }
-            }
-
-            f32 eased = ease(t, a->ease);
-
-            vec2 scale = glm::mix(a->start, a->destination, eased);
-
-            element->width = scale.x;
-            element->height = scale.y;
+            //color_shift(a, deltaTime);
         } else if(a->animationType == ROTATE) {
             if(a->complete) continue;
-
-            a->elapsed += deltaTime;
-
-            f32 t = a->elapsed / a->duration;
-
-            if(t >= 1.0f) {
-                t = 1.0f;
-
-                if(a->playOnce) {
-                    a->complete = true;
-                } else {
-                    a->elapsed = 0.0f;
-                }
-            }
-
-            f32 eased = ease(t, a->ease);
-
-            element->rotation = glm::mix(a->start.x, a->destination.x, eased);
+            rotate(a, deltaTime, &element->rotation);
         } else if(a->animationType == FADE) {
             if(a->complete) continue;
-
-            a->elapsed += deltaTime;
-
-            f32 t = a->elapsed / a->duration;
-
-            if(t >= 1.0f) {
-                t = 1.0f;
-
-                if(a->playOnce) {
-                    a->complete = true;
-                    element->visible = false;
-                } else {
-                    a->elapsed = 0.0f;
-                }
-            }
-
-            f32 eased = ease(t, a->ease);
-
-            element->color.a = glm::mix(
-                a->start.x,
-                a->destination.x,
-                eased
-            );
+            fade(a, deltaTime, &element->color, &element->visible);
         } else if(a->animationType == SHAKE) {
-            a->elapsed += deltaTime;
-
-            f32 t = glm::clamp(a->elapsed / a->duration, 0.0f, 1.0f);
-
-            f32 shake = sinf(t * PI32 * 3.0f);
-            f32 amplitude = glm::radians(8.0f);
-
-            element->rotation = shake * amplitude;
-
-            if (t >= 1.0f) {
-                element->rotation = 0.0f;
-                a->complete = true;
-            }
-
+            shake(a, deltaTime, &element->rotation);
             break;
         } else if(a->animationType == POP) { 
             if(a->complete) continue;
-
-            a->elapsed += deltaTime;
-
-            f32 t = glm::clamp(a->elapsed / a->duration, 0.0f, 1.0f);
-            f32 pop = sinf(t * PI32);
-            f32 amplitude = 0.25f;
-
-            element->width  = a->start.x * (1.0f + pop * amplitude);
-            element->height = a->start.y * (1.0f + pop * amplitude);
-
-            if(t >= 1.0f) {
-                a->complete = true;
-                element->width = a->start.x;
-                element->height = a->start.y;
-            }
+            pop(a, deltaTime, &element->width, &element->height);
             break;
         }
 
@@ -429,113 +438,29 @@ void move_text_element(UIPage *page, TextElement* element, f32 deltaTime) {
         switch (a->animationType) {
             case MOVE: {
                 blocking = true;
-
-                a->elapsed += deltaTime;
-                f32 t = a->elapsed / a->duration;
-
-                if (t >= 1.0f) {
-                    t = 1.0f;
-                    a->complete = true;
-                }
-
-                f32 eased = ease(t, a->ease);
-                vec2 pos = glm::mix(a->start, a->destination, eased);
-
-                element->posx = pos.x;
-                element->posy = pos.y;
+                move(a, deltaTime, &element->posx, &element->posy);
                 break;
             }
             case BOB: {
-                a->elapsed += deltaTime;
-
-                if (a->elapsed >= a->duration)
-                    a->elapsed = fmodf(a->elapsed, a->duration);
-
-                f32 t = a->elapsed / a->duration;
-                f32 offset = -1.0f * (sinf(t * 2.0f * PI32) * a->destination.y);
-
-                element->posy = a->start.y + offset;
+                bob(a, deltaTime, &element->posy);
                 break;
             }
             case POP: {
-                a->elapsed += deltaTime;
-
-                f32 t = glm::clamp(a->elapsed / a->duration, 0.0f, 1.0f);
-                f32 pop = sinf(t * PI32);
-                f32 amplitude = 0.25f;
-
-                element->scale = a->start.x * (1.0f + pop * amplitude);
-
-                if (t >= 1.0f) {
-                    a->complete = true;
-                    element->scale = a->start.x;
-                }
+                pop(a, deltaTime, &element->scale, &element->scale);
                 break;
             } 
             case FADE: {
                 if(a->complete) continue;
-
-                a->elapsed += deltaTime;
-
-                f32 t = a->elapsed / a->duration;
-
-                if(t >= 1.0f) {
-                    t = 1.0f;
-
-                    if(a->playOnce) {
-                        a->complete = true;
-                        element->visible = false;
-                    } else {
-                        a->elapsed = 0.0f;
-                    }
-                }
-
-                f32 eased = ease(t, a->ease);
-
-                element->color.a = glm::mix(
-                    a->start.x,
-                    a->destination.x,
-                    eased
-                );
+                fade(a, deltaTime, &element->color, &element->visible);
                 break;
             }
             case SHAKE: {
-                a->elapsed += deltaTime;
-
-                f32 t = glm::clamp(a->elapsed / a->duration, 0.0f, 1.0f);
-
-                f32 shake = sinf(t * PI32 * 3.0f);
-                f32 amplitude = glm::radians(8.0f);
-
-                element->rotation = shake * amplitude;
-
-                if (t >= 1.0f) {
-                    element->rotation = 0.0f;
-                    a->complete = true;
-                }
-
+                shake(a, deltaTime, &element->rotation);
                 break;
             } 
             case ROTATE: {
                 if(a->complete) continue;
-
-                a->elapsed += deltaTime;
-
-                f32 t = a->elapsed / a->duration;
-
-                if(t >= 1.0f) {
-                    t = 1.0f;
-
-                    if(a->playOnce) {
-                        a->complete = true;
-                    } else {
-                        a->elapsed = 0.0f;
-                    }
-                }
-
-                f32 eased = ease(t, a->ease);
-
-                element->rotation = glm::mix(a->start.x, a->destination.x, eased);
+                rotate(a, deltaTime, &element->rotation);
             }
         }
 
@@ -746,7 +671,6 @@ void previous_option(UIPage *page, void *ptr) {
     if (text->activeValueId == 0) {
         text->activeValueId = text->numberOfValues - 1;
     } else {
-
         text->activeValueId--;
     }
 

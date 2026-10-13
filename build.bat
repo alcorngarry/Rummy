@@ -53,9 +53,16 @@ rem --------------------------
 rem Build Engine EXE
 rem --------------------------
 echo Building InfiniteErl.exe...
+
+(echo IDI_ICON1 ICON "../InfiniteErl/res/rummy.ico") > app.rc
+
+type app.rc
+rc /nologo /fo app.res app.rc
+
 cl %CommonCompilerFlags% /DCONSOLE ^
    ..\InfiniteErl\*.cpp ^
    C:\Dev\third-party-dependencies\include\glad\glad.c ^
+   app.res ^
    /link %CommonLinkerFlags% ^
    UserInterface.lib ^
    /OUT:Rummy.exe

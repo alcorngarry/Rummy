@@ -857,6 +857,9 @@ u8 add_cash(void *ptr) {
     add_text_to_page(&bonus);
 
     gState->runData.dollaBills += cash;
+
+    gMemory->play_audio_pitch_fn(2, 0.5f);
+
     return true;
 }
 
@@ -878,6 +881,7 @@ u8 remove_cash(void *ptr) {
     if(cash > gState->runData.dollaBills) {
         gState->runData.dollaBills = 0;
     } else {
+        gMemory->play_audio_pitch_fn(2, 0.5f);
         gState->runData.dollaBills -= cash;
     }
 
@@ -3052,7 +3056,7 @@ u8 load_map_ui(void *ptr) {
     i32 desc1Id = add_text_element(gState->uiPage, desc1);
     i32 scoreMin1Id = add_text_element(gState->uiPage, scoreMin1);
     i32 challenge1 = add_ui_element(gState->uiPage, challengeImage);
-    i32 itemBg1 = add_ui_element(gState->uiPage, itemBg);
+    //i32 itemBg1 = add_ui_element(gState->uiPage, itemBg);
     i32 nextRoundBg1 = add_ui_element(gState->uiPage, nextRoundBg);
     i32 roundButton1 = add_button(gState->uiPage, BUTTON_T, "SELECT", vec2(nextRoundBg.posx, 0.9f), vec2(0.05f, 0.225f), R_SLATE, 0, frontIndex);
 
@@ -3082,7 +3086,7 @@ u8 load_map_ui(void *ptr) {
     i32 desc2Id = add_text_element(gState->uiPage, desc1);
     i32 scoreMin2Id = add_text_element(gState->uiPage, scoreMin1);
     i32 challenge2 = add_ui_element(gState->uiPage, challengeImage);
-    i32 itemBg2 = add_ui_element(gState->uiPage, itemBg);
+    //i32 itemBg2 = add_ui_element(gState->uiPage, itemBg);
     i32 nextRoundBg2 = add_ui_element(gState->uiPage, nextRoundBg);
     i32 roundButton2 = add_button(gState->uiPage, BUTTON_T, "SELECT", vec2(nextRoundBg.posx, 0.9f), vec2(0.05f, 0.225f), R_SLATE, 0, frontIndex);
 
@@ -3105,7 +3109,7 @@ u8 load_map_ui(void *ptr) {
     i32 desc3Id = add_text_element(gState->uiPage, desc1);
     i32 scoreMin3Id = add_text_element(gState->uiPage, scoreMin1);
     i32 challenge3 = add_ui_element(gState->uiPage, challengeImage);
-    i32 itemBg3 = add_ui_element(gState->uiPage, itemBg);
+    //i32 itemBg3 = add_ui_element(gState->uiPage, itemBg);
     i32 nextRoundBg3 = add_ui_element(gState->uiPage, nextRoundBg);
     i32 roundButton3 = add_button(gState->uiPage, BUTTON_T, "SELECT", vec2(nextRoundBg.posx, 0.9f), vec2(0.05f, 0.225f), R_SLATE, 0, frontIndex);
     UIElement round1 = UIElement{ Anchor::CENTER, -1, BUTTON_T, 0.2575f, 0.5f, 0.8f, 0.225f};
@@ -3129,9 +3133,9 @@ u8 load_map_ui(void *ptr) {
     add_image_to_window(gState->uiPage, multWindowIndex, nextRoundBg2);
     add_image_to_window(gState->uiPage, multWindowIndex, nextRoundBg3);
 
-    add_image_to_window(gState->uiPage, multWindowIndex, itemBg1);
-    add_image_to_window(gState->uiPage, multWindowIndex, itemBg2);
-    add_image_to_window(gState->uiPage, multWindowIndex, itemBg3);
+    //add_image_to_window(gState->uiPage, multWindowIndex, itemBg1);
+    //add_image_to_window(gState->uiPage, multWindowIndex, itemBg2);
+    //add_image_to_window(gState->uiPage, multWindowIndex, itemBg3);
 
     add_image_to_window(gState->uiPage, multWindowIndex, challenge1);
     add_image_to_window(gState->uiPage, multWindowIndex, challenge2);
@@ -4916,6 +4920,10 @@ void load_font() {
     gMemory->load_font_fn("./fonts/tandy.ef");
 }
 
+void load_icon() {
+    gMemory->load_window_icon_fn("./res/icon.ei");
+}
+
 void load_textures() {
     gMemory->load_texture_asset_fn(TILE_ATLAS_T, "./res/tile-map2.ei");
     gMemory->load_texture_asset_fn(TILE_FACE_T, "./res/tile-face64.ei");
@@ -4966,6 +4974,7 @@ extern "C" GAME_DLL void game_init(GameMemory* memory, i32 preserveState) {
     create_queue(&gState->cmdQueue, memoryCursor, MB);
 
     debug_state_memory(memory, memoryCursor);
+    load_icon();
     load_font();
     load_textures();
 

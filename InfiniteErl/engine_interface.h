@@ -44,6 +44,7 @@ extern "C" {
     u64 (*get_system_time_fn)();
     void (*load_texture_asset_fn)(i32 id, const char* filePath);
     void (*load_font_fn)(const char* filePath);
+    void (*load_window_icon_fn)(const char* filePath);
 
     u8 (*is_full_screen_fn)();
     u8 (*is_vsync_on_fn)();

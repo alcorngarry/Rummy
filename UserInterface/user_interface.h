@@ -140,8 +140,8 @@ enum TextType {
 struct TextElement {
 	Anchor anchor = TOP_LEFT;
 	char text[1024];
-	f32 posx = 0;
-	f32 posy = 0;
+	f64 posx = 0;
+	f64 posy = 0;
 	i16 parentId = -1;
 	u8 visible = true;
 	f32 scale = 0.001;
