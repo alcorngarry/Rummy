@@ -105,6 +105,7 @@ void execute_queue(CommandQueue *b);
 u8 execute_action(void *ptr);
 void create_queue(CommandQueue *q, u8 *start, u64 size);
 u8 execute_wait(void *ptr);
+u8 add_cash(void *ptr);
   
 u8 add_text_to_page(void *ptr) {
     TextElement text = *(TextElement *)ptr;
@@ -439,15 +440,15 @@ void add_multiplier_animation(Set *set, i32 value, i32 relicId) {
         gMemory->renderBuffer->projection        
     );
 
-//    UIElement textBg = UIElement{CENTER, -1, -1, setPos.x, setPos.y, 0.1f * RENDERING_ASPECT, 0.1f};
-//    textBg.color = R_DARK_SLATE;
-//    add_rotate(&textBg, PI32, 5.0f);
-//    add_fade(&textBg);
-//    add_move_animation(&textBg, vec2(setPos.x, setPos.y - 0.1f), 0.25f);
-//    push_ui_element(textBg);
+    UIElement textBg = UIElement{CENTER, -1, -1, setPos.x - 0.025f, setPos.y, 0.04f * RENDERING_ASPECT, 0.04f};
+    textBg.color = R_BLUE;
+    add_rotate(&textBg, PI32, 5.0f);
+    add_fade(&textBg);
+    add_move_animation(&textBg, vec2(setPos.x - 0.025f, setPos.y - 0.1f), 0.25f);
+    push_ui_element(textBg);
 
     TextElement multiplier = TextElement{ Anchor::CENTER, "", setPos.x - 0.025f, setPos.y, -1, true, DEFAULT_FONT_SCALE * 3.0 };
-    multiplier.color = R_RED;
+    multiplier.color = R_WHITE;
     snprintf(multiplier.text, sizeof(multiplier.text), "x%d", value);
     add_move_text_animation(&multiplier, vec2(setPos.x - 0.025f, setPos.y - 0.1f), 0.25f);
     add_pop_animation(&multiplier, 0.4f);
@@ -485,16 +486,16 @@ void add_addition_animation(Set *set, i32 value, i32 relicId) {
         gMemory->renderBuffer->view,
         gMemory->renderBuffer->projection        
     );
-//
-//    UIElement textBg = UIElement{CENTER, -1, -1, setPos.x, setPos.y, 0.04f * RENDERING_ASPECT, 0.04f};
-//    textBg.color = R_DARK_SLATE;
-//    add_rotate(&textBg, PI32, 5.0f);
-//    add_fade(&textBg);
-//    add_move_animation(&textBg, vec2(setPos.x, setPos.y - 0.1f), 0.25f);
-//    push_ui_element(textBg);
 
-    TextElement multiplier = TextElement{ Anchor::CENTER, "", setPos.x - 0.025f, setPos.y, -1, true, DEFAULT_FONT_SCALE * 3.0 };
-    multiplier.color = R_BLUE;
+    UIElement textBg = UIElement{CENTER, -1, -1, setPos.x - 0.025f, setPos.y, 0.04f * RENDERING_ASPECT, 0.04f};
+    textBg.color = R_YELLOW;
+    add_rotate(&textBg, PI32, 5.0f);
+    add_fade(&textBg);
+    add_move_animation(&textBg, vec2(setPos.x - 0.025f, setPos.y - 0.1f), 0.25f);
+    push_ui_element(textBg);
+
+    TextElement multiplier = TextElement{ CENTER, "", setPos.x - 0.025f, setPos.y, -1, true, DEFAULT_FONT_SCALE * 3.0 };
+    multiplier.color = R_WHITE;
     snprintf(multiplier.text, sizeof(multiplier.text), "+%d", value);
     add_move_text_animation(&multiplier, vec2(setPos.x - 0.025f, setPos.y - 0.1f), 0.25f);
     add_pop_animation(&multiplier, 0.4f);
@@ -720,7 +721,12 @@ u8 interesting(void *ptr) {
 
 u8 rack_cleared_bonus(void *ptr) {
     if(gState->playerRack.numberOfTiles == 0) {
-      gState->runData.dollaBills += 2;
+        //gState->runData.dollaBills += 2;
+        ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u64, execute_action);
+        if (total) {
+            total->action = add_cash;
+            *COMMAND_PAYLOAD(total, u64) = 2;
+        }
     }
     return true;
 }
@@ -2318,7 +2324,7 @@ u8 is_tile_released_inside_rack(Tile *tile) {
            tilePos.y >= tablePos.y - halfHeight &&
            tilePos.y <= tablePos.y + halfHeight; 
 
-    printf("response %i is tile in rack\n", (i32)response);
+    //printf("response %i is tile in rack\n", (i32)response);
     return response;
 }
 
@@ -3015,8 +3021,9 @@ u8 load_map_ui(void *ptr) {
     selectMessage.zIndex = frontIndex;  
     i32 selectMessageId = add_text_element(gState->uiPage, selectMessage);
 
-    UIElement challengeImage = UIElement{ CENTER, -1, ROUND_CHALLENGE_T, 0.2575f, 0.275f, 0.08f * RENDERING_ASPECT, 0.08f};
-    challengeImage.sheetAnimation = SheetAnimation{3,1};
+    UIElement challengeImage = UIElement{ CENTER, -1, EASY_T, 0.2575f, 0.275f, 0.08f * RENDERING_ASPECT, 0.08f};
+    challengeImage.sheetAnimation = SheetAnimation{4,1};
+    challengeImage.sheetAnimation.fps = 4;
     challengeImage.zIndex = frontIndex;
 
     UIElement nextRoundBg = UIElement{ Anchor::CENTER, -1, BUTTON_T, 0.2575f, 0.5f, 0.7f, 0.225f};
@@ -3074,7 +3081,8 @@ u8 load_map_ui(void *ptr) {
     nextRoundBg.posx += 0.2425f;
     itemBg.posx += 0.2425f;
     //nextRoundBg.color = R_GREEN;
-    challengeImage.sheetAnimation.currentFrame = 1;
+    //challengeImage.sheetAnimation.currentFrame = 1;
+    challengeImage.textureName = MEDIUM_T;
 
     desc1.posx += 0.2425f;
     scoreMin1.posx += 0.2425f;
@@ -3099,7 +3107,8 @@ u8 load_map_ui(void *ptr) {
     itemBg.posx += 0.2425f;
     scoreMin1.posx += 0.2425f;
     //nextRoundBg.color = R_RED;
-    challengeImage.sheetAnimation.currentFrame = 2;
+    //challengeImage.sheetAnimation.currentFrame = 2;
+    challengeImage.textureName = HARD_T;
     
     desc1.posx += 0.2425f;
     reward.posx += 0.2425f;
@@ -3248,8 +3257,9 @@ void set_round_complete_ui(i32 windowIndex) {
     add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, scoreMinVal,"", 2, UINT_64));
 
     UIElement challengeImage = UIElement{ CENTER, -1, ROUND_CHALLENGE_T,  0.6f, 0.07225f, 0.05f * RENDERING_ASPECT, 0.05f};
-    challengeImage.sheetAnimation = SheetAnimation{3,1};
-    challengeImage.sheetAnimation.currentFrame = 1;
+    challengeImage.sheetAnimation = SheetAnimation{4,1};
+    challengeImage.sheetAnimation.fps = 7;
+
     challengeImage.visible = false;
     challengeImage.zIndex = 3;
 
@@ -3365,8 +3375,10 @@ void set_round_complete_ui(i32 windowIndex) {
             break;
         }
     }
-
-    challengeImage.sheetAnimation.currentFrame = gState->roundData.difficulty;
+    
+    // TODO(garry) fix this hardcoded garbage
+    challengeImage.sheetAnimation.currentFrame = 1;//gState->roundData.difficulty;
+    challengeImage.textureName = 30 + gState->roundData.difficulty;
     i32 challengeImageId = add_ui_element(gState->uiPage, challengeImage);
     add_image_to_window(gState->uiPage, challengeWindow, challengeImageId);
 }
@@ -3844,19 +3856,19 @@ void add_shop_purchase_menu(u8 isRelic) {
     //relics
     i32 relicIds[3];
     populate_relics_in_shop(relicIds);
-    UIElement relic = UIElement{CENTER, -1, RELICS_T, 0.26f, 0.325f, 0.08f * RENDERING_ASPECT, 0.08f};
+    UIElement relic = UIElement{CENTER, -1, RELICS_T, 0.3f, 0.325f, 0.08f * RENDERING_ASPECT, 0.08f};
     relic.isHoverable = true;
     relic.sheetAnimation = SheetAnimation{RELIC_COLUMNS, RELIC_ROWS};
     relic.actionId = 11;
     //actives
     i32 activeIds[3];
     populate_actives_in_shop(activeIds);
-    UIElement active = UIElement{CENTER, -1, ACTIVES_T, 0.26f, 0.625f, 0.08f * RENDERING_ASPECT, 0.08f};
+    UIElement active = UIElement{CENTER, -1, ACTIVES_T, 0.3f, 0.625f, 0.08f * RENDERING_ASPECT, 0.08f};
     active.sheetAnimation = SheetAnimation{ACTIVE_COLUMNS, ACTIVE_ROWS};
     active.actionId = 17;
     active.isHoverable = true;
 
-    TextElement price = TextElement{CENTER, "$", 0.26f, 0.425f, -1, true, DEFAULT_FONT_SCALE * 2.0f};
+    TextElement price = TextElement{CENTER, "$", 0.3f, 0.425f, -1, true, DEFAULT_FONT_SCALE * 2.0f};
     price.color = R_GOLDEN;
 
     i32 priceIds[6];
@@ -3864,13 +3876,13 @@ void add_shop_purchase_menu(u8 isRelic) {
 
     for(i32 i = 0; i < 3; i++) {
         price.posy = 0.425f;
-        price.posx = 0.26f + i * 0.24f;
+        price.posx = 0.325f + i * 0.175f;
         snprintf(price.text, sizeof(price.text), "$%d", (i32)gState->relics[relicIds[i]].price);
         priceIds[j++] = add_text_element(gState->uiPage, price);
 
         relic.textChild = &gState->uiPage->textElements[priceIds[j - 1]];
 
-        relic.posx = 0.26f + i * 0.24f;
+        relic.posx = 0.325f + i * 0.175f;
         relic.sheetAnimation.currentFrame = relicIds[i];
         relicIds[i] = add_ui_element(gState->uiPage, relic);
 
@@ -3880,13 +3892,13 @@ void add_shop_purchase_menu(u8 isRelic) {
 
         active.textChild = &gState->uiPage->textElements[priceIds[j - 1]];
 
-        active.posx = 0.26f + i * 0.24f;
+        active.posx = 0.325f + i * 0.175f;
         active.sheetAnimation.currentFrame = activeIds[i];
         activeIds[i] = add_ui_element(gState->uiPage, active);
     }
 
     i32 bgIds[2];
-    UIElement itemBg = UIElement{CENTER, -1, BUTTON_T, 0.5f, 0.35f, 0.25f, 0.6f};
+    UIElement itemBg = UIElement{CENTER, -1, BUTTON_T, 0.5f, 0.35f, 0.25f, 0.45f};
     itemBg.sheetAnimation = SheetAnimation{3, 3};
     //itemBg.actionId = 17;
     itemBg.isPanel = true;
@@ -3898,14 +3910,20 @@ void add_shop_purchase_menu(u8 isRelic) {
         bgIds[i] = add_ui_element(gState->uiPage, itemBg);
     }
 
-    i32 nextRoundId = add_button(gState->uiPage, BUTTON_T, "Round Challenge", vec2(0.74f, 0.9f), vec2(0.05f, 0.225f), R_GRAY, 20);
+    i32 nextRoundId = add_button(gState->uiPage, BUTTON_T, "Round Challenge", vec2(0.625f, 0.85f), vec2(0.1f, 0.2f), R_GRAY, 20);
     i32 rerollActionId = gState->runData.dollaBills > 0 ? 29 : 12;
-    i32 rerollId = add_button(gState->uiPage, BUTTON_T, "REROLL", vec2(0.26f, 0.9f), vec2(0.05f, 0.225f), R_RED, rerollActionId);
+    i32 rerollId = add_button(gState->uiPage, BUTTON_T, "REROLL", vec2(0.375f, 0.85f), vec2(0.1f, 0.2f), R_RED, rerollActionId);
     if(rerollActionId == 12) disable_button(gState->uiPage, rerollId);
 
-    i32 windowIndex = add_window(gState->uiPage, UI_BG_2_T, CENTER, vec2(0.9f, 0.75f), vec2(0.5f, 2.0f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE);
+    i32 windowIndex = add_window(gState->uiPage, UI_BG_2_T, CENTER, vec2(0.9f, 0.5f), vec2(0.5f, 2.0f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE);
     add_button_to_window(gState->uiPage, windowIndex, nextRoundId);
     add_button_to_window(gState->uiPage, windowIndex, rerollId);
+
+    TextElement header = TextElement{ CENTER, "Shop", 0.34f, 0.13f, -1, true, DEFAULT_FONT_SCALE * 4};
+    header.bounce = true;
+    header.typeWriter = true;
+    i32 headerId = add_text_element(gState->uiPage, header);
+    add_text_to_window(gState->uiPage, windowIndex, headerId);
 
     for(i32 i = 0; i < 2; ++i) {
         add_image_to_window(gState->uiPage, windowIndex, bgIds[i]);
@@ -3918,20 +3936,24 @@ void add_shop_purchase_menu(u8 isRelic) {
         add_text_to_window(gState->uiPage, windowIndex, priceIds[i]);
     }
 
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{Anchor::CENTER, "Round Score", 0.26f, 0.1f, -1, true, DEFAULT_FONT_SCALE}));
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{Anchor::CENTER, "", 0.26f, 0.15f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_WHITE}, "", 0, UINT_64));
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{Anchor::CENTER, "Round Score", 0.45f, 0.1f, -1, true, DEFAULT_FONT_SCALE}));
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{Anchor::CENTER, "", 0.45f, 0.15f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_WHITE}, "", 0, UINT_64));
 
     numTableTiles = 0;
     for(i32 i = 0; i < gState->table.numberOfSets; i++) {
         numTableTiles += gState->table.sets[i].numberOfTiles;
     }
 
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{CENTER, "Next Round", 0.74f, 0.1f, -1, true, DEFAULT_FONT_SCALE}));
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{CENTER, "", 0.74f, 0.15f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_PURPLE}, "", 6, UINT_64));
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{CENTER, "Next Round", 0.53f, 0.1f, -1, true, DEFAULT_FONT_SCALE}));
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{CENTER, "", 0.53f, 0.15f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_PURPLE}, "", 6, UINT_64));
 
-    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{Anchor::CENTER, "Cash", 0.5f, 0.1f, -1, true, DEFAULT_FONT_SCALE}));
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{CENTER, "", 0.5f, 0.15f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_GOLDEN}, "$", 3, UINT_64));
+    add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{Anchor::CENTER, "Cash", 0.64f, 0.1f, -1, true, DEFAULT_FONT_SCALE}));
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{CENTER, "", 0.64f, 0.15f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_GOLDEN}, "$", 3, UINT_64));
 
+//    UIElement shopSign = UIElement{CENTER, -1, SHOP_SIGN_T, 0.2f, 0.4f, 0.5f, 0.1f};
+//    shopSign.sheetAnimation = SheetAnimation{4, 1};
+//    shopSign.sheetAnimation.fps = 4;
+//    add_image_to_window(gState->uiPage, windowIndex, add_ui_element(gState->uiPage, shopSign));
 
     add_item_window();
 
@@ -4028,6 +4050,7 @@ void add_main_menu_ui() {
     me.sheetAnimation.currentFrame = 0;
     me.sheetAnimation.fps = 16;
     me.sheetAnimation.trigger = true;
+    me.sheetAnimation.random = true;
     add_ui_element(gState->uiPage, me);
     
     add_text_element(gState->uiPage, TextElement{ CENTER, "v-0.0.01", 0.95f, 0.95f, -1, true, DEFAULT_FONT_SCALE});
@@ -4240,6 +4263,7 @@ void add_relics_ui() {
         sheen.sheetAnimation.currentFrame = 4;
         sheen.sheetAnimation.fps = 6;
         sheen.isHoverable = false;
+        sheen.sheetAnimation.random = true;
         sheenIds[i] = add_ui_element(gState->uiPage, sheen);
 
         UIElement relic = {
@@ -4412,14 +4436,8 @@ void push_set_bonus(ItemData *actionData, CmdActionFuncPtr relicFn, i32 relicId)
 }
 
 u64 calculate_set_bonuses(Set *set, u8 uiAnimation) {
-    //if(!uiAnimation) {
-    
     set->score = get_set_value(set);
     if(gState->runData.currentRoundType == NO_PASSIVES) return set->score;
-        // deals only wil round challenges 
-    //set->score = check_set_value_rules(set, &setValue, gState->runData.currentRoundType);
-
-   // }
 
     //sort by addition first
     for(i32 i = 0; i < gState->player.numberOfRelics; ++i) {
@@ -4456,7 +4474,7 @@ u64 calculate_set_bonuses(Set *set, u8 uiAnimation) {
         }
     }
 
-    return set->score; //(get_set_value(set) + addition) * multiplier;
+    return set->score; 
 }
 
 void calculate_round_cash(RunData *gd) {
@@ -4749,10 +4767,12 @@ void update_randomized_ui_elements() {
         SheetAnimation* anim = &gState->uiPage->uiElements[i].sheetAnimation;
         
         if (anim->fps == 0) continue;
-        if (anim->currentFrame == 0) {
+        if (anim->random) {
             if (rng_range(0, 9999) < 5) {
                 anim->trigger = true;
             }
+        } else {
+            anim->trigger = true;
         }
     }
 }
@@ -4954,6 +4974,10 @@ void load_textures() {
     gMemory->load_texture_asset_fn(CURSOR_T, "./res/cursor-sheet.ei");
     gMemory->load_texture_asset_fn(ME_TILE_T, "./res/meTile.ei");
     gMemory->load_texture_asset_fn(TILE_EFFECTS_T, "./res/tile-effects.ei");
+    gMemory->load_texture_asset_fn(EASY_T, "./res/easy-challenge.ei");
+    gMemory->load_texture_asset_fn(MEDIUM_T, "./res/medium-challenge.ei");
+    gMemory->load_texture_asset_fn(HARD_T, "./res/hard-challenge.ei");
+    gMemory->load_texture_asset_fn(SHOP_SIGN_T, "./res/shop-sign.ei");
 }
 
 extern "C" GAME_DLL void game_init(GameMemory* memory, i32 preserveState) {

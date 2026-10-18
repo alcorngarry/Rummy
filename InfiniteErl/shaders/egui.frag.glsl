@@ -78,7 +78,7 @@ void main() {
 
     if(color.x != -1.0f) {
         if(useColorOnly) {
-            FragColor = vec4(color.rgb * color.a, color.a); 
+            FragColor = vec4(color.rgb, color.a);
         } else {
             FragColor = applyShadow(texture(Texture, uv) * color);
         }

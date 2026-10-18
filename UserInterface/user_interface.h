@@ -82,6 +82,7 @@ struct SheetAnimation {
 	f32 animTimer = 0.0f;
 	i32 currentFrame = 0;
   u8 trigger = false;
+  u8 random = false;
 };
 
 struct TextElement;

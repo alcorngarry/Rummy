@@ -94,8 +94,6 @@ void init_audio() {
     load_audio(0, "./audio/place_tile.ea");
     load_audio(1, "./audio/button_click.ea");
     load_audio(2, "./audio/coin.ea");
-    //load_home_music("./audio/menu.wav");
-
     printf("Audio loaded.\n");
 }
 
@@ -106,6 +104,9 @@ void play_audio(i32 id) {
 void set_master_volume(f32 volume) {
     if((i32)volume > 2.0f) return;
     ma_engine_set_volume(&engine, volume);
+}
+
+void load_audio_devices() {
 }
 
 void play_audio_pitch(i32 id, f32 pitch) {

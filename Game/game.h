@@ -49,6 +49,10 @@
 #define CURSOR_T 27
 #define ME_TILE_T 28
 #define TILE_EFFECTS_T 29
+#define EASY_T 30
+#define MEDIUM_T 31
+#define HARD_T 32
+#define SHOP_SIGN_T 33
 
 const i32 TABLE_ROWS = 6;
 const i32 TABLE_COLUMNS = 16;
