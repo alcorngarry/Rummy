@@ -7,6 +7,9 @@
 #include "profile.h"
 #include "erl_math.h"
 #include "game_ui.h"
+#include "validations.h"
+#include "game_queue.h"
+#include "rounds.h"
 
 #define TOTAL_TILES 60
 #define TOTAL_RELICS 15
@@ -99,36 +102,6 @@ struct GameObject {
 
     ObjSheetAnimation sheetAnimation;
     ObjAnimation animation;
-};
-
-#define PUSH_COMMAND(queue, cmdType, payloadType, execFn) \
-    (cmdType *)push_command( \
-        queue, \
-        sizeof(cmdType) + sizeof(payloadType), \
-        execFn)
-#define COMMAND_PAYLOAD(cmd, type) \
-    ((type *)((u8 *)(cmd) + sizeof(*(cmd))))
-struct CommandHeader {
-    u64 size;
-    u8 (*execute)(void *cmd);
-};
-
-struct ActionCommand {
-    CommandHeader header;
-    CmdActionFuncPtr action;
-};
-
-struct WaitCommand {
-    CommandHeader header;
-    f32 duration;
-    f32 elapsed;
-};
-
-struct CommandQueue {
-    u8 *base;
-    u64 size;
-    u64 readIndex;
-    u64 writeIndex;
 };
 
 enum GAME_MODE : u8 {
@@ -300,48 +273,6 @@ struct RoundSnapshot {
     Rack rack;
     Active actives[MAX_ACTIVES];
     u8 numberOfActives;
-};
-
-enum ROUND_TYPE : u8{
-    MIN_SCORE,
-    RUN_TOTALS,
-    RUN_MAX_SIZE,
-    GROUP_TOTALS,
-    EVERY_COLOR_ON_BOARD, //might be terrible
-    CURSED_RED,
-    CURSED_BLUE,
-    CURSED_GREEN,
-    CURSED_BLACK,
-    NO_ACTIVES,
-    NO_PASSIVES,
-    ODDS_CURSED,
-    EVENS_CURSED
-};
-
-struct RoundData {
-    i32 turnLimit;
-    u64 minimumScore;
-    u64 roundScore = 0;
-    CmdActionFuncPtr roundWinCondition;
-    CmdActionFuncPtr roundLoseCondition;
-    char desc[128];
-    u64 cashReward = 0;
-    u8 difficulty = 0;
-    i32 value = 0;
-};
-
-struct RunData {
-    u64 dollaBills = 0;
-    u64 rounds = 1;
-    ROUND_TYPE currentRoundType;
-};
-
-struct ValidationRules {
-    u8 minSetSize = 3;
-    u8 rainbowRunEnabled = false;
-    u8 wrapEnabled = false;
-    i32 rainbowRunSetId = -1;
-
 };
 
 //hmmm

@@ -24,41 +24,7 @@ u8 nextFiveShown = false;
 u8 discardEnabled = false;
 // terrible but for the ui endgame
 u64 countedSetScore = 0;
-
-// validations.cpp
-i32 get_high_tile_number(Set *set);
-i32 get_low_tile_number(Set *set);
-i32 get_joker_array(Set *set, Tile** jokerArray);
-i32 get_normal_array_sorted(Set *set, Tile** normalArray);
-i32 get_bridge_array(Set *set, Tile** bridgeArray);
-i32 get_spans(i32 size, Tile** normalArraySorted, i32* outArray, i32 jokerCount);
-u8 is_tile_playable_in_set(ValidationRules *rules, Set *set, Tile *tile);
-u8 is_group(Set *set);
-u8 is_run(Set *set);
-u8 is_run_valid(ValidationRules *rules, Set *set);
-u8 is_group_valid(Set *set);
-u8 is_table_valid();
-u8 is_rainbow_run(Set *set);
-// rounds.cpp
-u8 check_challenge_condition(GameState *state);
-RunData create_run_data();
-void clear_round_score(RoundData *data);
-u8 check_round_lose_condition(GameState *state);
-u8 check_min_score_endgame(void *ptr);
-void difficulty_to_text(u8 value, char *text);
-void check_set_value_rules(Set *set, u64* hoveredSetValue, ROUND_TYPE type);
-i32 check_cursed_value(Tile *tile, ROUND_TYPE type);
-i32 check_cursed_value(Set *set, ROUND_TYPE type);
-// game_queue.cpp
-void* push(CommandQueue *b, u64 size);
-void* push_command(CommandQueue *q, u32 totalSize, CmdActionFuncPtr executeFn);
-void push_wait(CommandQueue *q, f32 duration);
-void execute_queue(CommandQueue *b);
-u8 execute_action(void *ptr);
-void create_queue(CommandQueue *q, u8 *start, u64 size);
-u8 execute_wait(void *ptr);
-u8 add_cash(void *ptr);
-  
+ 
 u8 add_text_to_page(void *ptr) {
     TextElement text = *(TextElement *)ptr;
 

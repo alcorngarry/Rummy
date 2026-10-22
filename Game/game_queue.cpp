@@ -1,3 +1,4 @@
+#include "game_queue.h"
 #include "game.h"
 
 u64 next_index(CommandQueue *b, u64 index, u64 amount) {

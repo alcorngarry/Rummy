@@ -1,3 +1,4 @@
+#include "validations.h"
 #include "game.h"
 
 i32 get_high_tile_number(Set *set) {
