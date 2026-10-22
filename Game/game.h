@@ -6,6 +6,7 @@
 #include "rummy_colors.h"
 #include "profile.h"
 #include "erl_math.h"
+#include "game_ui.h"
 
 #define TOTAL_TILES 60
 #define TOTAL_RELICS 15
@@ -342,6 +343,45 @@ struct ValidationRules {
     i32 rainbowRunSetId = -1;
 
 };
+
+//hmmm
+extern Tile* colorTile;
+extern vec2 mousePos;
+
+u8 remove_cash(void *ptr);
+void init_main_menu();
+void set_round_type();
+void quit();
+void end_turn();
+void reset_board();
+void sort_rack_by_number();
+void sort_rack_by_color();
+void add_relic();
+void apply_video_settings();
+void start_new_run();
+void start_transition();
+void toggle_actives();
+void add_active();
+
+void get_playable_tiles(Set *set);
+void remove_empty_sets();
+u8 is_released_inside_table(mat4 model);
+u8 is_active_released_inside_pool(Active *active);
+u8 snap_tile_to_table_space(Tile *tile);
+Tile* find_left_most_tile(Set *set);
+Tile* find_right_most_tile(Set *set);
+void init_player();
+void init_round(ROUND_TYPE type);
+void update_set_ui(Set* set);
+Set* get_hovered_set();
+void clear_player_data();
+u8 move_tile(void* ptr);
+vec2 world_to_ui(mat4 model, mat4 view, mat4 projection);
+u64 calculate_set_bonuses(Set *set, u8 uiAnimation);
+u8 add_table_value_total(void *ptr);
+u8 start_round(void *ptr);
+void add_tile_to_rack(Tile *tile);
+void remove_tile_from_pool(i32 id);
 
 struct GameState {
     //default game values

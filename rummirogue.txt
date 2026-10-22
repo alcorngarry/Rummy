@@ -175,3 +175,7 @@ verify all rounds work
 
 ----- issues playing
 seven gives the score for cursed tiles
+
+
+10/21/2026
+--Add round escalation and boss rounds!
