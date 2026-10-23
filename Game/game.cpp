@@ -11,8 +11,8 @@ const vec3 defaultTileScale = vec3(0.08f);
 
 GameState* gState = nullptr;
 GameMemory* gMemory = nullptr;
-mat4 rackSpaces[RACK_SPACES];
 u8 activesShown = false;
+mat4 rackSpaces[RACK_SPACES] = {};
 //probably should have engine interaction here
 vec2 mousePos = vec2(0.0f);
 Tile* colorTile = nullptr;
@@ -30,6 +30,19 @@ u8 add_text_to_page(void *ptr) {
 
     add_text_element(gState->uiPage, text);
     return true;
+}
+
+void reroll(u8 isRelic) {
+    u64 rerollCost = 1;
+    remove_cash(&rerollCost);
+
+    push_wait(&gState->cmdQueue, 1.0f);
+
+    ActionCommand *nextRound = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u8, execute_action);
+    if (nextRound) { 
+        nextRound->action = load_shop_purchase_menu;
+        *COMMAND_PAYLOAD(nextRound, u8) = isRelic;
+    }
 }
 
 void push_text_element(TextElement element) {
@@ -63,10 +76,10 @@ u8 load_map(void *ptr) {
 
 void create_quad() {
     f32 vertices[] = {
-        -0.5f, -0.5f, 0.0f,      0.0f, 1.0f,
-         0.5f, -0.5f, 0.0f,      1.0f, 1.0f,
-         0.5f,  0.5f, 0.0f,      1.0f, 0.0f,
-        -0.5f,  0.5f, 0.0f,      0.0f, 0.0f
+        -0.5f, -0.5f, 0.0f, 0.0f, 1.0f,
+         0.5f, -0.5f, 0.0f, 1.0f, 1.0f,
+         0.5f,  0.5f, 0.0f, 1.0f, 0.0f,
+        -0.5f,  0.5f, 0.0f, 0.0f, 0.0f
     };
 
     u32 indices[] = {
@@ -161,13 +174,7 @@ void shuffle_tiles(Tile** tiles, i32 count) {
     }
 }
 
-
-// WINDOWS SPECIFIC!
 void set_seed() {
-    //FILETIME ft;
-    //GetSystemTimeAsFileTime(&ft);
-    //gState->rng = RNG{(u64(ft.dwHighDateTime) << 32) | u64(ft.dwLowDateTime)};
-
     u64 time = gMemory->get_system_time_fn();
     gState->rng = RNG{time};
     init_rng(&gState->rng);
@@ -287,7 +294,6 @@ void revert_to_round_start() {
         sizeof(Rack)
     );
 
-    //need to copy the actives!
     memcpy(
         &gState->player.actives,
         &gState->roundStart.actives,
@@ -406,7 +412,6 @@ void add_addition_animation(Set *set, i32 value, i32 relicId) {
 u8 multiplier_action(void *ptr) {
     ItemData actionData = * (ItemData *)ptr;
     if(!actionData.set) return true;
-    //i32 multiplier = *(i32 *)ptr;
     actionData.set->score *= actionData.value;
     return true;
 }
@@ -414,7 +419,6 @@ u8 multiplier_action(void *ptr) {
 u8 addition_action(void *ptr) {
     ItemData actionData = * (ItemData *)ptr;
     if(!actionData.set) return true;
-    //i32 addition = *(i32 *)ptr;
     f32 value = (f32)actionData.value;
 
     //This means adding a percent, don't forget this.
@@ -471,7 +475,6 @@ u8 bridge_chance(void *ptr) {
 u8 wild_factor(void *ptr) {
     ItemData actionData = * (ItemData *)ptr;
     if(!actionData.set) return true;
-    //i32 addition = *(i32 *)ptr;
     f32 value = (f32)actionData.value;
 
     i32 numberOfJokers = 0;
@@ -1550,9 +1553,6 @@ void draw_held_active() {
     };
     gMemory->push_entity_fn(gMemory->renderBuffer, &activeEntry);
 }
-
-// TODO(garry) this is horrible.
-u8 clickHeld = false;
 
 void check_active_hovered(f64 xpos, f64 ypos) {
     if(gState->player.heldActiveId != -1) return;
@@ -2656,6 +2656,7 @@ void sort_active_rack() {
         gState->player.actives[i].originalPosition = rackSpaces[i];
     }
 }
+
 void release_active() {
     //check if inside pool
     if(gState->player.heldActiveId != -1) {
@@ -3198,28 +3199,6 @@ void end_turn() {
     }
 }
 
-void update_randomized_ui_elements() {
-    for (i32 i = 0; i < gState->uiPage->numberOfImageElements; ++i) {
-        SheetAnimation* anim = &gState->uiPage->uiElements[i].sheetAnimation;
-        
-        if (anim->fps == 0) continue;
-        if (anim->random) {
-            if (rng_range(0, 9999) < 5) {
-                anim->trigger = true;
-            }
-        } else {
-            anim->trigger = true;
-        }
-    }
-}
-
-//move out of game 
-void draw_ui() {
-    update_randomized_ui_elements();
-    update(gState->uiPage, gState->deltaTime);
-    gMemory->push_ui_page_fn(gMemory->renderBuffer, gState->uiPage);
-}
-
 void init_player() {
     gState->player = Player{};
     gState->player.playerData = PlayerData{};
@@ -3422,240 +3401,10 @@ void update_cursor(vec2 pos) {
         action = 2;
     }
 
-//    if(paintEnabled && !colorTile) {
-//        action = 3;
-//    }
-
     cursor->sheetAnimation.currentFrame = action;
     cursor->posx = pos.x;
     cursor->posy = pos.y;
 };
-
-extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 ypos) {
-    // the projection matrix for ui is different!
-    mousePos = vec2(xpos * (1.0f / RENDERING_ASPECT), ypos);
-    check_elements_hovered(gState->uiPage, xpos * (1.0f / RENDERING_ASPECT), ypos);
-    check_relic_hovered(xpos, ypos);
-
-    if(gState->pageState == IN_GAME) {
-        check_set_hovered(xpos, ypos);
-        check_table_space_hovered(xpos, ypos);
-        check_pool_hovered(xpos, ypos);
-    }
-
-    #ifdef CONSOLE
-        if(key == 48 && action == 1) {
-            gState->player.relics[gState->player.numberOfRelics++] = 8;
-        }
-        if(key == 49 && action == 1) {
-            gState->player.relics[gState->player.numberOfRelics++] = 9;
-        }
-        if(key == 50 && action == 1) {
-            gState->player.relics[gState->player.numberOfRelics++] = 10;
-        }
-        if(key == 51 && action == 1) {
-            gState->player.relics[gState->player.numberOfRelics++] = 11;
-        }
-        if(key == 52 && action == 1) {
-            gState->player.relics[gState->player.numberOfRelics++] = 12;
-        }
-        if(key == 53 && action == 1) {
-            gState->player.relics[gState->player.numberOfRelics++] = 13;
-        }
-        if(key == 54 && action == 1) {
-            gState->player.relics[gState->player.numberOfRelics++] = 14;
-        }
-        if(key == 55 && action == 1) {
-            gState->player.relics[gState->player.numberOfRelics++] = 0;
-        }
-        if(key == 297 && action == 1) {
-            ActionCommand *total = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u64, execute_action);
-            if (total) {
-                total->action = add_cash;
-                *COMMAND_PAYLOAD(total, u64) = 100000;
-            }
-        }
-
-        if (key == 298 && action == 1) { // f9
-            gState->player.numberOfRelics = 0;
-
-            for (i32 i = 0; i < TOTAL_RELICS; ++i) {
-                gState->player.relics[i] = i;
-                gState->player.numberOfRelics++;
-            }
-        }
-
-        if (key == 320 && action == 1) {
-            u8 i = gState->player.numberOfActives;
-            gState->player.actives[i] = gState->actives[0];
-            gState->player.actives[i].object.model = rackSpaces[i];
-            gState->player.actives[i].originalPosition = rackSpaces[i];
-            gState->player.numberOfActives++;
-        }
-        if (key == 321 && action == 1) {
-            u8 i = gState->player.numberOfActives;
-            gState->player.actives[i] = gState->actives[1];
-            gState->player.actives[i].object.model = rackSpaces[i];
-            gState->player.actives[i].originalPosition = rackSpaces[i];
-            gState->player.numberOfActives++;   
-        }
-        if (key == 322 && action == 1) {
-            u8 i = gState->player.numberOfActives;
-            gState->player.actives[i] = gState->actives[2];
-            gState->player.actives[i].object.model = rackSpaces[i];
-            gState->player.actives[i].originalPosition = rackSpaces[i];
-            gState->player.numberOfActives++;  
-        }
-        if (key == 323 && action == 1) {
-            u8 i = gState->player.numberOfActives;
-            gState->player.actives[i] = gState->actives[3];
-            gState->player.actives[i].object.model = rackSpaces[i];
-            gState->player.actives[i].originalPosition = rackSpaces[i];
-            gState->player.numberOfActives++;   
-        }
-        if (key == 324 && action == 1) {
-            u8 i = gState->player.numberOfActives;
-            gState->player.actives[i] = gState->actives[4];
-            gState->player.actives[i].object.model = rackSpaces[i];
-            gState->player.actives[i].originalPosition = rackSpaces[i];
-            gState->player.numberOfActives++;   
-        }
-        if (key == 325 && action == 1) {
-            u8 i = gState->player.numberOfActives;
-            gState->player.actives[i] = gState->actives[5];
-            gState->player.actives[i].object.model = rackSpaces[i];
-            gState->player.actives[i].originalPosition = rackSpaces[i];
-            gState->player.numberOfActives++;   
-        }
-        if (key == 326 && action == 1) {
-            u8 i = gState->player.numberOfActives;
-            gState->player.actives[i] = gState->actives[7];
-            gState->player.actives[i].object.model = rackSpaces[i];
-            gState->player.actives[i].originalPosition = rackSpaces[i];
-            gState->player.numberOfActives++;   
-        }
-        if (key == 327 && action == 1) {
-            u8 i = gState->player.numberOfActives;
-            gState->player.actives[i] = gState->actives[8];
-            gState->player.actives[i].object.model = rackSpaces[i];
-            gState->player.actives[i].originalPosition = rackSpaces[i];
-            gState->player.numberOfActives++;   
-        }
-        if (key == 256) {
-            quit();
-        }
-
-        if (key == 300 && action == 1) {
-            gMemory->toggleFullScreen = true;
-        }
-
-        if (key == 301 && action == 1) {
-            gState->roundData.minimumScore = 1;
-        }
-        if (key == 299 && action == 1) {
-            clear_game_ui();
-            add_end_game_ui();
-        }
-        if (key == 77 && action == 1) { //m
-            //add_map_ui();
-            //add_end_game_ui();
-            add_shop_purchase_menu(true);
-            //printf("Rainbow run enabled = %i\n", gState->rules.rainbowRunEnabled);
-            //printf("Rainbow run setId = %i\n", gState->rules.rainbowRunSetId);
-            //__debugbreak();
-        }
-    #endif
-
-    if (key == 78 && action == 1) {
-        gMemory->play_audio_fn(0);
-        sort_rack_by_number();
-    }
-
-    if (key == 32 && action == 1) {
-        end_turn();
-    }
-
-    if (key == 340 && action == 1) {
-        toggle_actives();
-    }
-
-    if (key == 82 && action == 1) {
-        reset_board();
-    }
-
-    if (key == 67 && action == 1) {
-        gMemory->play_audio_fn(0);
-        sort_rack_by_color();
-    }
-    if (key == 294 && action == 1) {
-        ActionCommand *shake = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, 0, execute_action);
-        if (shake) {
-            shake->action = screen_shake;
-        } 
-    }
-
-    if(key == 258 && action == 1) { // TAB
-        //tabs
-        if(gState->pageState == OPTIONS) {
-            switch_tab(gState->uiPage);
-        } else if(gState->pageState == RELIC){
-            gState->pageState = IN_GAME; 
-            reinit_page_state();
-        } else if(gState->pageState == IN_GAME){
-            gState->pageState = RELIC;
-            reinit_page_state();
-        }
-    }
-
-    if(key == 0) {
-        if(action == 1) {
-            clickHeld = true;
-            
-            if(gState->pageState == IN_GAME) {
-                if(activesShown) {
-                    grab_active(xpos, ypos);
-                } else {
-                    grab_tile(xpos, ypos);
-                }
-            }
-            if(gState->uiPage->elementHovered != -1) {
-                if(gState->uiPage->uiElements[gState->uiPage->elementHovered].visible) BUTTON_PRESS(gState->uiPage->uiElements[gState->uiPage->elementHovered]);
-            } 
-        } else if(action == 0) {
-            clickHeld = false;
-            if(gState->pageState == IN_GAME) {
-                if(activesShown) {
-                    release_active();
-                } else {
-                    release_tile();
-                }
-            } 
-            if(gState->uiPage->elementHovered != -1 && !gState->player.heldTile) {
-                BUTTON_RELEASE(gState->uiPage->uiElements[gState->uiPage->elementHovered]);
-                gMemory->play_audio_fn(1);
-            }
-        }
-    }
-    if(gState->pageState == IN_GAME) {
-        if(clickHeld) {
-            if(activesShown) {
-                drag_active(xpos, ypos);
-            } else {
-                drag_tile(xpos, ypos);
-            }
-        } else {
-            if(activesShown) {
-                check_active_hovered(xpos, ypos);
-            } else {
-                check_tile_hovered(xpos, ypos);
-            }
-        }
-    }
-    if(gState->pageState == RELICS_PURCHASE || gState->pageState == ACTIVES_PURCHASE) {
-        shop_item_hovered();
-    }
-    update_cursor(vec2(xpos * (1.0f / RENDERING_ASPECT), ypos));
-}
 
 extern "C" GAME_DLL void game_shutdown() {
     save_profile(activeProfile);

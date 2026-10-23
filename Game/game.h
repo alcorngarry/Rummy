@@ -10,6 +10,8 @@
 #include "validations.h"
 #include "game_queue.h"
 #include "rounds.h"
+#include "game_assets.h"
+#include "game_input.h"
 
 #define TOTAL_TILES 60
 #define TOTAL_RELICS 15
@@ -22,41 +24,6 @@
 #define MAX_ACTIVES 24
 #define ACTIVE_ROWS 3
 #define ACTIVE_COLUMNS 3
-
-#define TILE_ATLAS_T 0  
-#define TILE_FACE_T 1 
-#define TILE_SIDES_T 2
-#define NUMBER_SHEET_T 3
-#define BRIDGE_T 4
-#define TILE_SLOT_T 5
-#define BUTTON_T 6
-#define POOL_T 7
-#define CIRCLE_BUTTON_T 8
-#define RELICS_T 9
-#define UI_BG_2_T 10
-#define BUTTON_SELECT_T 11
-#define RADIO_T 12
-#define BACK_T 13
-#define OPTION_T 14
-#define SETTINGS_T 15
-#define EXIT_T 16
-#define UI_TILE_T 17
-#define TITLE_T 18
-#define ACTIVES_T 19
-#define TOOL_TIP_T 20
-#define ROUND_TYPE_T 21
-#define ROUND_CHALLENGE_T 22
-#define BUMP_BG_T 23
-#define SHEEN_T 24
-#define ROUND_SHEEN_T 25
-#define LOCKED_T 26
-#define CURSOR_T 27
-#define ME_TILE_T 28
-#define TILE_EFFECTS_T 29
-#define EASY_T 30
-#define MEDIUM_T 31
-#define HARD_T 32
-#define SHOP_SIGN_T 33
 
 const i32 TABLE_ROWS = 6;
 const i32 TABLE_COLUMNS = 16;
@@ -278,6 +245,8 @@ struct RoundSnapshot {
 //hmmm
 extern Tile* colorTile;
 extern vec2 mousePos;
+extern mat4 rackSpaces[RACK_SPACES];
+extern u8 activesShown;
 
 u8 remove_cash(void *ptr);
 void init_main_menu();
@@ -313,6 +282,21 @@ u8 add_table_value_total(void *ptr);
 u8 start_round(void *ptr);
 void add_tile_to_rack(Tile *tile);
 void remove_tile_from_pool(i32 id);
+void reroll(u8 isRelic);
+void check_relic_hovered(f64 xpos, f64 ypos);
+void check_set_hovered(f64 xpos, f64 ypos);
+void check_table_space_hovered(f64 xpos, f64 ypos);
+void check_pool_hovered(f64 xpos, f64 ypos);
+u8 screen_shake(void *ptr);
+void grab_active(f64 xpos, f64 ypos);
+void grab_tile(f64 xpos, f64 ypos);
+void release_active();
+void release_tile();
+void drag_active(f64 xpos, f64 ypos);
+void drag_tile(f64 xpos, f64 ypos);
+void check_active_hovered(f64 xpos, f64 ypos);
+void check_tile_hovered(f64 xpos, f64 ypos);
+void update_cursor(vec2 pos);
 
 struct GameState {
     //default game values

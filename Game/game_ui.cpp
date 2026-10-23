@@ -7,30 +7,7 @@ char *videoModes[2] = {"Window", "Fullscreen"};
 u8 challengeShown = false;
 u8 paintEnabled = false;
 
-//QUEUE
-void* push(CommandQueue *b, u64 size);
-void* push_command(CommandQueue *q, u32 totalSize, CmdActionFuncPtr executeFn);
-void push_wait(CommandQueue *q, f32 duration);
-void execute_queue(CommandQueue *b);
-u8 execute_action(void *ptr);
-void create_queue(CommandQueue *q, u8 *start, u64 size);
-u8 execute_wait(void *ptr);
-u8 add_cash(void *ptr);
-
 void nothing() {}
-
-void reroll(u8 isRelic) {
-    u64 rerollCost = 1;
-    remove_cash(&rerollCost);
-
-    push_wait(&gState->cmdQueue, 1.0f);
-
-    ActionCommand *nextRound = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, u8, execute_action);
-    if (nextRound) { 
-        nextRound->action = load_shop_purchase_menu;
-        *COMMAND_PAYLOAD(nextRound, u8) = isRelic;
-    }
-}
 
 void reroll_relics() {
     reroll(true);
@@ -146,9 +123,7 @@ void populate_actives_in_shop(i32 *arr) {
 }
 
 void populate_challenges(i32 *arr) {
-    //yellow
     arr[0] = rng_range(1,3);
-    //red
     arr[1] = rng_range(4,TOTAL_CHALLENGES - 1);
 }
 
@@ -293,13 +268,13 @@ void add_shop_purchase_menu(u8 isRelic) {
     UIElement relic = UIElement{CENTER, -1, RELICS_T, 0.3f, 0.325f, 0.08f * RENDERING_ASPECT, 0.08f};
     relic.isHoverable = true;
     relic.sheetAnimation = SheetAnimation{RELIC_COLUMNS, RELIC_ROWS};
-    relic.actionId = 11;
+    relic.actionId = UI_ACTION_ADD_RELIC;
     //actives
     i32 activeIds[3];
     populate_actives_in_shop(activeIds);
     UIElement active = UIElement{CENTER, -1, ACTIVES_T, 0.3f, 0.625f, 0.08f * RENDERING_ASPECT, 0.08f};
     active.sheetAnimation = SheetAnimation{ACTIVE_COLUMNS, ACTIVE_ROWS};
-    active.actionId = 17;
+    active.actionId = UI_ACTION_ADD_ACTIVE;
     active.isHoverable = true;
 
     TextElement price = TextElement{CENTER, "$", 0.3f, 0.425f, -1, true, DEFAULT_FONT_SCALE * 2.0f};
@@ -345,9 +320,9 @@ void add_shop_purchase_menu(u8 isRelic) {
     }
 
     i32 nextRoundId = add_button(gState->uiPage, BUTTON_T, "Round Challenge", vec2(0.625f, 0.85f), vec2(0.1f, 0.2f), R_GRAY, 20);
-    i32 rerollActionId = gState->runData.dollaBills > 0 ? 29 : 12;
+    i32 rerollActionId = gState->runData.dollaBills > 0 ? UI_ACTION_REROLL_ACTIVES : UI_ACTION_NOTHING_3;
     i32 rerollId = add_button(gState->uiPage, BUTTON_T, "REROLL", vec2(0.375f, 0.85f), vec2(0.1f, 0.2f), R_RED, rerollActionId);
-    if(rerollActionId == 12) disable_button(gState->uiPage, rerollId);
+    if(rerollActionId == UI_ACTION_NOTHING_3) disable_button(gState->uiPage, rerollId);
 
     i32 windowIndex = add_window(gState->uiPage, UI_BG_2_T, CENTER, vec2(0.9f, 0.5f), vec2(0.5f, 2.0f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE);
     add_button_to_window(gState->uiPage, windowIndex, nextRoundId);
@@ -371,7 +346,7 @@ void add_shop_purchase_menu(u8 isRelic) {
     }
 
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{CENTER, "Round Score", 0.45f, 0.1f, -1, true, DEFAULT_FONT_SCALE}));
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{CENTER, "", 0.45f, 0.15f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_WHITE}, "", 0, UINT_64));
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{CENTER, "", 0.45f, 0.15f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_WHITE}, "", UI_VALUE_ROUND_SCORE, UINT_64));
 
     numTableTiles = 0;
     for(i32 i = 0; i < gState->table.numberOfSets; i++) {
@@ -379,15 +354,10 @@ void add_shop_purchase_menu(u8 isRelic) {
     }
 
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{CENTER, "Next Round", 0.53f, 0.1f, -1, true, DEFAULT_FONT_SCALE}));
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{CENTER, "", 0.53f, 0.15f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_PURPLE}, "", 6, UINT_64));
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{CENTER, "", 0.53f, 0.15f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_PURPLE}, "", UI_VALUE_ROUNDS, UINT_64));
 
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{CENTER, "Cash", 0.64f, 0.1f, -1, true, DEFAULT_FONT_SCALE}));
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{CENTER, "", 0.64f, 0.15f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_GOLDEN}, "$", 3, UINT_64));
-
-//    UIElement shopSign = UIElement{CENTER, -1, SHOP_SIGN_T, 0.2f, 0.4f, 0.5f, 0.1f};
-//    shopSign.sheetAnimation = SheetAnimation{4, 1};
-//    shopSign.sheetAnimation.fps = 4;
-//    add_image_to_window(gState->uiPage, windowIndex, add_ui_element(gState->uiPage, shopSign));
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{CENTER, "", 0.64f, 0.15f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_GOLDEN}, "$", UI_VALUE_DOLLA_BILLS, UINT_64));
 
     add_item_window();
 
@@ -404,16 +374,16 @@ void add_round_complete_ui() {
     gState->roundData.roundScore = 0;
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ CENTER, "Round Score", 0.5f, 0.035f, -1, true, DEFAULT_FONT_SCALE}));
     i32 progressIndex = add_dynamic_text_element(gState->uiPage, TextElement{ CENTER, "", 0.5f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_PURPLE}, 
-        "", 7, UINT_64);
+        "", UI_VALUE_ROUND_SCORE_DISPLAY, UINT_64);
     
     hoveredSetValue = 0;
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ CENTER, "Set Value", 0.25f, 0.035f, -1, true, DEFAULT_FONT_SCALE}));
     i32 setIndex = add_dynamic_text_element(gState->uiPage, TextElement{ CENTER, "", 0.25f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_BLUE}, 
-        "", 8, UINT_64);
+        "", UI_VALUE_HOVERED_SET, UINT_64);
     
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, TextElement{ CENTER, "Cash", 0.75f, 0.035f, -1, true, DEFAULT_FONT_SCALE}));
     i32 cashIndex = add_dynamic_text_element(gState->uiPage, TextElement{ CENTER, "", 0.75f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_GOLDEN}, 
-        "$", 3, UINT_64); 
+        "$", UI_VALUE_DOLLA_BILLS, UINT_64); 
 
     add_text_to_window(gState->uiPage, windowIndex, setIndex);
     add_text_to_window(gState->uiPage, windowIndex, cashIndex);
@@ -423,11 +393,10 @@ void add_round_complete_ui() {
 void add_main_menu_ui() {
     set_page_state(MAIN_MENU);
 
-    i32 newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.5f, 0.625f), vec2(0.08f, 0.25f), R_DARK_GREEN_TWO, 27, 0, 2);
-    i32 options = add_button(gState->uiPage, BUTTON_T, "Options", vec2(0.5f, 0.725f), vec2(0.08f, 0.25f), R_BLUE, 1, 0, 2);
-    i32 profile = add_button(gState->uiPage, BUTTON_T, "Profile", vec2(0.5f, 0.825f), vec2(0.08f, 0.25f), R_BLUE, 26, 0, 2);
-    i32 quit = add_button(gState->uiPage, BUTTON_T, "Quit", vec2(0.5f, 0.925f), vec2(0.08f, 0.2f), R_RED, 3, 0, 2);
-
+    i32 newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.5f, 0.625f), vec2(0.08f, 0.25f), R_DARK_GREEN_TWO, UI_ACTION_START_NEW_RUN, 0, 2);
+    i32 options = add_button(gState->uiPage, BUTTON_T, "Options", vec2(0.5f, 0.725f), vec2(0.08f, 0.25f), R_BLUE, UI_ACTION_ADD_OPTIONS, 0, 2);
+    i32 profile = add_button(gState->uiPage, BUTTON_T, "Profile", vec2(0.5f, 0.825f), vec2(0.08f, 0.25f), R_BLUE, UI_ACTION_ADD_PROFILE_UI, 0, 2);
+    i32 quit = add_button(gState->uiPage, BUTTON_T, "Quit", vec2(0.5f, 0.925f), vec2(0.08f, 0.2f), R_RED, UI_ACTION_QUIT, 0, 2);
 
     i32 windowIndex = add_window(gState->uiPage, UI_BG_2_T, CENTER, vec2(0.15f, 0.5f), vec2(0.5f, 1.15f), vec2(0.5f, 0.8f), R_SILVER, R_DARK_BLUE); 
 
@@ -498,7 +467,7 @@ void add_options_ui() {
     //should be auto added when adding tabs, but color
     add_cursor(gState->uiPage, BUTTON_SELECT_T, R_YELLOW, TAB);
 
-    i32 applyChanges = add_button(gState->uiPage, BUTTON_T, "Apply Changes", vec2(0.5f, 0.9f), vec2(0.075f, 0.45f), R_RED, 13, 0, 2.0f);
+    i32 applyChanges = add_button(gState->uiPage, BUTTON_T, "Apply Changes", vec2(0.5f, 0.9f), vec2(0.075f, 0.45f), R_RED, UI_ACTION_APPLY_VIDEO_SETTINGS, 0, 2.0f);
 
     i32 quitGame = 0;
     i32 newGame = 0;
@@ -507,16 +476,16 @@ void add_options_ui() {
     i32 gameStats = 0;
 
     if(gState->prevState == MAIN_MENU ) {
-        relics = add_button(gState->uiPage, BUTTON_T, "Passives", vec2(0.5f, 0.3f), vec2(0.1f, 0.4f), R_BLUE, 15, 0, 2);
-        gameStats = add_button(gState->uiPage, BUTTON_T, "Game Stats", vec2(0.5f, 0.45f), vec2(0.1f, 0.4f), R_BLUE, 15, 0, 2);
+        relics = add_button(gState->uiPage, BUTTON_T, "Passives", vec2(0.5f, 0.3f), vec2(0.1f, 0.4f), R_BLUE, UI_ACTION_INIT_RELICS_UI, 0, 2);
+        gameStats = add_button(gState->uiPage, BUTTON_T, "Game Stats", vec2(0.5f, 0.45f), vec2(0.1f, 0.4f), R_BLUE, UI_ACTION_INIT_RELICS_UI, 0, 2);
     } else {
-        newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.5f, 0.6f), vec2(0.1f, 0.4f), R_DARK_GREEN_TWO, 27, 0, 2);
-        relics = add_button(gState->uiPage, BUTTON_T, "View Passives", vec2(0.5f, 0.3f), vec2(0.1f, 0.4f), R_BLUE, 15, 0, 2);
-        profile = add_button(gState->uiPage, BUTTON_T, "Profile", vec2(0.5f, 0.45f), vec2(0.1f, 0.4f), R_BLUE, 26, 0, 2);
-        quitGame = add_button(gState->uiPage, BUTTON_T, "Main Menu", vec2(0.5f, 0.75f), vec2(0.1f, 0.4f), R_RED, 14, 0, 2);
+        newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.5f, 0.6f), vec2(0.1f, 0.4f), R_DARK_GREEN_TWO, UI_ACTION_START_NEW_RUN, 0, 2);
+        relics = add_button(gState->uiPage, BUTTON_T, "View Passives", vec2(0.5f, 0.3f), vec2(0.1f, 0.4f), R_BLUE, UI_ACTION_INIT_RELICS_UI, 0, 2);
+        profile = add_button(gState->uiPage, BUTTON_T, "Profile", vec2(0.5f, 0.45f), vec2(0.1f, 0.4f), R_BLUE, UI_ACTION_ADD_PROFILE_UI, 0, 2);
+        quitGame = add_button(gState->uiPage, BUTTON_T, "Main Menu", vec2(0.5f, 0.75f), vec2(0.1f, 0.4f), R_RED, UI_ACTION_INIT_MAIN_MENU, 0, 2);
     }
 
-    i32 back = add_button(gState->uiPage, BUTTON_T, "Back", vec2(0.5f, 0.9f), vec2(0.075f, 0.45f), R_SLATE, 2, 0, 2);
+    i32 back = add_button(gState->uiPage, BUTTON_T, "Back", vec2(0.5f, 0.9f), vec2(0.075f, 0.45f), R_SLATE, UI_ACTION_GO_BACK, 0, 2);
     
     i32 general = add_tab(gState->uiPage, BUTTON_T, "General", R_DARK_GRAY, 1.75f);
     i32 video = add_tab(gState->uiPage, BUTTON_T, "Video", R_DARK_GRAY, 1.75f);
@@ -537,23 +506,23 @@ void add_options_ui() {
     snprintf(resolutionEntry.text, sizeof(resolutionEntry.text), "%4d x %-4d @ %dHz", 
         gMemory->supportedResolutions[gMemory->resolutionId].width, gMemory->supportedResolutions[gMemory->resolutionId].height, gMemory->supportedResolutions[gMemory->resolutionId].refreshRate);
     i32 resolutionOptionId = add_text_element(gState->uiPage, resolutionEntry);
-    i32 resOptionId = add_options_element(gState->uiPage, resolutionOptionId, 12, BUTTON_T, OPTION_T, R_DARK_GRAY);
+    i32 resOptionId = add_options_element(gState->uiPage, resolutionOptionId, UI_ACTION_NOTHING_3, BUTTON_T, OPTION_T, R_DARK_GRAY);
     //
 
     //
     TextElement videoMode = TextElement{ CENTER, "Video mode", 0.5f, 0.425f, -1, false, DEFAULT_FONT_SCALE * 2.5};
 
     TextElement videoModeEntry = TextElement{ CENTER, "", 0.5f, 0.5f, -1, false, DEFAULT_FONT_SCALE * 2};
-    videoModeEntry.valueId = 10;
+    videoModeEntry.valueId = UI_VALUE_VIDEO_MODES;
     videoModeEntry.numberOfValues = 2;
     videoModeEntry.activeValueId = gMemory->is_full_screen_fn();
     //need to track the status of video mode in the engine
     snprintf(videoModeEntry.text, sizeof(videoModeEntry.text), "%s", videoModes[gMemory->is_full_screen_fn()]);
-    i32 videoModeId = add_options_element(gState->uiPage, add_text_element(gState->uiPage, videoModeEntry), 12, BUTTON_T, OPTION_T, R_DARK_GRAY);
+    i32 videoModeId = add_options_element(gState->uiPage, add_text_element(gState->uiPage, videoModeEntry), UI_ACTION_NOTHING_3, BUTTON_T, OPTION_T, R_DARK_GRAY);
     //
 
     //always false, pull from the engine
-    i32 vsyncRadio = add_radio_element(gState->uiPage, gMemory->is_vsync_on_fn(), CENTER, vec2(0.5f, 0.7f), vec2(0.05f * RENDERING_ASPECT, 0.05f), 12, RADIO_T); 
+    i32 vsyncRadio = add_radio_element(gState->uiPage, gMemory->is_vsync_on_fn(), CENTER, vec2(0.5f, 0.7f), vec2(0.05f * RENDERING_ASPECT, 0.05f), UI_ACTION_NOTHING_3, RADIO_T); 
 
     // window create
     i32 windowIndex = add_window(gState->uiPage, UI_BG_2_T, CENTER, vec2(0.95f, 0.6f), vec2(0.5f, 2.0f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE); 
@@ -622,7 +591,6 @@ void add_options_ui() {
 
 void add_item_window() {
     UIElement relicDesc = UIElement{ CENTER, 98, TOOL_TIP_T, 0, 0, 0.25f, 0.15f};
-    //relicDesc.color = R_DARK_GRAY;
     relicDesc.visible = false;
     relicDesc.sheetAnimation = SheetAnimation{3, 3};
     relicDesc.isPanel = true;
@@ -650,10 +618,10 @@ void add_paint_window() {
     relicDesc.isPanel = true;
 
 
-    i32 red = add_button(gState->uiPage, BUTTON_T, "", vec2(0.0f), vec2(0.05f, 0.02f), R_RED, 22);
-    i32 green = add_button(gState->uiPage, BUTTON_T, "", vec2(0.0f), vec2(0.05f, 0.02f), R_GREEN, 23);
-    i32 blue = add_button(gState->uiPage, BUTTON_T, "", vec2(0.0f), vec2(0.05f, 0.02f), R_BLUE, 24);
-    i32 black = add_button(gState->uiPage, BUTTON_T, "", vec2(0.0f), vec2(0.05f, 0.02f), R_BLACK, 25);
+    i32 red = add_button(gState->uiPage, BUTTON_T, "", vec2(0.0f), vec2(0.05f, 0.02f), R_RED, UI_ACTION_PAINT_RED);
+    i32 green = add_button(gState->uiPage, BUTTON_T, "", vec2(0.0f), vec2(0.05f, 0.02f), R_GREEN, UI_ACTION_PAINT_GREEN);
+    i32 blue = add_button(gState->uiPage, BUTTON_T, "", vec2(0.0f), vec2(0.05f, 0.02f), R_BLUE, UI_ACTION_PAINT_BLUE);
+    i32 black = add_button(gState->uiPage, BUTTON_T, "", vec2(0.0f), vec2(0.05f, 0.02f), R_BLACK, UI_ACTION_PAINT_BLACK);
 
     relicDesc.dependentElements[relicDesc.numberOfDependentElements++] = &gState->uiPage->uiElements[red];
     relicDesc.dependentElements[relicDesc.numberOfDependentElements++] = &gState->uiPage->uiElements[green];
@@ -734,7 +702,6 @@ void add_relics_ui() {
     }
 
     i32 multWindowIndex = add_window(gState->uiPage, UI_BG_2_T, CENTER, vec2(0.9f, 0.75f), vec2(0.5f, 1.2f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE, 0.75f); 
-    //add_button_to_window(gState->uiPage, multWindowIndex, back);
 
     for(i32 i = 0; i < MAX_RELICS; ++i) {
         add_image_to_window(
@@ -803,7 +770,7 @@ void add_actives_ui(u8 animated) {
         };
 
         relic.sheetAnimation = {ACTIVE_COLUMNS, ACTIVE_ROWS};
-        relic.sheetAnimation.currentFrame = gState->player.actives[i].id;//gState->player.activeIds[i];
+        relic.sheetAnimation.currentFrame = gState->player.actives[i].id;
         relicIds[i] = add_ui_element(gState->uiPage, relic);
     }
 
@@ -920,7 +887,7 @@ u8 load_map_ui(void *ptr) {
     i32 challenge1 = add_ui_element(gState->uiPage, challengeImage);
     //i32 itemBg1 = add_ui_element(gState->uiPage, itemBg);
     i32 nextRoundBg1 = add_ui_element(gState->uiPage, nextRoundBg);
-    i32 roundButton1 = add_button(gState->uiPage, BUTTON_T, "SELECT", vec2(nextRoundBg.posx, 0.9f), vec2(0.05f, 0.225f), R_SLATE, 0, frontIndex);
+    i32 roundButton1 = add_button(gState->uiPage, BUTTON_T, "SELECT", vec2(nextRoundBg.posx, 0.9f), vec2(0.05f, 0.225f), R_SLATE, UI_ACTION_SET_ROUND_TYPE, frontIndex);
 
     TextElement reward = TextElement{ CENTER, "", (f32)nextRoundBg.posx, 0.78f, -1, true, DEFAULT_FONT_SCALE * 1.5f};
     reward.color = R_GOLDEN;
@@ -951,7 +918,7 @@ u8 load_map_ui(void *ptr) {
     i32 challenge2 = add_ui_element(gState->uiPage, challengeImage);
     //i32 itemBg2 = add_ui_element(gState->uiPage, itemBg);
     i32 nextRoundBg2 = add_ui_element(gState->uiPage, nextRoundBg);
-    i32 roundButton2 = add_button(gState->uiPage, BUTTON_T, "SELECT", vec2(nextRoundBg.posx, 0.9f), vec2(0.05f, 0.225f), R_SLATE, 0, frontIndex);
+    i32 roundButton2 = add_button(gState->uiPage, BUTTON_T, "SELECT", vec2(nextRoundBg.posx, 0.9f), vec2(0.05f, 0.225f), R_SLATE, UI_ACTION_SET_ROUND_TYPE, frontIndex);
 
     snprintf(reward.text, sizeof(reward.text),
              "Reward $%llu",
@@ -975,7 +942,7 @@ u8 load_map_ui(void *ptr) {
     i32 challenge3 = add_ui_element(gState->uiPage, challengeImage);
     //i32 itemBg3 = add_ui_element(gState->uiPage, itemBg);
     i32 nextRoundBg3 = add_ui_element(gState->uiPage, nextRoundBg);
-    i32 roundButton3 = add_button(gState->uiPage, BUTTON_T, "SELECT", vec2(nextRoundBg.posx, 0.9f), vec2(0.05f, 0.225f), R_SLATE, 0, frontIndex);
+    i32 roundButton3 = add_button(gState->uiPage, BUTTON_T, "SELECT", vec2(nextRoundBg.posx, 0.9f), vec2(0.05f, 0.225f), R_SLATE, UI_ACTION_SET_ROUND_TYPE, frontIndex);
     UIElement round1 = UIElement{ CENTER, -1, BUTTON_T, 0.2575f, 0.5f, 0.8f, 0.225f};
 
     snprintf(reward.text, sizeof(reward.text),
@@ -996,10 +963,6 @@ u8 load_map_ui(void *ptr) {
     add_image_to_window(gState->uiPage, multWindowIndex, nextRoundBg1);
     add_image_to_window(gState->uiPage, multWindowIndex, nextRoundBg2);
     add_image_to_window(gState->uiPage, multWindowIndex, nextRoundBg3);
-
-    //add_image_to_window(gState->uiPage, multWindowIndex, itemBg1);
-    //add_image_to_window(gState->uiPage, multWindowIndex, itemBg2);
-    //add_image_to_window(gState->uiPage, multWindowIndex, itemBg3);
 
     add_image_to_window(gState->uiPage, multWindowIndex, challenge1);
     add_image_to_window(gState->uiPage, multWindowIndex, challenge2);
@@ -1062,7 +1025,7 @@ void add_profile_ui() {
     i32 desc6Id = add_text_element(gState->uiPage, desc1);
 
 
-    i32 back = add_button(gState->uiPage, BUTTON_T, "Back", vec2(0.5f, 0.85f), vec2(0.075f, 0.45f), R_SLATE, 2);
+    i32 back = add_button(gState->uiPage, BUTTON_T, "Back", vec2(0.5f, 0.85f), vec2(0.075f, 0.45f), R_SLATE, UI_ACTION_GO_BACK);
 
     i32 multWindowIndex = add_window(gState->uiPage, UI_BG_2_T, CENTER, vec2(0.9f, 0.75f), vec2(0.5f, 1.2f), vec2(0.5f, 0.5f), R_SILVER, R_DARK_BLUE); 
 
@@ -1086,7 +1049,7 @@ void set_round_complete_ui(i32 windowIndex) {
 
     TextElement scoreVal = TextElement{ CENTER, "", 0.2f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f};
     add_text_bob(&scoreVal);
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, scoreVal,"", 0, UINT_64));
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, scoreVal,"", UI_ACTION_SET_ROUND_TYPE, UINT_64));
 
     TextElement scoreMin = TextElement{ CENTER, "Score Minimum", 0.35f, 0.035f, -1, true, DEFAULT_FONT_SCALE};
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, scoreMin));
@@ -1094,7 +1057,7 @@ void set_round_complete_ui(i32 windowIndex) {
     TextElement scoreMinVal = TextElement{ CENTER, "", 0.35f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f};
     add_text_bob(&scoreMinVal);
     scoreMinVal.color = R_RED;
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, scoreMinVal,"", 2, UINT_64));
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, scoreMinVal,"", UI_ACTION_GO_BACK, UINT_64));
 
     UIElement challengeImage = UIElement{ CENTER, -1, ROUND_CHALLENGE_T,  0.6f, 0.07225f, 0.05f * RENDERING_ASPECT, 0.05f};
     challengeImage.sheetAnimation = SheetAnimation{4,1};
@@ -1108,12 +1071,11 @@ void set_round_complete_ui(i32 windowIndex) {
     gState->uiPage->uiElements[challengeWindow].visible = false;
     gState->uiPage->uiElements[challengeWindow].id = 97;
 
-    i32 switchButton = add_button(gState->uiPage, BUTTON_T, "X", vec2(0.69f, 0.071f), vec2(0.0675f * RENDERING_ASPECT, 0.02f), R_SLATE, 21);
+    i32 switchButton = add_button(gState->uiPage, BUTTON_T, "X", vec2(0.69f, 0.071f), vec2(0.0675f * RENDERING_ASPECT, 0.02f), R_SLATE, UI_ACTION_SHOW_CHALLENGE_UI);
     add_switch_element(gState->uiPage, CENTER, switchButton, vec2(0.05, 0.05f), vec2(0.02f * RENDERING_ASPECT, 0.02f), RADIO_T);
 
     TextElement roundInfo = TextElement{ TOP_LEFT, "Clear Rack or Reach Round Minimum Score", 0.085f, 0.0225f, -1, true, DEFAULT_FONT_SCALE * 1.75f};
     roundInfo.visible = false;
-    //roundInfo.bounce = true;
     roundInfo.typeWriter = true;
     roundInfo.maxWidth = 0.5f * RENDERING_ASPECT;
     add_text_bob(&roundInfo);
@@ -1126,13 +1088,12 @@ void set_round_complete_ui(i32 windowIndex) {
         case RUN_MAX_SIZE: {
             TextElement score = TextElement{ CENTER, "Longest Run", 0.2f, 0.035f, -1, true, DEFAULT_FONT_SCALE};
             score.visible = false;
-              //add_text_bob(&score);
             add_text_to_window(gState->uiPage, challengeWindow, add_text_element(gState->uiPage, score));
 
             TextElement scoreVal = TextElement{ CENTER, "", 0.2f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f};
             scoreVal.visible = false;
             add_text_bob(&scoreVal);
-            add_text_to_window(gState->uiPage, challengeWindow, add_dynamic_text_element(gState->uiPage, scoreVal,"", 11, INT_32));
+            add_text_to_window(gState->uiPage, challengeWindow, add_dynamic_text_element(gState->uiPage, scoreVal,"", UI_VALUE_LONGEST_RUN_SIZE, INT_32));
 
             TextElement scoreMin = TextElement{ CENTER, "Reach Run Size", 0.35f, 0.035f, -1, true, DEFAULT_FONT_SCALE};
             scoreMin.visible = false;
@@ -1141,7 +1102,7 @@ void set_round_complete_ui(i32 windowIndex) {
             scoreMinVal.visible = false;
             add_text_bob(&scoreMinVal);
             scoreMinVal.color = R_RED;
-            add_text_to_window(gState->uiPage, challengeWindow, add_dynamic_text_element(gState->uiPage, scoreMinVal,"", 13, INT_32));
+            add_text_to_window(gState->uiPage, challengeWindow, add_dynamic_text_element(gState->uiPage, scoreMinVal,"", UI_VALUE_ROUND_VALUE, INT_32));
             break;
         }
         case EVERY_COLOR_ON_BOARD: {
@@ -1153,7 +1114,7 @@ void set_round_complete_ui(i32 windowIndex) {
             TextElement scoreVal = TextElement{ CENTER, "", 0.2f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f};
             scoreVal.visible = false;
             add_text_bob(&scoreVal);
-            add_text_to_window(gState->uiPage, challengeWindow, add_dynamic_text_element(gState->uiPage, scoreVal,"", 12, INT_32));
+            add_text_to_window(gState->uiPage, challengeWindow, add_dynamic_text_element(gState->uiPage, scoreVal,"", UI_VALUE_NUMBER_OF_TILE_COLORS, INT_32));
 
             TextElement scoreMin = TextElement{ CENTER, "Reach Total Colors", 0.35f, 0.035f, -1, true, DEFAULT_FONT_SCALE};
             scoreMin.visible = false;
@@ -1217,7 +1178,7 @@ void set_round_complete_ui(i32 windowIndex) {
     }
     
     // TODO(garry) fix this hardcoded garbage
-    challengeImage.sheetAnimation.currentFrame = 1;//gState->roundData.difficulty;
+    challengeImage.sheetAnimation.currentFrame = 1;
     challengeImage.textureName = 30 + gState->roundData.difficulty;
     i32 challengeImageId = add_ui_element(gState->uiPage, challengeImage);
     add_image_to_window(gState->uiPage, challengeWindow, challengeImageId);
@@ -1232,29 +1193,25 @@ void add_in_game_ui() {
     a.sheetAnimation = panelSheet;
 
     a.isPanel = true;
-    //a.color = R_DARK_GRAY;
     a.visible = false;
     add_ui_element(gState->uiPage, a);
 
     TextElement text = TextElement{ CENTER, "", 0, 0, 99, true, DEFAULT_FONT_SCALE * 2.0f};
-    //text.haveCountAnimation = false;
     text.visible = false;
     add_text_element(gState->uiPage, text);
-    //add_dynamic_text_element(gState->uiPage, text, "+", 8, TextType::UINT_64); 
 
     add_item_window();
     add_paint_window();
 
-    add_button(gState->uiPage, BUTTON_T, "DRAW", vec2(0.88f, 0.06f), vec2(0.1f), R_BLUE, 4, 0, 1.5f);
-    add_button(gState->uiPage, BUTTON_T, "RESET", vec2(0.77f, 0.06f), vec2(0.1f), R_RED, 5, 0, 1.5f);
+    add_button(gState->uiPage, BUTTON_T, "DRAW", vec2(0.88f, 0.06f), vec2(0.1f), R_BLUE, UI_ACTION_END_TURN, 0, 1.5f);
+    add_button(gState->uiPage, BUTTON_T, "RESET", vec2(0.77f, 0.06f), vec2(0.1f), R_RED, UI_ACTION_RESET_BOARD, 0, 1.5f);
 
-    add_button(gState->uiPage, BUTTON_T, "Color", vec2(0.89f, 0.8f), vec2(0.0375f * RENDERING_ASPECT, 0.075f), R_SLATE, 6);
-    add_button(gState->uiPage, BUTTON_T, "Number", vec2(0.89f, 0.875f), vec2(0.0375f * RENDERING_ASPECT, 0.075f), R_SLATE, 7);
+    add_button(gState->uiPage, BUTTON_T, "Color", vec2(0.89f, 0.8f), vec2(0.0375f * RENDERING_ASPECT, 0.075f), R_SLATE, UI_ACTION_SORT_RACK_COLOR);
+    add_button(gState->uiPage, BUTTON_T, "Number", vec2(0.89f, 0.875f), vec2(0.0375f * RENDERING_ASPECT, 0.075f), R_SLATE,UI_ACTION_SORT_RACK_NUMBER);
 
-    //add_button(gState->uiPage, BUTTON_T, EXIT_T, vec2(0.035f, 0.05f), vec2(0.035f * RENDERING_ASPECT, 0.035f), R_DARK_GRAY, 14);
-    add_button(gState->uiPage, BUTTON_T, SETTINGS_T, vec2(0.9625f, 0.9525f), vec2(0.035f * RENDERING_ASPECT, 0.035f), R_DARK_SLATE, 1);
+    add_button(gState->uiPage, BUTTON_T, SETTINGS_T, vec2(0.9625f, 0.9525f), vec2(0.035f * RENDERING_ASPECT, 0.035f), R_DARK_SLATE, UI_ACTION_SORT_RACK_NUMBER);
     //ACTIVES TOGGLE!!! 
-    i32 switchButton = add_button(gState->uiPage, BUTTON_T, "Rack", vec2(0.89f, 0.95f), vec2(0.0375f * RENDERING_ASPECT, 0.075f), R_SLATE, 18);
+    i32 switchButton = add_button(gState->uiPage, BUTTON_T, "Rack", vec2(0.89f, 0.95f), vec2(0.0375f * RENDERING_ASPECT, 0.075f), R_SLATE, UI_ACTION_TOGGLE_ACTIVES);
     //make a SWITCH ui element
     add_switch_element(gState->uiPage, CENTER, switchButton, vec2(0.05, 0.86f), vec2(0.02f * RENDERING_ASPECT, 0.02f), RADIO_T);
 
@@ -1276,12 +1233,11 @@ void add_in_game_ui() {
     set_round_complete_ui(windowIndex);
 
     TextElement cash = TextElement{ CENTER, "Cash", 0.5f, 0.035f, -1, true, DEFAULT_FONT_SCALE};
-    //add_text_bob(&cash);
     add_text_to_window(gState->uiPage, windowIndex, add_text_element(gState->uiPage, cash));
 
     TextElement cashVal = TextElement{ CENTER, "", 0.5f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_GOLDEN};
     add_text_bob(&cashVal);
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, cashVal, "$", 3, TextType::UINT_64));
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, cashVal, "$", UI_VALUE_DOLLA_BILLS, TextType::UINT_64));
 
     TextElement round = TextElement{ CENTER, "Round", 0.6f, 0.035f, -1, true, DEFAULT_FONT_SCALE};
     //add_text_bob(&round);
@@ -1289,21 +1245,17 @@ void add_in_game_ui() {
 
     TextElement roundVal = TextElement{ CENTER, "", 0.6f, 0.08f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_PURPLE};
     add_text_bob(&roundVal);
-    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, roundVal,"", 6, TextType::UINT_64));
-
-    //add_actives_ui(true);
+    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, roundVal,"", UI_VALUE_ROUNDS, TextType::UINT_64));
 
     TextElement poolTiles = TextElement{ CENTER, "", 0.785f, 0.98f, -1, true, DEFAULT_FONT_SCALE};
     poolTiles.haveCountAnimation = false;
     add_text_bob(&poolTiles);
     poolTiles.animations[poolTiles.numberOfAnimations - 1].autoAnimate = true;
-    add_dynamic_text_element(gState->uiPage, poolTiles, "", 4, TextType::INT_32);
+    add_dynamic_text_element(gState->uiPage, poolTiles, "", UI_VALUE_POOL_TILES, TextType::INT_32);
 
     bckg.posx = 0.785f;
     bckg.posy = 0.98f;
     add_ui_element(gState->uiPage, bckg);
-
-    //vec3 rack = vec3(gState->playerRack.object.model[3]);
 
     vec2 rack = world_to_ui(
         gState->playerRack.object.model,
@@ -1314,8 +1266,6 @@ void add_in_game_ui() {
     bg.sheetAnimation = panelSheet;
 
     bg.isPanel = true;
-    //add_ui_element(gState->uiPage, bg);
-
 
     vec2 poolPos = world_to_ui(
         gState->pool.object.model,
@@ -1325,7 +1275,6 @@ void add_in_game_ui() {
     UIElement pool = UIElement{ CENTER, -1, POOL_T, poolPos.x, poolPos.y, 0.1f * RENDERING_ASPECT, 0.1f};
     pool.sheetAnimation = panelSheet;
     pool.isPanel = true;
-    //add_ui_element(gState->uiPage, pool);
 }
 
 void add_end_game_ui() {
@@ -1336,8 +1285,8 @@ void add_end_game_ui() {
 
     i32 gameOverText = add_text_element(gState->uiPage, gameOver);
 
-    i32 newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.35f, 0.725f), vec2(0.08f, 0.3f), R_GREEN, 27);
-    i32 mainMenu = add_button(gState->uiPage, BUTTON_T, "Main menu", vec2(0.35f, 0.825f), vec2(0.08f, 0.3f), R_RED, 14);
+    i32 newGame = add_button(gState->uiPage, BUTTON_T, "New Game", vec2(0.35f, 0.725f), vec2(0.08f, 0.3f), R_GREEN, UI_ACTION_START_NEW_RUN);
+    i32 mainMenu = add_button(gState->uiPage, BUTTON_T, "Main menu", vec2(0.35f, 0.825f), vec2(0.08f, 0.3f), R_RED, UI_ACTION_INIT_MAIN_MENU);
     UIElement a = UIElement{ CENTER, -1, BUTTON_T, 0.7f, 0.57f, 0.65f, 0.25f};
     a.sheetAnimation = SheetAnimation{3,3};
     a.isPanel = true;
@@ -1360,15 +1309,12 @@ void add_end_game_ui() {
 
     //maybe do a run total score...
     add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ CENTER, "", 0.35f, 0.3f, -1, true, DEFAULT_FONT_SCALE * 1.75f }, 
-        "COMPLETED ROUND WITH SCORE: ", 0, TextType::UINT_64));
+        "COMPLETED ROUND WITH SCORE: ", UI_ACTION_SET_ROUND_TYPE, TextType::UINT_64));
 
     for(i32 i = 0; i < gState->table.numberOfSets; i++) {
         numTableTiles += gState->table.sets[i].numberOfTiles;
     }
     //maybe do total tiles played... ewwww
-//    add_text_to_window(gState->uiPage, windowIndex, add_dynamic_text_element(gState->uiPage, TextElement{ CENTER, "", 0.35f, 0.33f, -1, true, DEFAULT_FONT_SCALE }, 
-//        "TILES USED: ", 5, TextType::UINT_64));
-//
     //want to add all tiles played, total score gained, rounds / round type
 
     vec2 relicSlotPositions[30] = {}; 
@@ -1566,4 +1512,25 @@ void add_game_ui_data(UIPage *uiPage) {
     uiPage->values[uiPage->numberOfValues++] = &gState->table.longestRunSize; //11 
     uiPage->values[uiPage->numberOfValues++] = &gState->table.numberOfTileColors; //12 
     uiPage->values[uiPage->numberOfValues++] = &gState->roundData.value; //13 
+}
+
+void update_randomized_ui_elements() {
+    for (i32 i = 0; i < gState->uiPage->numberOfImageElements; ++i) {
+        SheetAnimation* anim = &gState->uiPage->uiElements[i].sheetAnimation;
+        
+        if (anim->fps == 0) continue;
+        if (anim->random) {
+            if (rng_range(0, 9999) < 5) {
+                anim->trigger = true;
+            }
+        } else {
+            anim->trigger = true;
+        }
+    }
+}
+
+void draw_ui() {
+    update_randomized_ui_elements();
+    update(gState->uiPage, gState->deltaTime);
+    gMemory->push_ui_page_fn(gMemory->renderBuffer, gState->uiPage);
 }
