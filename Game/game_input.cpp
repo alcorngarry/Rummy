@@ -6,7 +6,7 @@ u8 clickHeld = false;
 extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 ypos) {
     // the projection matrix for ui is different!
     mousePos = vec2(xpos * (1.0f / RENDERING_ASPECT), ypos);
-    check_elements_hovered(gState->uiPage, xpos * (1.0f / RENDERING_ASPECT), ypos);
+    check_elements_hovered(xpos * (1.0f / RENDERING_ASPECT), ypos);
     check_relic_hovered(xpos, ypos);
 
     if(gState->pageState == IN_GAME) {
@@ -169,7 +169,7 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
     if(key == 258 && action == 1) { // TAB
         //tabs
         if(gState->pageState == OPTIONS) {
-            switch_tab(gState->uiPage);
+            switch_tab(uiPage);
         } else if(gState->pageState == RELIC){
             gState->pageState = IN_GAME; 
             reinit_page_state();
@@ -190,8 +190,8 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
                     grab_tile(xpos, ypos);
                 }
             }
-            if(gState->uiPage->elementHovered != -1) {
-                if(gState->uiPage->uiElements[gState->uiPage->elementHovered].visible) BUTTON_PRESS(gState->uiPage->uiElements[gState->uiPage->elementHovered]);
+            if(uiPage->elementHovered != -1) {
+                if(uiPage->uiElements[uiPage->elementHovered].visible) BUTTON_PRESS(uiPage->uiElements[uiPage->elementHovered]);
             } 
         } else if(action == 0) {
             clickHeld = false;
@@ -202,8 +202,8 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
                     release_tile();
                 }
             } 
-            if(gState->uiPage->elementHovered != -1 && !gState->player.heldTile) {
-                BUTTON_RELEASE(gState->uiPage->uiElements[gState->uiPage->elementHovered]);
+            if(uiPage->elementHovered != -1 && !gState->player.heldTile) {
+                BUTTON_RELEASE(uiPage->uiElements[uiPage->elementHovered]);
                 gMemory->play_audio_fn(1);
             }
         }

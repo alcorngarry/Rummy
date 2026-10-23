@@ -304,8 +304,6 @@ struct GameState {
     f32 deltaTime;
     RNG rng;
 
-    UIPage *uiPage;
-
     Tile tiles[TOTAL_TILES];
     Item relics[TOTAL_RELICS];
     Active actives[TOTAL_ACTIVES];

@@ -10,6 +10,7 @@ void (*play_audio_pitch)(i32 id, f32 pitch);
 //note these are used for prebaked actions only for UI.
 UISelfActionFuncPtr selfActions[20];
 u8 numberOfSelfActions;
+UIPage *uiPage = nullptr;
 
 f32 ease(f32 t, EaseType type) {
     switch(type) {
@@ -107,21 +108,21 @@ inline bool ui_point_inside(const UIElement& e, f64 x, f64 y) {
     f64 minX, maxX, minY, maxY;
 
     switch (e.anchor) {
-        case Anchor::CENTER:
+        caseCENTER:
             minX = e.posx - e.width  * 0.5;
             maxX = e.posx + e.width  * 0.5;
             minY = e.posy - e.height * 0.5;
             maxY = e.posy + e.height * 0.5;
             break;
 
-        case Anchor::TOP_LEFT:
+        caseTOP_LEFT:
             minX = e.posx;
             maxX = e.posx + e.width;
             minY = e.posy;
             maxY = e.posy + e.height;
             break;
 
-        case Anchor::TOP_RIGHT:
+        caseTOP_RIGHT:
             maxX = e.posx;
             minX = e.posx - e.width;
             maxY = e.posy + e.height;
@@ -135,36 +136,36 @@ inline bool ui_point_inside(const UIElement& e, f64 x, f64 y) {
            y >= minY && y <= maxY;
 }
 
-void check_elements_hovered(UIPage* page, f64 xpos, f64 ypos) {
-    page->previousElementHovered = page->elementHovered;
-    page->elementHovered = -1;
-    for (i32 i = 0; i < page->numberOfImageElements; ++i) {
-        if(page->uiElements[i].actionId == -1 || 
-            (page->highestZ != -1 && page->uiElements[i].zIndex < page->highestZ) ||
-            !page->uiElements[i].isHoverable) continue;
+void check_elements_hovered(f64 xpos, f64 ypos) {
+    uiPage->previousElementHovered = uiPage->elementHovered;
+    uiPage->elementHovered = -1;
+    for (i32 i = 0; i < uiPage->numberOfImageElements; ++i) {
+        if(uiPage->uiElements[i].actionId == -1 || 
+            (uiPage->highestZ != -1 && uiPage->uiElements[i].zIndex < uiPage->highestZ) ||
+            !uiPage->uiElements[i].isHoverable) continue;
 
         //ANCHOR EFFECTS THIS LETS ASSUME ANCHOR IS CENTER
-        if (ui_point_inside(page->uiElements[i], xpos, ypos) && page->uiElements[i].visible) {
-            if(!page->uiElements[i].hovered && page->uiElements[i].hoverColor.x != -1) {
+        if (ui_point_inside(uiPage->uiElements[i], xpos, ypos) && uiPage->uiElements[i].visible) {
+            if(!uiPage->uiElements[i].hovered && uiPage->uiElements[i].hoverColor.x != -1) {
                 play_audio_pitch(1, 2.0f);
             }
 
-            page->uiElements[i].hovered = true;
-            page->elementHovered = i; 
+            uiPage->uiElements[i].hovered = true;
+            uiPage->elementHovered = i; 
 
             break;
         } else {
-            page->uiElements[i].hovered = false;
-            if(page->uiElements[i].pressed) button_release(page, &page->uiElements[i]);
+            uiPage->uiElements[i].hovered = false;
+            if(uiPage->uiElements[i].pressed) button_release(&uiPage->uiElements[i]);
         }
     }
 
-    if(page->elementCursorId != -1) {
-        UIElement *cursor = &page->uiElements[page->elementCursorId];
-        if(page->elementHovered == -1) {
+    if(uiPage->elementCursorId != -1) {
+        UIElement *cursor = &uiPage->uiElements[uiPage->elementCursorId];
+        if(uiPage->elementHovered == -1) {
             cursor->visible = false;
         } else {
-            UIElement hoveredElement = page->uiElements[page->elementHovered];
+            UIElement hoveredElement = uiPage->uiElements[uiPage->elementHovered];
             cursor->visible = true;
             cursor->posx = hoveredElement.posx;
             cursor->posy = hoveredElement.posy;
@@ -318,7 +319,7 @@ void pop(Animation *a, f32 deltaTime, f32 *width, f32 *height) {
     }
 }
 
-void move_element(UIPage *page, UIElement* element, f32 deltaTime) {
+void move_element(UIElement* element, f32 deltaTime) {
     for(i32 i = 0; i < element->numberOfAnimations; ++i) {
         Animation* a = &element->animations[i];
         if(!a->autoAnimate) continue;
@@ -352,7 +353,7 @@ void move_element(UIPage *page, UIElement* element, f32 deltaTime) {
         if(a->blocking) break;
 
         if (a->complete && (i == element->numberOfAnimations - 1) && element->onCompleteActionId != -1) {
-            RUN_ON_COMPLETE_ACTION(page, element);
+            RUN_ON_COMPLETE_ACTION(element);
         } 
     }
 }
@@ -427,7 +428,7 @@ f64 get_text_value(TextElement* text) {
     }
 }
 
-void move_text_element(UIPage *page, TextElement* element, f32 deltaTime) {
+void move_text_element(TextElement* element, f32 deltaTime) {
     u8 blocking = false;
 
     for (i32 i = 0; i < element->numberOfAnimations; ++i) {
@@ -465,13 +466,13 @@ void move_text_element(UIPage *page, TextElement* element, f32 deltaTime) {
         }
 
         if (a->complete && element->onCompleteActionId != -1) {
-            RUN_ON_COMPLETE_ACTION(page, element);
+            RUN_ON_COMPLETE_ACTION(element);
         } 
     }
 }
 
-void update_animation(UIPage *page, UIElement* element, f32 deltaTime) {
-    move_element(page, element, deltaTime);
+void update_animation(UIElement* element, f32 deltaTime) {
+    move_element(element, deltaTime);
 
     if (element->sheetAnimation.fps != 0) {
         SheetAnimation* anim = &element->sheetAnimation;
@@ -503,8 +504,8 @@ void update_animation(UIPage *page, UIElement* element, f32 deltaTime) {
     }
 };
 
-void update(UIPage *page, UIElement* element, f32 deltaTime) {
-    update_animation(page, element, deltaTime);
+void update(UIElement* element, f32 deltaTime) {
+    update_animation(element, deltaTime);
 }
 
 void reset_animation(UIElement* element) {
@@ -536,10 +537,10 @@ f64 get_converted_text_type(TextType type, void *ptr) {
     }
 }
 
-void update(UIPage *page, TextElement* text, f32 deltaTime) {
-    move_text_element(page, text, deltaTime);
+void update(TextElement* text, f32 deltaTime) {
+    move_text_element(text, deltaTime);
 
-    if (!page->values[text->valueId] || text->type == TextType::NONE) return;
+    if (!uiPage->values[text->valueId] || text->type == TextType::NONE) return;
 
     if(text->countingActive) {
         Animation* a = &text->countAnimation;
@@ -566,9 +567,9 @@ void update(UIPage *page, TextElement* text, f32 deltaTime) {
         //}
     }
 
-    if (!page->values[text->valueId] || text->type == NONE) return;
+    if (!uiPage->values[text->valueId] || text->type == NONE) return;
 
-    f64 currValue = get_converted_text_type(text->type, page->values[text->valueId]);
+    f64 currValue = get_converted_text_type(text->type, uiPage->values[text->valueId]);
 
     if(currValue != text->prevValue) {
         if(text->haveCountAnimation) {
@@ -599,9 +600,9 @@ Animation* add_animation(Animation* animations, u8* count) {
     return &animations[(*count)++];
 }
 
-void add_dependent_text_element(UIPage *page, i32 elementId, i32 textId) {
-    TextElement *text = &page->textElements[textId];
-    UIElement *e = &page->uiElements[elementId];
+void add_dependent_text_element(i32 elementId, i32 textId) {
+    TextElement *text = &uiPage->textElements[textId];
+    UIElement *e = &uiPage->uiElements[elementId];
     if(e->numberOfDependentTextElements >= MAX_DEP_TEXT) assert("Too many dependent text elements!");
     e->dependentTextElements[e->numberOfDependentTextElements++] = text;
 }
@@ -616,55 +617,55 @@ TextElement** add_dependent_text_element(TextElement **dependentTextElements, i3
     return &dependentTextElements[(*count)++];
 }
 
-TextElement* get_text_element_by_parent_id(UIPage* page, i16 parentId) {
-    for(i32 i = 0; i < page->numberOfTextElements; ++i) {
-        if(page->textElements[i].parentId == parentId) return &page->textElements[i];
+TextElement* get_text_element_by_parent_id(i16 parentId) {
+    for(i32 i = 0; i < uiPage->numberOfTextElements; ++i) {
+        if(uiPage->textElements[i].parentId == parentId) return &uiPage->textElements[i];
     }
 
     return nullptr;
 }
 
-UIElement* get_element_by_parent_id(UIPage* page, i16 parentId) {
-    for(i32 i = 0; i < page->numberOfImageElements; ++i) {
-        if(page->uiElements[i].imageChildId == parentId) return &page->uiElements[i];
+UIElement* get_element_by_parent_id(i16 parentId) {
+    for(i32 i = 0; i < uiPage->numberOfImageElements; ++i) {
+        if(uiPage->uiElements[i].imageChildId == parentId) return &uiPage->uiElements[i];
     }
 
     return nullptr;
 }
 
 
-UIElement* get_element_by_id(UIPage* page, i32 id) {
-    for(i32 i = 0; i < page->numberOfImageElements; ++i) {
-        if(page->uiElements[i].id == id) return &page->uiElements[i];
+UIElement* get_element_by_id(i32 id) {
+    for(i32 i = 0; i < uiPage->numberOfImageElements; ++i) {
+        if(uiPage->uiElements[i].id == id) return &uiPage->uiElements[i];
     }
 }
 
-i32 add_ui_element(UIPage* page, UIElement element, bool actionable) {
-    if (page->numberOfImageElements >= MAX_ELEMENTS) assert("Too many UI elements");
+i32 add_ui_element(UIElement element, bool actionable) {
+    if (uiPage->numberOfImageElements >= MAX_ELEMENTS) assert("Too many UI elements");
 
-    i32 index = page->numberOfImageElements;
+    i32 index = uiPage->numberOfImageElements;
     element.meshHandle = imageMeshHandle;
     element.id = index;
-    page->uiElements[page->numberOfImageElements] = element;
-    if (actionable) page->actionableElementCount++;
-    page->numberOfImageElements++;
+    uiPage->uiElements[uiPage->numberOfImageElements] = element;
+    if (actionable) uiPage->actionableElementCount++;
+    uiPage->numberOfImageElements++;
 
     return index;
 }
 
-void next_option(UIPage *page, void *ptr) {
+void next_option(void *ptr) {
     UIElement *self = (UIElement *)ptr;
     TextElement *text = self->textChild;
 
     text->activeValueId = (text->activeValueId + 1) % text->numberOfValues;
 
-    ValueToTextFn fmt = page->formatters[text->valueId];
-    void* data = page->values[text->valueId];
+    ValueToTextFn fmt = uiPage->formatters[text->valueId];
+    void* data = uiPage->values[text->valueId];
 
     fmt(data, text->activeValueId, text->text, sizeof(text->text));
 }
 
-void previous_option(UIPage *page, void *ptr) {
+void previous_option(void *ptr) {
     UIElement *self = (UIElement *)ptr;
     TextElement *text = self->textChild;
 
@@ -674,14 +675,14 @@ void previous_option(UIPage *page, void *ptr) {
         text->activeValueId--;
     }
 
-    ValueToTextFn fmt = page->formatters[text->valueId];
-    void* data = page->values[text->valueId];
+    ValueToTextFn fmt = uiPage->formatters[text->valueId];
+    void* data = uiPage->values[text->valueId];
 
     fmt(data, text->activeValueId, text->text, sizeof(text->text));
 }
 
-i32 add_options_element(UIPage *page, i32 optionId, i32 optionActionId, i32 optionsHandle, i32 optionsIconHandle, vec4 color) {
-    TextElement *option = &page->textElements[optionId];
+i32 add_options_element(i32 optionId, i32 optionActionId, i32 optionsHandle, i32 optionsIconHandle, vec4 color) {
+    TextElement *option = &uiPage->textElements[optionId];
 
     //
     SheetAnimation iconSheet = SheetAnimation{};
@@ -721,18 +722,17 @@ i32 add_options_element(UIPage *page, i32 optionId, i32 optionActionId, i32 opti
     leftArrow.posx -= 0.4f;
     leftArrow.onCompleteActionId = 2;
 
-    i32 rightArrowIconId = add_ui_element(page, rightArrowIcon); 
+    i32 rightArrowIconId = add_ui_element(rightArrowIcon); 
     leftArrowIcon.imageChildId = rightArrowIconId;
-    i32 leftArrowIconId = add_ui_element(page, leftArrowIcon);
+    i32 leftArrowIconId = add_ui_element(leftArrowIcon);
     rightArrow.imageChildId = leftArrowIconId;
-    i32 rightArrowId = add_ui_element(page, rightArrow);
+    i32 rightArrowId = add_ui_element(rightArrow);
     leftArrow.imageChildId = rightArrowId;
 
-
-    return add_ui_element(page, leftArrow);
+    return add_ui_element(leftArrow);
 }
 
-i32 add_radio_element(UIPage *page, u8 enabled, Anchor anchor, vec2 pos, vec2 size, i32 actionId, i32 radioHandle) {
+i32 add_radio_element(u8 enabled, Anchor anchor, vec2 pos, vec2 size, i32 actionId, i32 radioHandle) {
     UIElement radio = UIElement{ anchor, -1, radioHandle, pos.x, pos.y, size.x, size.y, false, actionId};
     SheetAnimation anim = SheetAnimation{};
     anim.cols = 2;
@@ -740,11 +740,11 @@ i32 add_radio_element(UIPage *page, u8 enabled, Anchor anchor, vec2 pos, vec2 si
     anim.currentFrame = (i32)enabled;
     radio.sheetAnimation = anim;
     radio.onCompleteActionId = 3;
-    return add_ui_element(page, radio);
+    return add_ui_element(radio);
 }
 
-i32 add_switch_element(UIPage *page, Anchor anchor, i32 buttonId, vec2 pos, vec2 size, i32 radioHandle) {
-    UIElement *button = &page->uiElements[buttonId];
+i32 add_switch_element(Anchor anchor, i32 buttonId, vec2 pos, vec2 size, i32 radioHandle) {
+    UIElement *button = &uiPage->uiElements[buttonId];
 
     UIElement radio = UIElement{ anchor, -1, radioHandle, pos.x, pos.y, size.x, size.y};
     SheetAnimation anim = SheetAnimation{};
@@ -753,29 +753,29 @@ i32 add_switch_element(UIPage *page, Anchor anchor, i32 buttonId, vec2 pos, vec2
     anim.currentFrame = 1;
     radio.sheetAnimation = anim;
     
-    i32 parent = add_ui_element(page, radio);
+    i32 parent = add_ui_element(radio);
     radio.posy += 0.04f;
     radio.sheetAnimation.currentFrame = 0;
 
-    i32 child = add_ui_element(page, radio);
+    i32 child = add_ui_element(radio);
 
-    button->dependentElements[button->numberOfDependentElements++] = &page->uiElements[parent];
-    button->dependentElements[button->numberOfDependentElements++] = &page->uiElements[child];
+    button->dependentElements[button->numberOfDependentElements++] = &uiPage->uiElements[parent];
+    button->dependentElements[button->numberOfDependentElements++] = &uiPage->uiElements[child];
 
     button->onCompleteActionId = 4;
     return parent;
 }
 
-void add_cursor(UIPage *page, i32 cursorHandle, vec4 color, CursorType type) {
-    UIElement cursor = UIElement{ Anchor::CENTER, -1, cursorHandle, 0.0f, 0.0f, 0.09f, 0.09f};
+void add_cursor(i32 cursorHandle, vec4 color, CursorType type) {
+    UIElement cursor = UIElement{CENTER, -1, cursorHandle, 0.0f, 0.0f, 0.09f, 0.09f};
     cursor.color = color;
     cursor.visible = false;
     cursor.isPanel = true;
 
     if(type == ELEMENT) {
-        page->elementCursorId = add_ui_element(page, cursor); 
+        uiPage->elementCursorId = add_ui_element(cursor); 
     } else {
-        page->tabCursorId = add_ui_element(page, cursor); 
+        uiPage->tabCursorId = add_ui_element(cursor); 
     }
 }
 
@@ -878,19 +878,19 @@ void add_rotate(UIElement *element, f32 amount, f32 duration) {
     a->complete = false;
 }
 
-i32 add_text_element_to_tab(UIPage *page, i32 windowId, i32 tabId, TextElement element) {
-    i32 elementId = add_text_element(page, element);
+i32 add_text_element_to_tab(i32 windowId, i32 tabId, TextElement element) {
+    i32 elementId = add_text_element(element);
 
-    UIElement *tab = &page->uiElements[tabId];
-    tab->dependentTextElements[tab->numberOfDependentTextElements++] = &page->textElements[elementId];
+    UIElement *tab = &uiPage->uiElements[tabId];
+    tab->dependentTextElements[tab->numberOfDependentTextElements++] = &uiPage->textElements[elementId];
 
-    add_text_to_window(page, windowId, elementId);
+    add_text_to_window(windowId, elementId);
     return elementId;
 }
 
-i32 add_element_to_tab(UIPage *page, i32 windowId, i32 tabId, i32 element) {
-    UIElement *tab = &page->uiElements[tabId];
-    UIElement *e = &page->uiElements[element];
+i32 add_element_to_tab(i32 windowId, i32 tabId, i32 element) {
+    UIElement *tab = &uiPage->uiElements[tabId];
+    UIElement *e = &uiPage->uiElements[element];
     e->visible = false;
 
     tab->dependentElements[tab->numberOfDependentElements++] = e;
@@ -898,40 +898,40 @@ i32 add_element_to_tab(UIPage *page, i32 windowId, i32 tabId, i32 element) {
     if(e->textChild) {
         tab->dependentTextElements[tab->numberOfDependentTextElements++] = e->textChild;
         e->textChild->visible = false;
-        add_text_to_window(page, windowId, e->textChild->id);
+        add_text_to_window(windowId, e->textChild->id);
     }
 
     i32 childId = e->imageChildId;
     while(childId != -1) {
-        UIElement *child = &page->uiElements[childId];
+        UIElement *child = &uiPage->uiElements[childId];
         child->visible = false;
         tab->dependentElements[tab->numberOfDependentElements++] = child;
-        add_image_to_window(page, windowId, child->id);
+        add_image_to_window(windowId, child->id);
         childId = child->imageChildId;
     }
 
-    add_image_to_window(page, windowId, element);
+    add_image_to_window(windowId, element);
     return element;
 }
 
-i32 add_tab(UIPage *page, i32 tabHandle, const char* text, vec4 color, f32 fontScale) {
+i32 add_tab(i32 tabHandle, const char* text, vec4 color, f32 fontScale) {
     //scale defaulted
-    UIElement tab = UIElement{ Anchor::CENTER, -1, tabHandle, 0.5f, 0.5f, 0.08f, 0.1f, true};
+    UIElement tab = UIElement{CENTER, -1, tabHandle, 0.5f, 0.5f, 0.08f, 0.1f, true};
     tab.color = color;
     tab.sheetAnimation = SheetAnimation{3,3};
     tab.isPanel = true;
 
-    TextElement tText = TextElement{ Anchor::CENTER, "", 0.5f, 0.5f, -1, true, DEFAULT_FONT_SCALE * fontScale};
+    TextElement tText = TextElement{CENTER, "", 0.5f, 0.5f, -1, true, DEFAULT_FONT_SCALE * fontScale};
     strcpy(tText.text, text);
     
-    i32 tabId = add_ui_element(page, tab);
-    i32 tabTextId = add_text_element(page, tText);
-    page->uiElements[tabId].textChild = &page->textElements[tabTextId];
+    i32 tabId = add_ui_element(tab);
+    i32 tabTextId = add_text_element(tText);
+    uiPage->uiElements[tabId].textChild = &uiPage->textElements[tabTextId];
     return tabId;
 }
 
 void switch_tab(UIPage *page) {
-    UIElement *currTab = &page->uiElements[page->tabSelected];
+    UIElement *currTab = &uiPage->uiElements[uiPage->tabSelected];
 
     for(i32 i = 0; i < currTab->numberOfDependentTextElements; ++i) {
         currTab->dependentTextElements[i]->visible = false;
@@ -941,8 +941,8 @@ void switch_tab(UIPage *page) {
         if(currTab->dependentElements[i]->textChild) currTab->dependentElements[i]->textChild->visible = false;
     }
 
-    page->tabSelected = currTab->imageChildId;
-    UIElement *newTab = &page->uiElements[page->tabSelected];
+    uiPage->tabSelected = currTab->imageChildId;
+    UIElement *newTab = &uiPage->uiElements[uiPage->tabSelected];
 
     for(i32 i = 0; i < newTab->numberOfDependentTextElements; ++i) {
         newTab->dependentTextElements[i]->visible = true;
@@ -952,15 +952,15 @@ void switch_tab(UIPage *page) {
     }
 }
 
-void add_tabs_to_window(UIPage *page, i32 windowId, i32 *tabIds, i32 numberOfTabs) {
-    UIElement *window = &page->uiElements[windowId];
-    page->tabSelected = tabIds[0];
+void add_tabs_to_window(i32 windowId, i32 *tabIds, i32 numberOfTabs) {
+    UIElement *window = &uiPage->uiElements[windowId];
+    uiPage->tabSelected = tabIds[0];
 
     for (i32 i = 0; i < numberOfTabs; ++i) {
-        UIElement *tab = &page->uiElements[tabIds[i]];
+        UIElement *tab = &uiPage->uiElements[tabIds[i]];
 
         if(i == 0) {
-            UIElement *cursor = &page->uiElements[page->tabCursorId];
+            UIElement *cursor = &uiPage->uiElements[uiPage->tabCursorId];
             cursor->posx = tab->posx;
             cursor->posy = tab->posy;
             cursor->width = tab->width;
@@ -977,16 +977,16 @@ void add_tabs_to_window(UIPage *page, i32 windowId, i32 *tabIds, i32 numberOfTab
         tab->textChild->posy = window->animations[0].destination.y - (window->height * 0.5f) + (tab->height);
 
 
-        add_image_to_window(page, windowId, tabIds[i]);
-        add_text_to_window(page, windowId, tab->textChild->id);
+        add_image_to_window(windowId, tabIds[i]);
+        add_text_to_window(windowId, tab->textChild->id);
     }
 }
 
-i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 scale, vec4 color, i32 actionId, u8 zIndex, f32 fontScale) {
-    i32 buttonId = page->numberOfImageElements;
-    i32 textId = page->numberOfTextElements;
+i32 add_button(i32 buttonHandle, const char* text, vec2 pos, vec2 scale, vec4 color, i32 actionId, u8 zIndex, f32 fontScale) {
+    i32 buttonId = uiPage->numberOfImageElements;
+    i32 textId = uiPage->numberOfTextElements;
 
-    UIElement button = UIElement{ Anchor::CENTER, -1, buttonHandle, pos.x, pos.y, scale.x, scale.y, true, actionId};
+    UIElement button = UIElement{CENTER, -1, buttonHandle, pos.x, pos.y, scale.x, scale.y, true, actionId};
     button.color = color;
     button.hasShadow = true;
     button.isPanel = true;
@@ -997,31 +997,31 @@ i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 
     //Animation buttonClick = Animation{vec2(button.posx, button.posy + 0.01f), pos};
     //button.animations[button.numberOfAnimations++] = buttonClick;
 
-    add_ui_element(page, button, true);
+    add_ui_element(button, true);
   
-    TextElement bText = TextElement{ Anchor::CENTER, "", pos.x, pos.y, -1, true, DEFAULT_FONT_SCALE * fontScale};
+    TextElement bText = TextElement{CENTER, "", pos.x, pos.y, -1, true, DEFAULT_FONT_SCALE * fontScale};
     strcpy(bText.text, text);
     bText.zIndex = zIndex;
     bText.maxWidth = button.width * RENDERING_ASPECT;
-    add_text_element(page, bText);
+    add_text_element(bText);
 
-    page->uiElements[buttonId].textChild = &page->textElements[textId];
+    uiPage->uiElements[buttonId].textChild = &uiPage->textElements[textId];
 
     return buttonId;
 }
 
-void disable_button(UIPage *page, i32 id) {
-    UIElement *button = &page->uiElements[id];
+void disable_button(i32 id) {
+    UIElement *button = &uiPage->uiElements[id];
     button->actionId = -1;
     button->color *= vec4(0.6f, 0.6f, 0.6f, 1.0f);;
 } 
 
-i32 add_button(UIPage *page, i32 buttonHandle, i32 buttonImageHandle, vec2 pos, vec2 scale, vec4 color, i32 actionId) {
+i32 add_button(i32 buttonHandle, i32 buttonImageHandle, vec2 pos, vec2 scale, vec4 color, i32 actionId) {
 
-    UIElement buttonImage = UIElement{ Anchor::CENTER, -1, buttonImageHandle, pos.x, pos.y, scale.x * 0.8f, scale.y * 0.8f};
-    i32 buttonImageId = add_ui_element(page, buttonImage, false);
+    UIElement buttonImage = UIElement{CENTER, -1, buttonImageHandle, pos.x, pos.y, scale.x * 0.8f, scale.y * 0.8f};
+    i32 buttonImageId = add_ui_element(buttonImage, false);
 
-    UIElement button = UIElement{ Anchor::CENTER, -1, buttonHandle, pos.x, pos.y, scale.x, scale.y, true, actionId};
+    UIElement button = UIElement{CENTER, -1, buttonHandle, pos.x, pos.y, scale.x, scale.y, true, actionId};
     button.color = color;
     button.imageChildId = buttonImageId;
     button.hasShadow = true;
@@ -1032,26 +1032,26 @@ i32 add_button(UIPage *page, i32 buttonHandle, i32 buttonImageHandle, vec2 pos, 
     Animation buttonClick = Animation{vec2(button.posx, button.posy + 0.01f), pos};
     *add_animation(button.animations, &button.numberOfAnimations) = buttonClick;
 
-    return add_ui_element(page, button, true);
+    return add_ui_element(button, true);
 }
 
-void toggle_text_visibility(UIPage *page, void *ptr) {
+void toggle_text_visibility(void *ptr) {
     TextElement* self = (TextElement*)ptr;
     self->visible = !self->visible;
 }
 
-void toggle_image_visibility(UIPage *page, void *ptr) {
+void toggle_image_visibility(void *ptr) {
     UIElement* self = (UIElement*)ptr;
     self->visible = !self->visible;
 }
 
-void next_sheet_frame(UIPage *page, void *ptr) {
+void next_sheet_frame(void *ptr) {
     UIElement* self = (UIElement*)ptr;
     i32 frames = self->sheetAnimation.cols * self->sheetAnimation.rows;
     self->sheetAnimation.currentFrame = self->sheetAnimation.currentFrame == frames - 1 ? 0 : self->sheetAnimation.currentFrame + 1;
 }
 
-void next_switch(UIPage *page, void *ptr) {
+void next_switch(void *ptr) {
     UIElement* self = (UIElement*)ptr;
 
     for(i32 i = 0; i < self->numberOfDependentElements; ++i) {
@@ -1060,16 +1060,16 @@ void next_switch(UIPage *page, void *ptr) {
     }
 }
 
-void add_move_animation(UIPage *page, i32 elementId, vec2 destination) {
-    UIElement *e = &page->uiElements[elementId];
+void add_move_animation(i32 elementId, vec2 destination) {
+    UIElement *e = &uiPage->uiElements[elementId];
     if(e->numberOfAnimations == MAX_ANIMATIONS) return;
 
     Animation a = Animation{destination, vec2(e->posx, e->posy)};
     *add_animation(e->animations, &e->numberOfAnimations) = a;
 }
 
-void add_move_text_animation(UIPage *page, i32 elementId, vec2 destination, f32 speed) {
-    TextElement *e = &page->textElements[elementId];
+void add_move_text_animation(i32 elementId, vec2 destination, f32 speed) {
+    TextElement *e = &uiPage->textElements[elementId];
     if(e->numberOfAnimations == MAX_ANIMATIONS) return;
     Animation a = Animation{destination, vec2(e->posx, e->posy), true};
     a.duration = speed;
@@ -1172,7 +1172,7 @@ void layout_grid(vec2 *slots, i32 rows, i32 cols, Anchor anchor, vec2 pos, vec2 
     }
 }
 
-i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 start, vec2 destination, vec4 color1, vec4 color2, f32 duration) {
+i32 add_window(i32 windowHandle, Anchor anchor, vec2 scale, vec2 start, vec2 destination, vec4 color1, vec4 color2, f32 duration) {
     UIElement border = UIElement{ anchor, -1, windowHandle, start.x, start.y, scale.x, scale.y, true};
 
     SheetAnimation panelSheet = SheetAnimation{3, 3};
@@ -1190,7 +1190,7 @@ i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 s
 
     border.hasShadow = true;
 
-    i32 index = add_ui_element(page, border);
+    i32 index = add_ui_element(border);
     UIElement bg = border;
     //does not handle no image yet
     bg.anchor = CENTER;
@@ -1209,13 +1209,13 @@ i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 s
     bg.height -= 0.007;
     bg.isPanel = false;
     bg.color = color2;
-    add_ui_element(page, bg);
+    add_ui_element(bg);
 
     return index;
 }
 
 //deprecate
-i32 add_static_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 pos, vec4 color1, vec4 color2) {
+i32 add_static_window(i32 windowHandle, Anchor anchor, vec2 scale, vec2 pos, vec4 color1, vec4 color2) {
     UIElement border = UIElement{ anchor, -1, windowHandle, pos.x, pos.y, scale.x, scale.y, true};
 
     SheetAnimation panelSheet = SheetAnimation{3, 3};
@@ -1241,20 +1241,20 @@ i32 add_static_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale,
     bg.isPanel = false;
     bg.color = color2;
 
-    i32 index = add_ui_element(page, border);
-    i32 bgIndex = add_ui_element(page, bg);
+    i32 index = add_ui_element(border);
+    i32 bgIndex = add_ui_element(bg);
 
-    UIElement *bg_p = &page->uiElements[bgIndex];
-    UIElement *border_p = &page->uiElements[index];
+    UIElement *bg_p = &uiPage->uiElements[bgIndex];
+    UIElement *border_p = &uiPage->uiElements[index];
 
     border_p->dependentElements[border_p->numberOfDependentElements++] = bg_p; 
 
     return index;
 }
 
-void add_image_to_window(UIPage *page, i32 windowId, i32 elementId) {
-    UIElement *window = &page->uiElements[windowId];
-    UIElement *image = &page->uiElements[elementId];
+void add_image_to_window(i32 windowId, i32 elementId) {
+    UIElement *window = &uiPage->uiElements[windowId];
+    UIElement *image = &uiPage->uiElements[elementId];
 
     i32 windowAnimationIndex = window->numberOfAnimations - 1;
     if(windowAnimationIndex < 0) assert("Window animation index negative!");
@@ -1286,9 +1286,9 @@ void add_image_to_window(UIPage *page, i32 windowId, i32 elementId) {
     }
 }
 
-i32 add_text_to_window(UIPage *page, i32 windowId, i32 elementId) {
-    UIElement *window = &page->uiElements[windowId];
-    TextElement *text = &page->textElements[elementId];
+i32 add_text_to_window(i32 windowId, i32 elementId) {
+    UIElement *window = &uiPage->uiElements[windowId];
+    TextElement *text = &uiPage->textElements[elementId];
     text->baseScale = text->scale;
 
     i32 windowAnimationIndex = window->numberOfAnimations - 1;
@@ -1309,9 +1309,9 @@ i32 add_text_to_window(UIPage *page, i32 windowId, i32 elementId) {
     return elementId;
 }
 
-void add_button_to_window(UIPage *page, i32 windowId, i32 elementId) {
-    UIElement *window = &page->uiElements[windowId];
-    UIElement *button = &page->uiElements[elementId];
+void add_button_to_window(i32 windowId, i32 elementId) {
+    UIElement *window = &uiPage->uiElements[windowId];
+    UIElement *button = &uiPage->uiElements[elementId];
 
     i32 windowAnimationIndex = window->numberOfAnimations - 1;
     if(windowAnimationIndex < 0) assert("Window animation index negative!");
@@ -1343,7 +1343,7 @@ void add_button_to_window(UIPage *page, i32 windowId, i32 elementId) {
     }
 
     if(button->imageChildId != -1) {
-        UIElement* buttonImage = &page->uiElements[button->imageChildId];
+        UIElement* buttonImage = &uiPage->uiElements[button->imageChildId];
 
         Animation *imageAnimation = add_animation(buttonImage->animations, &buttonImage->numberOfAnimations);
 
@@ -1358,7 +1358,7 @@ void add_button_to_window(UIPage *page, i32 windowId, i32 elementId) {
 
 }
 
-void button_press(UIPage *page, void* ptr) {
+void button_press(void* ptr) {
     UIElement* el = (UIElement*)ptr;
     //buttons always have a hover color
     if(el->type == DEFAULT) return;
@@ -1374,11 +1374,11 @@ void button_press(UIPage *page, void* ptr) {
        el->dependentTextElements[i]->posy += 0.01f;
     }
     if(el->textChild) el->textChild->posy += 0.01f;
-    if(el->imageChildId != -1) page->uiElements[el->imageChildId].posy += 0.01f;
+    if(el->imageChildId != -1) uiPage->uiElements[el->imageChildId].posy += 0.01f;
     el->pressed = true;
 }
 
-void button_release(UIPage *page, void* ptr) {
+void button_release(void* ptr) {
     UIElement* el = (UIElement*)ptr;
     //buttons always have a hover color
     if(el->type == DEFAULT) return;
@@ -1398,42 +1398,42 @@ void button_release(UIPage *page, void* ptr) {
 
     if(el->textChild) el->textChild->posy -= 0.01f;
     
-    if(el->onCompleteActionId != -1 && el->hovered) RUN_ON_COMPLETE_ACTION(page, el);
-    if(el->imageChildId != -1) page->uiElements[el->imageChildId].posy -= 0.01f;
+    if(el->onCompleteActionId != -1 && el->hovered) RUN_ON_COMPLETE_ACTION(el);
+    if(el->imageChildId != -1) uiPage->uiElements[el->imageChildId].posy -= 0.01f;
 
     el->posx = el->basePos.x;
     el->posy = el->basePos.y;
     el->basePos = vec2(-1.0f);
 }
 
-i32 add_text_element(UIPage* page, TextElement text) {
-    if (page->numberOfTextElements >= MAX_ELEMENTS) assert("Too many UI text elements");
+i32 add_text_element(TextElement text) {
+    if (uiPage->numberOfTextElements >= MAX_ELEMENTS) assert("Too many UI text elements");
     text.baseScale = text.scale;
-    i32 index = page->numberOfTextElements;
+    i32 index = uiPage->numberOfTextElements;
     text.id = index;
-    page->textElements[page->numberOfTextElements] = text;
-    page->numberOfTextElements++;
+    uiPage->textElements[uiPage->numberOfTextElements] = text;
+    uiPage->numberOfTextElements++;
     return index;
 }
 
-void add_value_to_text(UIPage *page, TextElement *text, const char* label, i32 valueId, TextType t) {
+void add_value_to_text(TextElement *text, const char* label, i32 valueId, TextType t) {
     text->prefix = label;
     text->valueId = valueId;
     text->type = t;
-    text->prevValue = get_converted_text_type(t, page->values[valueId]);
+    text->prevValue = get_converted_text_type(t, uiPage->values[valueId]);
     set_text_value(text, text->prevValue);
 }
 
-i32 add_dynamic_text_element(UIPage* page, TextElement text, const char* label, i32 valueId, TextType t, f32 mult) {
-    page->textElements[page->numberOfTextElements] = text;
-    page->textElements[page->numberOfTextElements].prefix = label;
-    page->textElements[page->numberOfTextElements].valueId = valueId;
-    page->textElements[page->numberOfTextElements].type = t;
-    page->textElements[page->numberOfTextElements].prevValue = get_converted_text_type(t, page->values[valueId]);
-    set_text_value(&page->textElements[page->numberOfTextElements], page->textElements[page->numberOfTextElements].prevValue);
-    page->numberOfTextElements++;
+i32 add_dynamic_text_element(TextElement text, const char* label, i32 valueId, TextType t, f32 mult) {
+    uiPage->textElements[uiPage->numberOfTextElements] = text;
+    uiPage->textElements[uiPage->numberOfTextElements].prefix = label;
+    uiPage->textElements[uiPage->numberOfTextElements].valueId = valueId;
+    uiPage->textElements[uiPage->numberOfTextElements].type = t;
+    uiPage->textElements[uiPage->numberOfTextElements].prevValue = get_converted_text_type(t, uiPage->values[valueId]);
+    set_text_value(&uiPage->textElements[uiPage->numberOfTextElements], uiPage->textElements[uiPage->numberOfTextElements].prevValue);
+    uiPage->numberOfTextElements++;
 
-    return page->numberOfTextElements - 1;
+    return uiPage->numberOfTextElements - 1;
 }
 
 void clear_image_elements(UIElement element) {
@@ -1447,48 +1447,48 @@ void clear_text_elements(TextElement element) {
     element.prefix = nullptr;
 }
 
-void delete_text_element(UIPage* page, i32 index) {
-    if(index < 0 || index >= page->numberOfTextElements) return;
+void delete_text_element(i32 index) {
+    if(index < 0 || index >= uiPage->numberOfTextElements) return;
 
-    for(i32 i = index; i < page->numberOfTextElements - 1; ++i) {
-        page->textElements[i] = page->textElements[i + 1];
-        page->textElements[i].id = i;
+    for(i32 i = index; i < uiPage->numberOfTextElements - 1; ++i) {
+        uiPage->textElements[i] = uiPage->textElements[i + 1];
+        uiPage->textElements[i].id = i;
     }
 
-    page->numberOfTextElements--;
+    uiPage->numberOfTextElements--;
 }
 
-void update(UIPage* page, f32 deltaTime) {
-    for (i32 i = 0; i < page->numberOfImageElements; i++) {
-        //if (page->uiElements[i].hovered)
-        update(page, &page->uiElements[i], deltaTime);
-        //if (page->uiElements[i].canDelete) {
-        //    clear_image_elements(page->uiElements[i]);
+void update(f32 deltaTime) {
+    for (i32 i = 0; i < uiPage->numberOfImageElements; i++) {
+        //if (uiPage->uiElements[i].hovered)
+        update(&uiPage->uiElements[i], deltaTime);
+        //if (uiPage->uiElements[i].canDelete) {
+        //    clear_image_elements(uiPage->uiElements[i]);
 
-        //    for (i32 j = i; j < page->numberOfImageElements - 1; j++) {
-        //        page->uiElements[j] = page->uiElements[j + 1];
+        //    for (i32 j = i; j < uiPage->numberOfImageElements - 1; j++) {
+        //        uiPage->uiElements[j] = uiPage->uiElements[j + 1];
         //    }
-        //    page->numberOfImageElements--;
+        //    uiPage->numberOfImageElements--;
         //    i--;
         //}
     }
 
-    for (i32 i = 0; i < page->numberOfTextElements; i++) {
-        update(page, &page->textElements[i], deltaTime);
-        //if (page->textElements[i].canDelete) {
-        //    clear_text_elements(page->textElements[i]);
+    for (i32 i = 0; i < uiPage->numberOfTextElements; i++) {
+        update(&uiPage->textElements[i], deltaTime);
+        //if (uiPage->textElements[i].canDelete) {
+        //    clear_text_elements(uiPage->textElements[i]);
 
-        //    for (i32 j = i; j < page->numberOfTextElements - 1; j++) {
-        //        page->textElements[j] = page->textElements[j + 1];
+        //    for (i32 j = i; j < uiPage->numberOfTextElements - 1; j++) {
+        //        uiPage->textElements[j] = uiPage->textElements[j + 1];
         //    }
-        //    page->numberOfTextElements--;
+        //    uiPage->numberOfTextElements--;
         //    i--;
         //}
     }
 
-    if(page->tabCursorId != -1) {
-        UIElement *cursor = &page->uiElements[page->tabCursorId];
-        UIElement *tab = &page->uiElements[page->tabSelected];
+    if(uiPage->tabCursorId != -1) {
+        UIElement *cursor = &uiPage->uiElements[uiPage->tabCursorId];
+        UIElement *tab = &uiPage->uiElements[uiPage->tabSelected];
         cursor->posx = tab->posx;
         cursor->posy = tab->posy;
 
@@ -1553,12 +1553,12 @@ UIPage* create_ui_page(UIMemory* mem) {
     if(!play_audio_pitch) play_audio_pitch = mem->play_audio_pitch_fn;
     load_self_actions();
     
-    UIPage* page = (UIPage*)ui_push_size(mem, sizeof(UIPage));
-    memset(page, 0, sizeof(UIPage));
-    page->elementHovered = -1;
-    page->previousElementHovered = -1;
-    page->tabCursorId = -1;
-    page->elementCursorId = -1;
-    page->tabSelected = -1;
-    return page;
+    uiPage = (UIPage*)ui_push_size(mem, sizeof(UIPage));
+    memset(uiPage, 0, sizeof(UIPage));
+    uiPage->elementHovered = -1;
+    uiPage->previousElementHovered = -1;
+    uiPage->tabCursorId = -1;
+    uiPage->elementCursorId = -1;
+    uiPage->tabSelected = -1;
+    return uiPage;
 }

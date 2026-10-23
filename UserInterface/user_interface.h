@@ -8,25 +8,25 @@
 #define MAX_ANIMATIONS 24
 
 struct UIPage;
-typedef void (*UISelfActionFuncPtr)(UIPage *page, void* self);
+typedef void (*UISelfActionFuncPtr)(void* self);
 typedef void (*ValueToTextFn)(void* value, i32 index, char* out, i32 outSize);
 
 #define BUTTON_PRESS(el) \
     do { \
         if ((el).actionId != -1) { \
-            button_press(gState->uiPage, (void*)&(el)); \
+            button_press((void*)&(el)); \
         } \
     } while(0)
 
 #define BUTTON_RELEASE(el) \
     do { \
         if ((el).actionId != -1) { \
-            button_release(gState->uiPage, (void*)&(el)); \
-            if((el).hovered) gState->uiPage->actions[(el).actionId](); \
+            button_release((void*)&(el)); \
+            if((el).hovered) uiPage->actions[(el).actionId](); \
         } \
     } while(0)
 
-#define RUN_ON_COMPLETE_ACTION(page, obj) selfActions[(obj)->onCompleteActionId](page, obj)
+#define RUN_ON_COMPLETE_ACTION(obj) selfActions[(obj)->onCompleteActionId](obj)
 
 enum EaseType {
     LINEAR,
@@ -196,6 +196,8 @@ struct UIPage {
   u8 numberOfActions;
 };
 
+extern UIPage *uiPage;
+
 struct UIMemory {
   void* base;
   u32 size;
@@ -208,27 +210,27 @@ struct UIMemory {
 
 void ui_reset(UIMemory* mem);
 UIPage* create_ui_page(UIMemory* mem);
-void update(UIPage* page, f32 deltaTime);
-void check_elements_hovered(UIPage* page, f64 xpos, f64 ypos);
+void update(f32 deltaTime);
+void check_elements_hovered(f64 xpos, f64 ypos);
 
-TextElement* get_text_element_by_parent_id(UIPage* page, i16 parentId);
-UIElement* get_element_by_parent_id(UIPage* page, i16 parentId);
+TextElement* get_text_element_by_parent_id(i16 parentId);
+UIElement* get_element_by_parent_id(i16 parentId);
 
 void free_ui_page(UIPage* page);
 void reset_animation(UIElement* element);
 void set_source(TextElement* text, const char* label, const void* ptr, TextType t, f32 mult = 1.0f);
 
-i32 add_ui_element(UIPage* page, UIElement element, bool actionable = false);
-i32 add_text_element(UIPage* page, TextElement text);
-i32 add_dynamic_text_element(UIPage* page, TextElement text, const char* label, i32 valueId, TextType t, f32 mult = 1.0f);
-void add_value_to_text(UIPage* page, TextElement *text, const char* label, i32 valueId, TextType t);
-i32 add_text_to_window(UIPage *page, i32 windowId, i32 elementId);
-void add_button_to_window(UIPage *page, i32 windowId, i32 elementId);
-void add_image_to_window(UIPage *page, i32 windowId, i32 elementId);
+i32 add_ui_element(UIElement element, bool actionable = false);
+i32 add_text_element(TextElement text);
+i32 add_dynamic_text_element(TextElement text, const char* label, i32 valueId, TextType t, f32 mult = 1.0f);
+void add_value_to_text(TextElement *text, const char* label, i32 valueId, TextType t);
+i32 add_text_to_window(i32 windowId, i32 elementId);
+void add_button_to_window(i32 windowId, i32 elementId);
+void add_image_to_window(i32 windowId, i32 elementId);
 
-void add_move_animation(UIPage *page, i32 elementId, vec2 destination);
+void add_move_animation(i32 elementId, vec2 destination);
 void add_move_text_animation(TextElement *e, vec2 destination, f32 speed);
-void add_move_text_animation(UIPage *page, i32 elementId, vec2 destination, f32 speed = 10.0f);
+void add_move_text_animation(i32 elementId, vec2 destination, f32 speed = 10.0f);
 void add_move_animation(UIElement *e, vec2 destination, f32 speed);
 void add_pop_animation(TextElement *e, f32 duration);
 void add_pop_animation(UIElement *e, f32 duration);
@@ -240,35 +242,35 @@ void add_fade(TextElement *element);
 void add_shake_animation(TextElement *e, f32 duration);
 void add_shake_animation(UIElement *e, f32 duration);
 
-void add_cursor(UIPage *page, i32 cursorHandle, vec4 color, CursorType type);
-i32 add_tab(UIPage *page, i32 tabHandle, const char* text, vec4 color, f32 fontScale = 1.0f);
-void add_tabs_to_window(UIPage *page, i32 windowId, i32 *tabIds, i32 numberOfTabs);
+void add_cursor(i32 cursorHandle, vec4 color, CursorType type);
+i32 add_tab(i32 tabHandle, const char* text, vec4 color, f32 fontScale = 1.0f);
+void add_tabs_to_window(i32 windowId, i32 *tabIds, i32 numberOfTabs);
 void switch_tab(UIPage *page);
-i32 add_element_to_tab(UIPage *page, i32 windowId, i32 tabId, i32 element);
-i32 add_text_element_to_tab(UIPage *page, i32 windowId, i32 tabId, TextElement element);
-void add_dependent_text_element(UIPage *page, i32 elementId, i32 textId);
-i32 add_options_element(UIPage *page, i32 optionId, i32 optionActionId, i32 optionsHandle, i32 optionsIconHandle, vec4 color);
-i32 add_radio_element(UIPage *page, u8 enabled, Anchor anchor, vec2 pos, vec2 size, i32 actionId, i32 radioHandle);
-i32 add_switch_element(UIPage *page, Anchor anchor, i32 buttonId, vec2 pos, vec2 size, i32 radioHandle);
+i32 add_element_to_tab(i32 windowId, i32 tabId, i32 element);
+i32 add_text_element_to_tab(i32 windowId, i32 tabId, TextElement element);
+void add_dependent_text_element(i32 elementId, i32 textId);
+i32 add_options_element(i32 optionId, i32 optionActionId, i32 optionsHandle, i32 optionsIconHandle, vec4 color);
+i32 add_radio_element(u8 enabled, Anchor anchor, vec2 pos, vec2 size, i32 actionId, i32 radioHandle);
+i32 add_switch_element(Anchor anchor, i32 buttonId, vec2 pos, vec2 size, i32 radioHandle);
 void layout_grid(vec2 *slots, i32 rows, i32 cols, Anchor anchor, vec2 pos, vec2 windowSize, vec2 slotSize);
   
-i32 add_button(UIPage *page, i32 buttonHandle, const char* text, vec2 pos, vec2 scale, vec4 color, i32 actionId, u8 zIndex = 0, f32 fontScale = 1.0f);
-i32 add_button(UIPage *page, i32 buttonHandle, i32 imageButtonHandle, vec2 pos, vec2 scale, vec4 color, i32 actionId);
-void disable_button(UIPage *page, i32 id);
+i32 add_button(i32 buttonHandle, const char* text, vec2 pos, vec2 scale, vec4 color, i32 actionId, u8 zIndex = 0, f32 fontScale = 1.0f);
+i32 add_button(i32 buttonHandle, i32 imageButtonHandle, vec2 pos, vec2 scale, vec4 color, i32 actionId);
+void disable_button(i32 id);
   
-void button_press(UIPage *page, void* ptr);
-void button_release(UIPage *page, void* ptr);
-i32 add_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 start, vec2 destination, vec4 color1, vec4 color2, f32 duration = 1.0f);
-i32 add_static_window(UIPage *page, i32 windowHandle, Anchor anchor, vec2 scale, vec2 pos, vec4 color1, vec4 color2);
+void button_press(void* ptr);
+void button_release(void* ptr);
+i32 add_window(i32 windowHandle, Anchor anchor, vec2 scale, vec2 start, vec2 destination, vec4 color1, vec4 color2, f32 duration = 1.0f);
+i32 add_static_window(i32 windowHandle, Anchor anchor, vec2 scale, vec2 pos, vec4 color1, vec4 color2);
 
-TextElement* get_element_by_text(UIPage* page, const char* text);
-UIElement* get_element_by_id(UIPage* page, i32 id);
-TextElement* get_text_element_by_id(UIPage* page, const char* id);
+TextElement* get_element_by_text(const char* text);
+UIElement* get_element_by_id(i32 id);
+TextElement* get_text_element_by_id(const char* id);
 
-void delete_text_element(UIPage* page, i32 index);
+void delete_text_element(i32 index);
 void format_string_array(void* value, i32 index, char* out, i32 outSize);
 
-void write_page(UIPage *page, const char* path);
-void read_page(UIPage *page, const char* path);
+void write_page(const char* path);
+void read_page(const char* path);
 
 #endif

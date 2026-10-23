@@ -28,7 +28,7 @@ u64 countedSetScore = 0;
 u8 add_text_to_page(void *ptr) {
     TextElement text = *(TextElement *)ptr;
 
-    add_text_element(gState->uiPage, text);
+    add_text_element(text);
     return true;
 }
 
@@ -56,7 +56,7 @@ void push_text_element(TextElement element) {
 u8 add_image_to_page(void *ptr) {
     UIElement element = *(UIElement *)ptr;
 
-    add_ui_element(gState->uiPage, element);
+    add_ui_element(element);
     return true;
 }
 
@@ -242,8 +242,8 @@ void clear_table() {
     for (i32 i = 0; i < TOTAL_TILES; i++) {
         Set* s = &gState->table.sets[i];
 
-        TextElement* a = get_text_element_by_parent_id(gState->uiPage, (i16)s->id);
-        UIElement* b = get_element_by_parent_id(gState->uiPage, (i16)s->id);
+        TextElement* a = get_text_element_by_parent_id((i16)s->id);
+        UIElement* b = get_element_by_parent_id((i16)s->id);
 
         a = nullptr;
         b = nullptr;
@@ -1557,7 +1557,7 @@ void draw_held_active() {
 void check_active_hovered(f64 xpos, f64 ypos) {
     if(gState->player.heldActiveId != -1) return;
 
-    UIElement* bg = get_element_by_parent_id(gState->uiPage, 98);
+    UIElement* bg = get_element_by_parent_id(98);
     if (!bg) return;
 
     TextElement *name   = bg->dependentTextElements[0];
@@ -1630,7 +1630,7 @@ void check_active_hovered(f64 xpos, f64 ypos) {
 }
 
 void show_paint_hovered_window(vec2 pos) {
-    UIElement* bg = get_element_by_parent_id(gState->uiPage, 93);
+    UIElement* bg = get_element_by_parent_id(93);
     if (!bg) return;
 
     pos.x = pos.x / RENDERING_ASPECT;
@@ -1911,8 +1911,8 @@ void check_set_hovered(f64 xpos, f64 ypos) {
 
         if (!hasAnyTile) continue;
 
-        TextElement* a = get_text_element_by_parent_id(gState->uiPage, 99);
-        UIElement* b = get_element_by_parent_id(gState->uiPage, 99);
+        TextElement* a = get_text_element_by_parent_id(99);
+        UIElement* b = get_element_by_parent_id(99);
 
         if (xpos > boundsMin.x - 0.1f && xpos < boundsMax.x + 0.1f &&
             ypos > boundsMin.y - 0.1f && ypos < boundsMax.y + 0.1f) {
@@ -1931,13 +1931,13 @@ void check_set_hovered(f64 xpos, f64 ypos) {
 }
 
 void check_relic_hovered(f64 xpos, f64 ypos) {
-    //printf("highestZ = %i\n", gState->uiPage->highestZ);
+    //printf("highestZ = %i\n", uiPage->highestZ);
     if(gState->player.heldTile) {
         clear_all_hover();
         return;
     }
 
-    UIElement* bg = get_element_by_parent_id(gState->uiPage, 98);
+    UIElement* bg = get_element_by_parent_id(98);
     if(!bg) return;
     //THESE ARE ALL NULL UNDER HERE!
     TextElement *name = bg->dependentTextElements[0];
@@ -1949,8 +1949,8 @@ void check_relic_hovered(f64 xpos, f64 ypos) {
     }
 
 
-    if(gState->uiPage->elementHovered != -1) {
-        UIElement *relic = &gState->uiPage->uiElements[gState->uiPage->elementHovered];
+    if(uiPage->elementHovered != -1) {
+        UIElement *relic = &uiPage->uiElements[uiPage->elementHovered];
         i32 frame = relic->sheetAnimation.currentFrame;
         if(relic->textureName == RELICS_T) {
             f32 distanceX = 0.125f;
@@ -2161,7 +2161,6 @@ u8 is_tile_released_inside_rack(Tile *tile) {
            tilePos.y >= tablePos.y - halfHeight &&
            tilePos.y <= tablePos.y + halfHeight; 
 
-    //printf("response %i is tile in rack\n", (i32)response);
     return response;
 }
 
@@ -2225,9 +2224,9 @@ void update_set_ui(Set *set) {
     //if(hoveredSetValue == set->value) return;
     //something better..
     if(!set) {
-        TextElement* text = get_text_element_by_parent_id(gState->uiPage, 99);
+        TextElement* text = get_text_element_by_parent_id(99);
         text->visible = false;
-        UIElement* bg = get_element_by_parent_id(gState->uiPage, 99);
+        UIElement* bg = get_element_by_parent_id(99);
         bg->visible = false;
         return;
     }
@@ -2238,7 +2237,7 @@ void update_set_ui(Set *set) {
         gMemory->renderBuffer->projection        
     );
 
-    TextElement* text = get_text_element_by_parent_id(gState->uiPage, 99);
+    TextElement* text = get_text_element_by_parent_id(99);
     if(!text) return;
 
     snprintf(text->text, sizeof(text->text), "+%d", calculate_set_bonuses(set, false));
@@ -2246,7 +2245,7 @@ void update_set_ui(Set *set) {
     text->posx = pos.x;
     text->posy = pos.y - 0.1f;
 
-    UIElement* bg = get_element_by_parent_id(gState->uiPage, 99);
+    UIElement* bg = get_element_by_parent_id(99);
     if(!bg) return;
     bg->posx = pos.x;
     bg->posy = pos.y - 0.1f;
@@ -2731,7 +2730,7 @@ void start_new_run() {
 }
 
 void set_round_type() {
-    i32 frame = gState->uiPage->uiElements[gState->uiPage->elementHovered].val;
+    i32 frame = uiPage->uiElements[uiPage->elementHovered].val;
     gState->runData.currentRoundType = (ROUND_TYPE)frame;
 
     ActionCommand *nextRound = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, ROUND_TYPE, execute_action);
@@ -2742,7 +2741,7 @@ void set_round_type() {
 }
 
 void add_relic() {
-    i32 frame = gState->uiPage->uiElements[gState->uiPage->elementHovered].sheetAnimation.currentFrame;
+    i32 frame = uiPage->uiElements[uiPage->elementHovered].sheetAnimation.currentFrame;
 
     if(RELIC_TABLE[frame].price > gState->runData.dollaBills) return;
     if(gState->player.numberOfRelics == MAX_RELICS) {
@@ -2766,7 +2765,7 @@ void add_relic() {
 }
 
 void add_active() {
-    i32 frame = gState->uiPage->uiElements[gState->uiPage->elementHovered].sheetAnimation.currentFrame;
+    i32 frame = uiPage->uiElements[uiPage->elementHovered].sheetAnimation.currentFrame;
 
     if(ACTIVE_TABLE[frame].price > gState->runData.dollaBills) return;
     if(gState->player.numberOfActives == MAX_ACTIVES) return; // quick fix for now, will fix in the shop ui
@@ -2929,7 +2928,6 @@ void calculate_round_cash(RunData *gd) {
             } 
         }
     }
-    
     rack_cleared_bonus(nullptr);
 
     if(check_challenge_condition(gState)) {
@@ -3184,17 +3182,9 @@ void end_turn() {
                             }
                         }
                     }
-//                    if(gState->roundData.turnLimit == 0 && 
-//                        gState->uiPage->numberOfImageElements > 18 && 
-//                        gState->uiPage->numberOfTextElements > 13) {
-//                        gState->uiPage->uiElements[18].color = R_RED;
-//                        gState->uiPage->textElements[13].color = R_RED;
-//                    }
                 } 
             }
             snapshot_round_start();
-        } else {
-            // maybe not enable button when invalid sets
         }
     }
 }
@@ -3226,18 +3216,18 @@ void apply_video_settings() {
     TextElement *optionsText = nullptr;
     TextElement *videoMode = nullptr;
     UIElement *vsync = nullptr;
-    for(i32 i = 0; i < gState->uiPage->numberOfTextElements; ++i) {
-        if(gState->uiPage->textElements[i].valueId == 9) {
-            optionsText = &gState->uiPage->textElements[i];
+    for(i32 i = 0; i < uiPage->numberOfTextElements; ++i) {
+        if(uiPage->textElements[i].valueId == 9) {
+            optionsText = &uiPage->textElements[i];
         } 
-        if(gState->uiPage->textElements[i].valueId == 10) {
-            videoMode = &gState->uiPage->textElements[i];
+        if(uiPage->textElements[i].valueId == 10) {
+            videoMode = &uiPage->textElements[i];
         } 
     }
 
-    for(i32 i = 0; i < gState->uiPage->numberOfImageElements; ++i) {
-        if(gState->uiPage->uiElements[i].textureName == RADIO_T) {
-            vsync = &gState->uiPage->uiElements[i];
+    for(i32 i = 0; i < uiPage->numberOfImageElements; ++i) {
+        if(uiPage->uiElements[i].textureName == RADIO_T) {
+            vsync = &uiPage->uiElements[i];
         }
     }
 
@@ -3369,7 +3359,7 @@ extern "C" GAME_DLL void game_update_and_render() {
 }
 
 void update_cursor(vec2 pos) {
-    UIElement *cursor = get_element_by_id(gState->uiPage, 90);
+    UIElement *cursor = get_element_by_id(90);
     if(!cursor) return;
     i32 action = 0;
 
