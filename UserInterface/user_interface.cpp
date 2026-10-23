@@ -104,25 +104,25 @@ static inline std::string add_commas_uint64(u64 value) {
     return s;
 }
 
-inline bool ui_point_inside(const UIElement& e, f64 x, f64 y) {
+inline u8 ui_point_inside(const UIElement& e, f64 x, f64 y) {
     f64 minX, maxX, minY, maxY;
 
     switch (e.anchor) {
-        caseCENTER:
+        case CENTER:
             minX = e.posx - e.width  * 0.5;
             maxX = e.posx + e.width  * 0.5;
             minY = e.posy - e.height * 0.5;
             maxY = e.posy + e.height * 0.5;
             break;
 
-        caseTOP_LEFT:
+        case TOP_LEFT:
             minX = e.posx;
             maxX = e.posx + e.width;
             minY = e.posy;
             maxY = e.posy + e.height;
             break;
 
-        caseTOP_RIGHT:
+        case TOP_RIGHT:
             maxX = e.posx;
             minX = e.posx - e.width;
             maxY = e.posy + e.height;

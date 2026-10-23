@@ -12,18 +12,10 @@
 #include "rounds.h"
 #include "game_assets.h"
 #include "game_input.h"
+#include "items.h"
 
 #define TOTAL_TILES 60
-#define TOTAL_RELICS 15
-#define MAX_RELICS 50
-#define RELIC_ROWS 5
-#define RELIC_COLUMNS 3
 #define TOTAL_CHALLENGES 13 
-
-#define TOTAL_ACTIVES 9
-#define MAX_ACTIVES 24
-#define ACTIVE_ROWS 3
-#define ACTIVE_COLUMNS 3
 
 const i32 TABLE_ROWS = 6;
 const i32 TABLE_COLUMNS = 16;
@@ -71,6 +63,17 @@ struct GameObject {
     ObjAnimation animation;
 };
 
+//move this, but figure out how to handle object
+struct Active { 
+    GameObject object;
+    Item item;
+
+    u8 isHovered = false;
+    mat4 originalPosition;
+    vec2 grabOffset;
+    i32 id;
+};
+
 enum GAME_MODE : u8 {
     GM_START_MENU,
     GM_IN_GAME,
@@ -78,18 +81,6 @@ enum GAME_MODE : u8 {
     GM_OPTIONS,
     GM_PROFILE,
     GM_ROUND_COMPLETE
-};
-
-enum PAGE_STATE : u8 {
-    IN_GAME,
-    END_GAME,
-    RELICS_PURCHASE,
-    ROUND_COMPLETE,
-    MAIN_MENU,
-    PROFILE,
-    OPTIONS,
-    RELIC,
-    ACTIVES_PURCHASE
 };
 
 enum SET_TYPE : u8 {
@@ -115,11 +106,6 @@ struct TileDetails {
     TILE_TYPE type;
     u8 tileNumber;
     u8 tileColor;
-};
-
-struct DragState {
-  vec2 lastPos;
-  u8 hasLastPos = false;
 };
 
 struct Set;
@@ -189,39 +175,6 @@ struct PlayerData {
     i32 timesDrawn = 0;
 };
 
-enum Rarity {
-    COMMON,
-    RARE,
-    EXCEEDINGLY_RARE
-};
-
-struct ItemData {
-    Set *set;
-    i32 value;
-};
-
-struct Item {
-    Rarity rarity;
-    const char* name;
-    const char* description;
-    u8 price;
-    i32 conditionValue;
-    i32 modifierValue;
-    CmdActionFuncPtr condition;
-    CmdActionFuncPtr action;
-    CmdActionFuncPtr postRunAction;
-};
-
-struct Active { 
-    GameObject object;
-    Item item;
-
-    u8 isHovered = false;
-    mat4 originalPosition;
-    vec2 grabOffset;
-    i32 id;
-};
-
 struct Player {
     PlayerData playerData;
     Tile* heldTile;
@@ -247,6 +200,10 @@ extern Tile* colorTile;
 extern vec2 mousePos;
 extern mat4 rackSpaces[RACK_SPACES];
 extern u8 activesShown;
+extern u8 discardEnabled;
+extern Tile *peekTiles[5];
+extern u8 peekTilesAmount;
+extern u8 nextFiveShown;
 
 u8 remove_cash(void *ptr);
 void init_main_menu();
@@ -297,6 +254,7 @@ void drag_tile(f64 xpos, f64 ypos);
 void check_active_hovered(f64 xpos, f64 ypos);
 void check_tile_hovered(f64 xpos, f64 ypos);
 void update_cursor(vec2 pos);
+void snapshot_round_start();
 
 struct GameState {
     //default game values

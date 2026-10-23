@@ -14,6 +14,18 @@ extern uint64_t hoveredSetValue;
 extern char *videoModes[2];
 extern uint8_t paintEnabled;
 
+enum PAGE_STATE : uint8_t {
+    IN_GAME,
+    END_GAME,
+    RELICS_PURCHASE,
+    ROUND_COMPLETE,
+    MAIN_MENU,
+    PROFILE,
+    OPTIONS,
+    RELIC,
+    ACTIVES_PURCHASE
+};
+
 enum UI_ACTION {
     UI_ACTION_SET_ROUND_TYPE = 0,
     UI_ACTION_ADD_OPTIONS,
@@ -65,6 +77,11 @@ enum UI_VALUE {
     UI_VALUE_ROUND_VALUE,
 
     UI_VALUE_COUNT
+};
+
+struct DragState {
+  glm::vec2 lastPos;
+  uint8_t hasLastPos = false;
 };
 
 uint8_t load_shop_purchase_menu(void *ptr);
