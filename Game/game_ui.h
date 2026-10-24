@@ -8,6 +8,7 @@ enum PAGE_STATE : uint8_t;
 enum ROUND_TYPE : uint8_t;
 struct RoundData;
 struct UIPage;
+struct UIElement;
 
 extern uint64_t numTableTiles;
 extern uint64_t hoveredSetValue;
@@ -84,6 +85,8 @@ struct DragState {
   uint8_t hasLastPos = false;
 };
 
+void push_ui_element(UIElement element);
+void start_transition();
 uint8_t load_shop_purchase_menu(void *ptr);
 void shop_item_hovered();
 void add_shop_purchase_menu(uint8_t isRelic);
@@ -107,7 +110,8 @@ void set_page_state(PAGE_STATE p);
 void go_back();
 void reinit_page_state();
 void add_map_ui();
-void clear_game_ui();
+uint8_t clear_game_ui(void *ptr);
+void push_clear_game_ui();
 RoundData create_round_data(ROUND_TYPE roundType, uint64_t rounds);
 glm::vec2 world_to_ui(glm::mat4 model, glm::mat4 view, glm::mat4 projection);
 void add_game_ui_data(UIPage *uiPage);

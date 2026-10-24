@@ -117,6 +117,9 @@ struct RenderEntryUIImage {
     u8 hasShadow;
     u8 zIndex;
     f32 rotation;
+    u8 useBurn;
+    f32 burnProgress;
+    f32 burnTime;
 };
 
 struct RenderEntryPostProcess {

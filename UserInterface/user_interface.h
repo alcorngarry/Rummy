@@ -51,7 +51,8 @@ enum AnimationType {
   COLOR_SHIFT,
   ROTATE,
   FADE,
-  SHAKE
+  SHAKE,
+  BURN
 };
 
 enum CursorType {
@@ -73,6 +74,7 @@ struct Animation {
   f64 valueStart = 0.0;
   f64 valueDestination = 0.0;
   u8 blocking = false;
+  i32 waitAnimationId = -1;
 };
 
 struct SheetAnimation {
@@ -91,6 +93,11 @@ enum ElementType {
     DEFAULT,
     BUTTON,
     OPTION
+};
+
+enum ShaderEffectType {
+    S_NONE,
+    S_BURN
 };
 
 struct UIElement {
@@ -127,6 +134,8 @@ struct UIElement {
   u8 isHoverable = true;
   ElementType type = DEFAULT;
   f32 rotation = 0.0f;
+  ShaderEffectType effectType = S_NONE;
+  f32 shaderDelta = 0.0f;
 };
 
 enum TextType {
@@ -208,6 +217,8 @@ struct UIMemory {
   void (*play_audio_pitch_fn)(i32 id, f32 pitch);
 };
 
+void clear_elements(i32 elementId, i32 textId);
+u8 add_image_to_page(void *ptr);
 void ui_reset(UIMemory* mem);
 UIPage* create_ui_page(UIMemory* mem);
 void update(f32 deltaTime);
@@ -241,6 +252,8 @@ void add_fade(UIElement *element, f32 duration = 1.0f);
 void add_fade(TextElement *element);
 void add_shake_animation(TextElement *e, f32 duration);
 void add_shake_animation(UIElement *e, f32 duration);
+void add_scale_animation(UIElement *e, vec2 targetScale, f32 duration, i32 waitId = -1);
+void add_burn(UIElement *e, f32 duration);
 
 void add_cursor(i32 cursorHandle, vec4 color, CursorType type);
 i32 add_tab(i32 tabHandle, const char* text, vec4 color, f32 fontScale = 1.0f);

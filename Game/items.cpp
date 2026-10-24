@@ -11,9 +11,6 @@ const Item RELIC_TABLE[TOTAL_RELICS] = {
     //these need to change names..
     { RARE, "Even Steven", "Every even set gets +20.", 2, 2, 20, set_even_condition, addition_action },
     { RARE, "Odd Todd", "Every odd set gets +20.", 2, 2, 20, set_odd_condition, addition_action },
-    //These need to be added
-    //{ RARE, "Wrap", "Allows runs to wrap around from highest to lowest tile.", 2, -1, -1, no_condition, add_wrap_rule }
-   // { RARE, "Crok Jock", "TO DO ADD HERE", 2, 1, 1, set_even_condition, addition_action }
     { COMMON, "Big Saver", "Gain %1 bonus for every $10 you have.", 1, 2, 20, player_has_at_least_ten_dollars, no_condition, big_saver },
     { RARE, "Head Start", "First wild tile drawn has double the value.", 2, 1, 20, no_condition, head_start },
     { EXCEEDINGLY_RARE, "Costly", "Wild tiles have triple the value but cost $1 when played.", 3, 2, 20, no_condition, costly, costly_post_round },
@@ -21,24 +18,10 @@ const Item RELIC_TABLE[TOTAL_RELICS] = {
     { COMMON, "INTERESTing", "Every round gain %3 interest on total cash.", 1, 2, 20, no_condition, no_condition, interesting },
     { COMMON, "Bridge Chance", "When a bridge is played, 15\% chance a second bridge is drawn.", 1, 2, 0, no_condition, bridge_chance },
     { EXCEEDINGLY_RARE, "Wild Factor", "Every wild tile played gives %10 increase on set's value.", 3, 2, -10, contains_joker, wild_factor }
-    
-    // ---- done ---- color shift jokers, allows color shift when jokers played
-    //joker debt every joker left on rack cost $5, what..
-    // ----- done ----- wild card joker used in set increases set score
-    // ----- done ------ first joker drawm counts double
-    // ------ done ------ jokers worth more points but cost money to use
-    // ------- done ------ sets containing 7 get bonuses!
-    // ------- done ------- gain 1% bonus for every $10 you have
-    //every point above the score gets you money
-    //first set created give you money
-    // ---- done ----- interest, gain percent of money at the end of each round
-    //every third relic purchased gives you money
 };
 
 const Item ACTIVE_TABLE[TOTAL_ACTIVES] = {
-    //{ COMMON, "Pawn Shop", "Sell any relic or active for $$$.", 1, 1, 1, nullptr, sell_item},
     { EXCEEDINGLY_RARE, "Wild Tile +1", "Adds a wild tile to your rack.", 3, 1, 1, nullptr, add_new_joker},
-    //{ EXCEEDINGLY_RARE, "Wrap", "Allows '12' Tiles to connect to '1' tiles", 3, 1, 1, nullptr, nullptr},
     { EXCEEDINGLY_RARE, "Twins Basil", "Sets of two are allowed for the current round.", 3, 1, 1, nullptr, allow_twins_for_round},
     { COMMON, "Discard", "Discard one tile from the rack.", 1, 1, 1, nullptr, discard},
     { COMMON, "'Peak' Next 5", "'Peak' at next five draws from the pool.", 1, 1, 1, nullptr, show_next_five_in_pool},
@@ -48,6 +31,24 @@ const Item ACTIVE_TABLE[TOTAL_ACTIVES] = {
     { EXCEEDINGLY_RARE, "Space x2", "Adds times 2 value to a space on the table.", 3, 1, 1, nullptr, add_multipler_to_table_space},
     { EXCEEDINGLY_RARE, "Space +10", "Adds plus 10 value to a space on the table.", 3, 1, 1, nullptr, add_addend_to_table_space}
 };
+
+const char* rarity_to_string(Rarity rarity) {
+    switch (rarity) {
+        case COMMON:            return "Common";
+        case RARE:              return "Rare";
+        case EXCEEDINGLY_RARE:  return "Exceedingly Rare";
+        default:                return "GNAR";
+    }
+}
+
+vec4 rarity_to_color(Rarity rarity) {
+    switch (rarity) {
+        case COMMON:            return R_WHITE;
+        case RARE:              return R_BLUE;
+        case EXCEEDINGLY_RARE:  return R_PURPLE;
+        default:                return R_RED;
+    }
+}
 
 u8 show_next_five_in_pool(void *ptr) {
     mat4 start = gState->pool.object.model;

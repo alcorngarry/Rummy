@@ -53,23 +53,8 @@ void push_text_element(TextElement element) {
     }
 }
 
-u8 add_image_to_page(void *ptr) {
-    UIElement element = *(UIElement *)ptr;
-
-    add_ui_element(element);
-    return true;
-}
-
-void push_ui_element(UIElement element) {
-    ActionCommand *cmd = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, UIElement, execute_action);
-    if (cmd) {
-        cmd->action = add_image_to_page;
-        *COMMAND_PAYLOAD(cmd, UIElement) = element;
-    }
-}
-
 u8 load_map(void *ptr) {
-    clear_game_ui();
+    clear_game_ui(nullptr);
     add_map_ui();
     return true;
 }
@@ -2461,14 +2446,6 @@ u8 start_round(void *ptr) {
     return true;
 }
 
-void start_transition() {
-    ActionCommand *nextRound = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, ROUND_TYPE, execute_action);
-    if (nextRound) { 
-        nextRound->action = start_round;
-        *COMMAND_PAYLOAD(nextRound, ROUND_TYPE) = gState->runData.currentRoundType;
-    }
-}
-
 void init_round(ROUND_TYPE type) {
     //clear_round_score(&gState->roundData);
     gState->roundData = create_round_data(type, gState->runData.rounds);
@@ -2492,7 +2469,7 @@ void init_round(ROUND_TYPE type) {
     }
 
     gState->mode = GM_IN_GAME;
-    clear_game_ui();
+    //clear_game_ui();
     add_in_game_ui();
 }
 
@@ -2500,7 +2477,7 @@ void init_main_menu() {
     gState->runData = create_run_data();
     clear_player_data();
     gState->mode = GM_START_MENU;
-    clear_game_ui();
+    clear_game_ui(nullptr);
     add_main_menu_ui();
 }
 
@@ -2712,7 +2689,7 @@ void count_table() {
 }
 
 void complete_round() {
-    clear_game_ui();
+    clear_game_ui(nullptr);
    
     i32 tilesPlayed = 0;
     for(i32 i = 0; i < gState->table.numberOfSets; i++) {
@@ -2992,7 +2969,6 @@ extern "C" GAME_DLL void game_init(GameMemory* memory, i32 preserveState) {
     }
 
     init_table();
-
     snapshot_round_start();
 }
 
@@ -3000,27 +2976,27 @@ extern "C" GAME_DLL void game_update_and_render() {
     gState->deltaTime = gMemory->renderBuffer->deltaTime;
     execute_queue(&gState->cmdQueue);
 
-      switch(gState->mode) {
-          case GM_IN_GAME : {
-              draw_table();
-              draw_pool();
-              draw_player_rack();
-              draw_held_tile();
-              draw_held_active();
-              break;
-          }
-          case GM_ROUND_COMPLETE : {
-              draw_table();
-              draw_pool();
-              draw_player_rack();
-              break;
-          }  
-          case GM_GAME_OVER : {
-              draw_table();
-              draw_player_rack();
-              draw_background();
-              break;
-          }
+    switch(gState->mode) {
+        case GM_IN_GAME : {
+            draw_table();
+            draw_pool();
+            draw_player_rack();
+            draw_held_tile();
+            draw_held_active();
+            break;
+        }
+        case GM_ROUND_COMPLETE : {
+            draw_table();
+            draw_pool();
+            draw_player_rack();
+            break;
+        }  
+        case GM_GAME_OVER : {
+            draw_table();
+            draw_player_rack();
+            draw_background();
+            break;
+        }
         case GM_START_MENU : {
             draw_background();
             break;

@@ -218,8 +218,6 @@ void populate_round_types(i32 *arr) {
         u8 unique = false;
 
         while(!unique) {
-            // twelve round types
-            //i32 value = rng_range(0, 12);
             i32 value = 2;
             unique = true;
 
@@ -272,6 +270,62 @@ u64 u64_pow(u64 base, u32 exp) {
 u64 calculate_min_score(u64 round) {
     u64 score = 100 + 100 * round + 25 * u64_pow(2, round);
     return (score / 100) * 100;
+}
+
+i32 get_texture_from_difficulty(u8 difficulty) {
+    switch(difficulty) {
+        case 0: return EASY_T;
+        case 1: return MEDIUM_T;
+        case 2: return HARD_T;
+        default: return EASY_T;
+    }
+}
+
+void populate_challenges(i32 *arr) {
+    if(!(gState->runData.rounds % 3)) {
+        for(i32 i = 0; i < 3; ++i) {
+            u8 unique = false;
+
+            while(!unique) {
+                i32 value = rng_range(4, TOTAL_CHALLENGES - 1);
+                unique = true;
+
+                for(i32 j = 0; j < i; ++j) {
+                    if(arr[j] == value) {
+                        unique = false;
+                        break;
+                    }
+                }
+
+                if(unique) {
+                    arr[i] = value;
+                }
+            }
+        }
+    } else {
+        arr[0] = 0;
+        for(i32 i = 1; i < 3; ++i) {
+            u8 unique = false;
+
+            while(!unique) {
+                i32 value = rng_range(1, 3);
+                unique = true;
+
+                for(i32 j = 0; j < i; ++j) {
+                    if(arr[j] == value) {
+                        unique = false;
+                        break;
+                    }
+                }
+
+                if(unique) {
+                    arr[i] = value;
+                }
+            }
+        }
+    }
+    //arr[0] = rng_range(1,3);
+    //arr[1] = rng_range(4,TOTAL_CHALLENGES - 1);
 }
 
 RoundData create_round_data(ROUND_TYPE roundType, u64 round) {

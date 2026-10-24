@@ -1,5 +1,6 @@
 #include "game_ui.h"
 #include "game.h"
+#include "rummy_colors.h"
 
 u64 numTableTiles = 0; //move this to table value
 u64 hoveredSetValue = 0;
@@ -17,10 +18,62 @@ void reroll_actives() {
     reroll(false);
 }
 
+void add_blur(i32 index) {
+    UIElement blur = UIElement{CENTER, -1, -1, 0.5, 0.5, 1.0f, 1.0f};
+    blur.color = vec4(0.0f, 0.0f, 0.0f, 0.5);
+    blur.zIndex = index;
+    add_ui_element(blur);
+}
+
+void push_ui_element(UIElement element) {
+    ActionCommand *cmd = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, UIElement, execute_action);
+    if (cmd) {
+        cmd->action = add_image_to_page;
+        *COMMAND_PAYLOAD(cmd, UIElement) = element;
+    }
+}
+
 u8 load_shop_purchase_menu(void *ptr) {
     u8 isRelic = *(u8 *)ptr;
     add_shop_purchase_menu(isRelic);
     return true;
+}
+
+void start_transition() {
+    i32 elements = uiPage->numberOfImageElements;
+    i32 textElements = uiPage->numberOfTextElements;
+    
+    UIElement me = UIElement{ CENTER, uiPage->numberOfImageElements++, ME_TILE_T, 0.5f, 0.5f, 0.1f * RENDERING_ASPECT, 0.1f}; 
+    me.hasShadow = true;
+    add_rotate(&me, 2.0f * PI32, 10.0f);
+    me.sheetAnimation = SheetAnimation {2, 1};
+    me.sheetAnimation.currentFrame = 0;
+    me.sheetAnimation.fps = 16;
+    me.sheetAnimation.trigger = true;
+    me.sheetAnimation.random = true;
+    me.zIndex = 4;
+    add_pop_animation(&me, 0.3f);
+    add_burn(&me, 0.75f);
+    gMemory->play_audio_pitch_fn(0, 1.0f);
+    add_scale_animation(&me, vec2(0.0f), 1.0f, me.numberOfAnimations - 1);
+    push_ui_element(me);
+
+    UIElement textBg = UIElement{CENTER, -1, -1, 0.5f, 0.5f, 0.0f, 0.0f};
+    textBg.color = R_DARK_GREEN_TWO;
+    add_scale_animation(&textBg, vec2(2.0f), 1.0f);
+    add_scale_animation(&textBg, vec2(0.0f), 1.0f, textBg.numberOfAnimations - 1);
+    //add_rotate(&textBg, 2.0f * PI32, 5.0f);
+    textBg.zIndex = 3;
+    push_ui_element(textBg);
+
+    push_wait(&gState->cmdQueue, 1.5f);
+    clear_elements(elements, textElements);
+
+    ActionCommand *nextRound = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, ROUND_TYPE, execute_action);
+    if (nextRound) { 
+        nextRound->action = start_round;
+        *COMMAND_PAYLOAD(nextRound, ROUND_TYPE) = gState->runData.currentRoundType;
+    }
 }
 
 void hide_paint_hovered_window() {
@@ -119,29 +172,6 @@ void populate_actives_in_shop(i32 *arr) {
                 arr[i] = value;
             }
         }
-    }
-}
-
-void populate_challenges(i32 *arr) {
-    arr[0] = rng_range(1,3);
-    arr[1] = rng_range(4,TOTAL_CHALLENGES - 1);
-}
-
-const char* rarity_to_string(Rarity rarity) {
-    switch (rarity) {
-        case COMMON:            return "Common";
-        case RARE:              return "Rare";
-        case EXCEEDINGLY_RARE:  return "Exceedingly Rare";
-        default:                return "GNAR";
-    }
-}
-
-vec4 rarity_to_color(Rarity rarity) {
-    switch (rarity) {
-        case COMMON:            return R_WHITE;
-        case RARE:              return R_BLUE;
-        case EXCEEDINGLY_RARE:  return R_PURPLE;
-        default:                return R_RED;
     }
 }
 
@@ -259,7 +289,7 @@ void shop_item_hovered() {
 
 void add_shop_purchase_menu(u8 isRelic) {
     set_page_state(isRelic ? RELICS_PURCHASE : ACTIVES_PURCHASE);
-    clear_game_ui();
+    clear_game_ui(nullptr);
     add_item_window();
 
     //relics
@@ -360,10 +390,7 @@ void add_shop_purchase_menu(u8 isRelic) {
     add_text_to_window(windowIndex, add_dynamic_text_element(TextElement{CENTER, "", 0.64f, 0.15f, -1, true, DEFAULT_FONT_SCALE * 3.0f, R_GOLDEN}, "$", UI_VALUE_DOLLA_BILLS, UINT_64));
 
     add_item_window();
-
-    UIElement blur = UIElement{CENTER, -1, -1, 0.5f, 0.5f, 1.0f, 1.0f};
-    blur.color = vec4(0.0f, 0.0f, 0.0f, 0.5f);
-    add_ui_element(blur);
+    add_blur(0);
 }
 
 void add_round_complete_ui() {
@@ -419,16 +446,7 @@ void add_main_menu_ui() {
         {0.65f, 0.4f},
     };
 
-    i32 lFrame[8] = {
-        6,
-        7,
-        8,
-        5,
-        6,
-        3,
-        0,
-        4
-    };
+    i32 lFrame[8] = {6, 7, 8, 5, 6, 3, 0, 4};
 
     for(i32 i = 0; i < 8; ++i) {
         UIElement letter = UIElement{ CENTER, uiPage->numberOfImageElements++, TITLE_T, tPos[i].x, tPos[i].y, 0.1f * RENDERING_ASPECT, 0.1f};
@@ -462,7 +480,7 @@ void add_main_menu_ui() {
 void add_options_ui() {
     //add quit game and do some page_state_logic based on prev state
     set_page_state(OPTIONS);
-    clear_game_ui();
+    clear_game_ui(nullptr);
 
     //should be auto added when adding tabs, but color
     add_cursor(BUTTON_SELECT_T, R_YELLOW, TAB);
@@ -583,10 +601,7 @@ void add_options_ui() {
     }
 
     add_element_to_tab(windowIndex, general, back);
-
-    UIElement blur = UIElement{CENTER, -1, -1, 0.5, 0.5, 1.0f, 1.0f};
-    blur.color = vec4(0.0f, 0.0f, 0.0f, 0.5);
-    add_ui_element(blur);
+    add_blur(0);
 }
 
 void add_item_window() {
@@ -721,10 +736,7 @@ void add_relics_ui() {
     TextElement exit = TextElement{ TOP_LEFT, "[TAB]", 0.14f, 0.08f, -1, true, DEFAULT_FONT_SCALE};
     i32 exitId = add_text_element(exit);
     add_text_to_window(multWindowIndex, exitId);
-
-    UIElement blur = UIElement{CENTER, -1, -1, 0.5, 0.5, 1.0f, 1.0f};
-    blur.color = vec4(0.0f, 0.0f, 0.0f, 0.5);
-    add_ui_element(blur);
+    add_blur(0);
 }
 
 void add_actives_ui(u8 animated) {
@@ -813,8 +825,14 @@ void show_challenge_ui() {
 
 u8 load_map_ui(void *ptr) {
     i32 frontIndex = 3;
-    clear_game_ui();
+    clear_game_ui(nullptr);
     uiPage->highestZ = frontIndex;
+
+    i32 challengeIds[3];
+    populate_challenges(challengeIds);
+    RoundData option1 = create_round_data((ROUND_TYPE)challengeIds[0], gState->runData.rounds);
+    RoundData option2 = create_round_data((ROUND_TYPE)challengeIds[1], gState->runData.rounds);
+    RoundData option3 = create_round_data((ROUND_TYPE)challengeIds[2], gState->runData.rounds);
 
     TextElement selectMessage = TextElement{ CENTER, "Select Next Round Challenge", 0.5, 0.1f, -1, true, DEFAULT_FONT_SCALE * 2.0f};
     selectMessage.bounce = true;
@@ -822,7 +840,7 @@ u8 load_map_ui(void *ptr) {
     selectMessage.zIndex = frontIndex;  
     i32 selectMessageId = add_text_element(selectMessage);
 
-    UIElement challengeImage = UIElement{ CENTER, -1, EASY_T, 0.2575f, 0.275f, 0.08f * RENDERING_ASPECT, 0.08f};
+    UIElement challengeImage = UIElement{ CENTER, -1, get_texture_from_difficulty(option1.difficulty), 0.2575f, 0.275f, 0.08f * RENDERING_ASPECT, 0.08f};
     challengeImage.sheetAnimation = SheetAnimation{4,1};
     challengeImage.sheetAnimation.fps = 4;
     challengeImage.zIndex = frontIndex;
@@ -842,14 +860,6 @@ u8 load_map_ui(void *ptr) {
     itemBg.posy = 0.525f;
     itemBg.width *= 0.9f;
     itemBg.height = 0.02f;
-
-    i32 challengeIds[2];
-    populate_challenges(challengeIds);
-    //need to specify by type as well, so one green/yell/red
-
-    RoundData option1 = create_round_data((ROUND_TYPE)0, gState->runData.rounds);
-    RoundData option2 = create_round_data((ROUND_TYPE)challengeIds[0], gState->runData.rounds);
-    RoundData option3 = create_round_data((ROUND_TYPE)challengeIds[1], gState->runData.rounds);
 
     TextElement desc1 = TextElement{ CENTER, "", (f32)nextRoundBg.posx, 0.575f, -1, true, DEFAULT_FONT_SCALE * 1.5f};
     desc1.zIndex = frontIndex;  
@@ -883,7 +893,7 @@ u8 load_map_ui(void *ptr) {
     itemBg.posx += 0.2425f;
     //nextRoundBg.color = R_GREEN;
     //challengeImage.sheetAnimation.currentFrame = 1;
-    challengeImage.textureName = MEDIUM_T;
+    challengeImage.textureName = get_texture_from_difficulty(option2.difficulty);
 
     desc1.posx += 0.2425f;
     scoreMin1.posx += 0.2425f;
@@ -907,9 +917,7 @@ u8 load_map_ui(void *ptr) {
     nextRoundBg.posx += 0.2425f;
     itemBg.posx += 0.2425f;
     scoreMin1.posx += 0.2425f;
-    //nextRoundBg.color = R_RED;
-    //challengeImage.sheetAnimation.currentFrame = 2;
-    challengeImage.textureName = HARD_T;
+    challengeImage.textureName = get_texture_from_difficulty(option3.difficulty);
     
     desc1.posx += 0.2425f;
     reward.posx += 0.2425f;
@@ -965,17 +973,13 @@ u8 load_map_ui(void *ptr) {
     add_text_to_window(multWindowIndex, reward2);
     add_text_to_window(multWindowIndex, reward3);
 
-    UIElement blur = UIElement{CENTER, -1, -1, 0.5, 0.5, 1.0f, 1.0f};
-    blur.color = vec4(0.0f, 0.0f, 0.0f, 0.5);
-    blur.zIndex = frontIndex;
-    add_ui_element(blur);
-
+    add_blur(frontIndex);
     return true;
 }
 
 void add_profile_ui() {
     set_page_state(PROFILE);
-    clear_game_ui();
+    clear_game_ui(nullptr);
 
     TextElement desc1 = TextElement{ CENTER, "", 0.5f, 0.2f, -1, true, DEFAULT_FONT_SCALE * 1.5f};
     desc1.maxWidth = RENDERING_ASPECT * 0.5f;
@@ -1016,10 +1020,7 @@ void add_profile_ui() {
     add_text_to_window(multWindowIndex, desc6Id);
     add_button_to_window(multWindowIndex, back);
 
-    UIElement blur = UIElement{CENTER, -1, -1, 0.5, 0.5, 1.0f, 1.0f};
-    blur.color = vec4(0.0f, 0.0f, 0.0f, 0.5);
-    blur.zIndex = 0;
-    add_ui_element(blur);
+    add_blur(0);
 }
 
 void set_round_complete_ui(i32 windowIndex) {
@@ -1258,7 +1259,7 @@ void add_in_game_ui() {
 
 void add_end_game_ui() {
     set_page_state(END_GAME);
-    clear_game_ui();
+    clear_game_ui(nullptr);
     TextElement gameOver = TextElement{ CENTER, "Game Over", 0.35f, 0.15f, -1, true, DEFAULT_FONT_SCALE * 5.0, R_RED};
     gameOver.color = R_DARK_RED;
 
@@ -1347,10 +1348,7 @@ void add_end_game_ui() {
         add_image_to_window(windowIndex, slotIds[i]);
     }
 
-    UIElement blur = UIElement{CENTER, -1, -1, 0.5, 0.5, 1.0f, 1.0f};
-    blur.color = vec4(0.0f, 0.0f, 0.0f, 0.5);
-    blur.zIndex = 0;
-    add_ui_element(blur);
+    add_blur(0);
 }
 
 void add_map_ui() {
@@ -1376,16 +1374,24 @@ void clear_shop_options() {
     option->textChild->visible = false;
 }
 
-void clear_game_ui() {
+u8 clear_game_ui(void *ptr) {
     ui_reset(&gMemory->uiMem);
     uiPage = create_ui_page(&gMemory->uiMem);
     uiPage->aspect = RENDERING_ASPECT;
     add_game_ui_data(uiPage);
     init_cursor(mousePos);
+    return true;
+}
+
+void push_clear_game_ui() {
+    ActionCommand *nextRound = PUSH_COMMAND(&gState->cmdQueue, ActionCommand, 0, execute_action);
+    if (nextRound) { 
+        nextRound->action = clear_game_ui;
+    }
 }
 
 void reinit_page_state() {
-    clear_game_ui();
+    clear_game_ui(nullptr);
 
     switch(gState->pageState) {
         case IN_GAME: {

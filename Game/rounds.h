@@ -40,6 +40,8 @@ struct RoundData {
     i32 value = 0;
 };
 
+void populate_challenges(i32 *arr);
+i32 get_texture_from_difficulty(u8 difficulty);
 u8 check_challenge_condition(GameState *state);
 RunData create_run_data();
 void clear_round_score(RoundData *data);

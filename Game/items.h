@@ -40,6 +40,9 @@ struct ItemData {
 extern const Item RELIC_TABLE[TOTAL_RELICS];
 extern const Item ACTIVE_TABLE[TOTAL_ACTIVES];
 
+const char* rarity_to_string(Rarity rarity);
+vec4 rarity_to_color(Rarity rarity);
+
 u8 add_new_bridge(void *ptr);
 u8 size_equals_condition(void *ptr);
 u8 set_even_condition(void *ptr);

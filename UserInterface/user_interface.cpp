@@ -234,6 +234,9 @@ void scale(Animation *a, f32 deltaTime, f32 *width, f32 *height) {
     *height = scale.y;
 }
 
+void scale(Animation *a, f32 deltaTime) {
+
+}
 
 void color_shift(Animation *a, f32 deltaTime) {
 }
@@ -285,6 +288,24 @@ void fade(Animation *a, f32 deltaTime, vec4 *color, u8 *visible) {
     );
 }
 
+void burn(Animation *a, f32 deltaTime, UIElement *e) {
+    a->elapsed += deltaTime;
+
+    f32 t = a->elapsed / a->duration;
+
+    if(t >= 1.0f) {
+        t = 1.0f;
+
+        if(a->playOnce) {
+            a->complete = true;
+        } else {
+            a->elapsed = 0.0f;
+        }
+    }
+    e->effectType = S_BURN;
+    e->shaderDelta = a->elapsed;
+}
+
 //rotation
 void shake(Animation *a, f32 deltaTime, f32 *rotation) {
     a->elapsed += deltaTime;
@@ -323,6 +344,7 @@ void move_element(UIElement* element, f32 deltaTime) {
     for(i32 i = 0; i < element->numberOfAnimations; ++i) {
         Animation* a = &element->animations[i];
         if(!a->autoAnimate) continue;
+        if(a->waitAnimationId != -1 && !element->animations[a->waitAnimationId].complete) continue;
 
         if (a->animationType == BOB) {
             bob(a, deltaTime, &element->posy);
@@ -347,6 +369,10 @@ void move_element(UIElement* element, f32 deltaTime) {
         } else if(a->animationType == POP) { 
             if(a->complete) continue;
             pop(a, deltaTime, &element->width, &element->height);
+            break;
+        } else if(a->animationType == BURN) { 
+            if(a->complete) continue;
+            burn(a, deltaTime, element);
             break;
         }
 
@@ -1090,6 +1116,34 @@ void add_move_animation(UIElement *e, vec2 destination, f32 speed) {
     *add_animation(e->animations, &e->numberOfAnimations) = a;
 }
 
+void add_scale_animation(UIElement *e, vec2 targetScale, f32 duration, i32 waitId) {
+    if(e->numberOfAnimations == MAX_ANIMATIONS) return;
+    Animation a = {};
+    a.duration = duration;
+    a.animationType = SCALE;
+
+    if(waitId == -1 || e->animations[waitId].destination.x == -1.0f) {
+        a.start = vec2(e->width, e->height);
+    } else {
+        a.start = e->animations[waitId].destination;
+    }
+
+    a.destination = targetScale;
+    a.autoAnimate = true;
+    a.waitAnimationId = waitId;
+    *add_animation(e->animations, &e->numberOfAnimations) = a;
+}
+
+void add_burn(UIElement *e, f32 duration) {
+    if(e->numberOfAnimations == MAX_ANIMATIONS) return;
+    Animation a = {};
+    a.duration = duration;
+    a.destination = vec2(-1.0f);
+    a.animationType = BURN;
+    a.autoAnimate = true;
+    *add_animation(e->animations, &e->numberOfAnimations) = a;
+}
+
 void add_pop_animation(TextElement *e, f32 duration) {
     if(e->numberOfAnimations == MAX_ANIMATIONS) return;
     Animation a = {};
@@ -1460,30 +1514,11 @@ void delete_text_element(i32 index) {
 
 void update(f32 deltaTime) {
     for (i32 i = 0; i < uiPage->numberOfImageElements; i++) {
-        //if (uiPage->uiElements[i].hovered)
         update(&uiPage->uiElements[i], deltaTime);
-        //if (uiPage->uiElements[i].canDelete) {
-        //    clear_image_elements(uiPage->uiElements[i]);
-
-        //    for (i32 j = i; j < uiPage->numberOfImageElements - 1; j++) {
-        //        uiPage->uiElements[j] = uiPage->uiElements[j + 1];
-        //    }
-        //    uiPage->numberOfImageElements--;
-        //    i--;
-        //}
     }
 
     for (i32 i = 0; i < uiPage->numberOfTextElements; i++) {
         update(&uiPage->textElements[i], deltaTime);
-        //if (uiPage->textElements[i].canDelete) {
-        //    clear_text_elements(uiPage->textElements[i]);
-
-        //    for (i32 j = i; j < uiPage->numberOfTextElements - 1; j++) {
-        //        uiPage->textElements[j] = uiPage->textElements[j + 1];
-        //    }
-        //    uiPage->numberOfTextElements--;
-        //    i--;
-        //}
     }
 
     if(uiPage->tabCursorId != -1) {
@@ -1503,9 +1538,27 @@ void update(f32 deltaTime) {
     }
 }
 
+u8 add_image_to_page(void *ptr) {
+    UIElement element = *(UIElement *)ptr;
+
+    add_ui_element(element);
+    return true;
+}
+
 void format_string_array(void* value, i32 index, char* out, i32 outSize) {
     char** arr = (char**)value;
     snprintf(out, outSize, "%s", arr[index]);
+}
+
+// this is horrible
+void clear_elements(i32 elementId, i32 textId) {
+    for(i32 i = 0; i < elementId; ++i) {
+        if(uiPage->uiElements[i].id != 90) uiPage->uiElements[i].visible = false;
+    }    
+
+    for(i32 i = 0; i < textId; ++i) {
+        uiPage->textElements[i].visible = false;
+    }
 }
 
 void ui_reset(UIMemory* mem) {

@@ -235,7 +235,9 @@ void push_ui_page(RenderBuffer* buffer, UIPage* uiPage) {
                     element->hovered,
                     element->hasShadow,
                     element->zIndex,
-                    element->rotation
+                    element->rotation,
+                    element->effectType == S_BURN,
+                    element->shaderDelta
                 };
 
                 push_ui_image(buffer, &image);
@@ -834,6 +836,10 @@ static void draw_image_ui(RenderEntryUIImage *image) {
     uiShader->setVec2("resolution", context.windowSize);
     uiShader->setVec2("size", vec2(image->width, image->height));
     uiShader->setFloat("rotation", image->rotation);
+
+    uiShader->setBool("useBurn", image->useBurn);
+    uiShader->setFloat("burnProgress", image->burnTime);
+    uiShader->setFloat("time", context.totalTime);
 
     f32 px = image->posx;
     f32 py = image->posy;

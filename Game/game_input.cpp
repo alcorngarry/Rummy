@@ -125,7 +125,7 @@ extern "C" GAME_DLL void game_update_input(i32 action, i32 key, f64 xpos, f64 yp
             gState->roundData.minimumScore = 1;
         }
         if (key == 299 && action == 1) {
-            clear_game_ui();
+            clear_game_ui(nullptr);
             add_end_game_ui();
         }
         if (key == 77 && action == 1) { //m

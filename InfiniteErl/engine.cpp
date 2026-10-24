@@ -144,7 +144,7 @@ boolean hot_reload(GameDLL* g, const char* dllPath) {
 
 GameMemory allocate_game_memory(RenderBuffer* buffer) {
     GameMemory memory = {};
-    memory.stateMemorySize = 16 * MB;
+    memory.stateMemorySize = 4 * MB;
     memory.stateMemory = VirtualAlloc(0,
         memory.stateMemorySize,
         MEM_RESERVE | MEM_COMMIT,
